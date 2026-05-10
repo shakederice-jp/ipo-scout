@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── ティファニーカラー CSS変数 ─────────────────────── */
+:root {
+  --tiffany:              #66c3c6;
+  --tiffany-dark:         #4aafb3;
+  --tiffany-deep:         #082b2e;
+  --tiffany-mid:          #0d4f52;
+  --tiffany-muted:        #2a7a7e;
+  --tiffany-light:        #e8f9f9;
+  --tiffany-pale:         #f4fbfc;
+  --tiffany-border:       #b3e8ea;
+  --tiffany-border-light: #dff3f4;
+}
+
+body {
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  background-color: var(--tiffany-pale);
+  color: var(--tiffany-deep);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--tiffany-pale); }
+::-webkit-scrollbar-thumb { background: var(--tiffany-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tiffany-dark); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.25s ease-out; }
