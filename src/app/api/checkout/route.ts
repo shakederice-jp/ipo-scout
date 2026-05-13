@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-22.dahlia",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 // プランIDと環境変数のマッピング
 const PRICE_MAP: Record<string, string | undefined> = {
