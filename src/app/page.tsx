@@ -36,12 +36,20 @@ function IpoCard({
   company, order,
 }: {
   company: {
-    id: string; name: string; ticker: string | null; sector: string | null;
-    listing_date: string | null; status: string; highlight: boolean;
-    ai_summary: string | null; ai_score: number | null;
+    id: string;
+    name: string;
+    ticker?: string | null;
+    sector?: string | null;
+    listing_date?: string | null;
+    status: string;
+    highlight: boolean;
+    ai_summary?: string | null;
+    ai_score?: number | null;
+    [key: string]: unknown;
   };
   order: number;
-}) {
+})
+{
   const isFree = order <= FREE_LIMIT;
   const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩",
                    "⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳"];
