@@ -97,7 +97,7 @@ function IpoCard({
         <div className="shrink-0 text-right">
           <div className="font-bold" style={{ fontSize:"10px", color:"#2a7a7e" }}>上場想定日</div>
           <div className="font-black" style={{ fontSize:"12px", color:"#082b2e" }}>
-            {formatDate(company.listing_date)}
+          {formatDate(company.listing_date as string | null)}
           </div>
         </div>
       </div>
