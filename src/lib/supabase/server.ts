@@ -97,11 +97,7 @@ export async function fetchIpoCompanyById(id: string): Promise<{
 }
 
 
-function getEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return { url, key };
-}
+
 
 export function createSupabaseServerClient(): SupabaseClient | null {
   const { url, key } = getEnv();
