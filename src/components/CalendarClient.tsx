@@ -588,7 +588,7 @@ export function CalendarClient({ companies, error }: {
                         const isSelected = selectedIpo?.id === ipo.id;
                         return (
                           <button key={ipo.id}
-                            onClick={() => handleIpoClick(ipo)}
+                          onClick={() => window.location.href = `/analysis/${ipo.id}`}
                             className="w-full text-left rounded-xl transition-all"
                             style={{
                               backgroundColor: isSelected ? C.light : ipo.highlight ? "#fffef5" : "white",
