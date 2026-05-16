@@ -161,9 +161,12 @@ function MiniCalendar({
                 {ipos.length > 0 && (
                   <div className="flex flex-wrap justify-center gap-0.5">
                     {ipos.map(ipo => (
-                      <span key={ipo.id} style={{ fontSize:"11px", lineHeight:"1",
-                        color: (orderMap[ipo.id] ?? 99) <= FREE_LIMIT ? C.mid : "#9ca3af",
-                        fontWeight:"900" }}>
+                      <span key={ipo.id} style={{ fontSize:"13px", lineHeight:"1",
+                        color: (orderMap[ipo.id] ?? 99) <= FREE_LIMIT ? C.deep : "#c4b5fd",
+                        fontWeight:"900",
+                        textShadow: (orderMap[ipo.id] ?? 99) <= FREE_LIMIT
+                          ? "0 0 1px rgba(8,43,46,0.3)"
+                          : "none" }}>
                         {CIRCLED[(orderMap[ipo.id] ?? 1) - 1] ?? "●"}
                       </span>
                     ))}
