@@ -139,7 +139,8 @@ function MiniCalendar({
         ))}
       </div>
       {weeks.map((week, wi) => (
-        <div key={wi} className="grid border-b" style={{ gridTemplateColumns:"repeat(5,1fr)", borderColor:C.borderLight }}>
+        <div key={wi} className="grid" style={{ gridTemplateColumns:"repeat(5,1fr)",
+          borderBottom:`1px solid ${C.borderLight}` }}>
           {week.map((day, di) => {
             const key = formatDateKey(day.date);
             const ipos = iposByDate[key] ?? [];
@@ -385,7 +386,7 @@ export function CalendarClient({ companies, error }: {
 
       {/* ナビバー */}
       <nav className="sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between border-b"
-        style={{ backgroundColor:C.deep, borderColor:"#134f53" }}>
+        style={{ backgroundColor:C.mid, borderColor:C.muted }}>
         <div className="flex items-center gap-2.5">
           <div className="rounded p-1.5" style={{ backgroundColor:C.primary }}>
             <BarChart2 size={14} className="text-white"/>
@@ -477,8 +478,8 @@ export function CalendarClient({ companies, error }: {
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
           {/* コントロールバー */}
-          <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap flex-none border-b"
-            style={{ backgroundColor:"white", borderColor:C.borderLight }}>
+          <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap flex-none"
+            style={{ backgroundColor:"white", borderBottom:`1px solid ${C.borderLight}` }}>
             <div className="flex items-center gap-2">
               <button onClick={prevMonth}
                 className="rounded-full p-1.5 transition-all"
