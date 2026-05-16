@@ -50,11 +50,10 @@ export async function fetchIpoCompaniesForCalendar(): Promise<{
       error: "Supabase の環境変数が設定されていません。",
     };
   }
-
   const { data, error } = await supabase
-    .from("ipo_companies")
-    .select("id,name,ticker,exchange,sector,biz_type,price_range_min,price_range_max,listing_date,apply_start_date,bb_start_date,lockup_90")
-    .order("listing_date", { ascending: true, nullsFirst: false });
+  .from("ipo_companies")
+  .select("*")
+  .order("listing_date", { ascending: true, nullsFirst: false });
 
   if (error) {
     return { data: null, error: error.message };
