@@ -130,16 +130,16 @@ function MiniCalendar({
 }) {
   const weeks = getWeeksInMonth(year, month);
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border:`1px solid ${C.border}` }}>
-      <div className="grid" style={{ gridTemplateColumns:"repeat(5,1fr)" }}>
+    <div style={{ borderRadius:"12px", overflow:"hidden", border:`1px solid ${C.border}` }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)",
+        backgroundColor:C.light, borderBottom:`1px solid ${C.border}` }}>
         {["月","火","水","木","金"].map(d => (
-          <div key={d} className="text-center py-1 font-black"
-            style={{ fontSize:"10px", backgroundColor:C.light, color:C.mid,
-              borderBottom:`1px solid ${C.border}` }}>{d}</div>
+          <div key={d} style={{ textAlign:"center", padding:"4px 0", fontSize:"10px",
+            color:C.mid, fontWeight:"900" }}>{d}</div>
         ))}
       </div>
       {weeks.map((week, wi) => (
-        <div key={wi} className="grid" style={{ gridTemplateColumns:"repeat(5,1fr)",
+        <div key={wi} style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)",
           borderBottom:`1px solid ${C.borderLight}` }}>
           {week.map((day, di) => {
             const key = formatDateKey(day.date);
@@ -148,26 +148,26 @@ function MiniCalendar({
             return (
               <button key={di}
                 onClick={() => ipos.length > 0 && onDateClick(key)}
-                className="flex flex-col items-center justify-start transition-all"
                 style={{ padding:"3px 2px 5px", minHeight:"44px",
-                  backgroundColor: today ? C.light : !day.inMonth ? "#fafefe" : "white",
+                  display:"flex", flexDirection:"column", alignItems:"center",
+                  justifyContent:"flex-start",
+                  border:"none", outline:"none",
                   borderRight: di < 4 ? `1px solid ${C.borderLight}` : "none",
+                  backgroundColor: today ? C.light : !day.inMonth ? "#fafefe" : "white",
                   cursor: ipos.length > 0 ? "pointer" : "default" }}>
-                <span className="font-bold leading-none mb-1"
-                  style={{ fontSize:"11px",
-                    color: !day.inMonth ? C.borderLight : today ? C.deep : C.muted,
-                    fontWeight: today ? "900" : "600" }}>
+                <span style={{ fontSize:"11px", lineHeight:"1", marginBottom:"2px",
+                  color: !day.inMonth ? C.borderLight : today ? C.deep : C.muted,
+                  fontWeight: today ? "900" : "600" }}>
                   {day.date.getDate()}
                 </span>
                 {ipos.length > 0 && (
-                  <div className="flex flex-wrap justify-center gap-0.5">
+                  <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:"1px" }}>
                     {ipos.map(ipo => (
                       <span key={ipo.id} style={{ fontSize:"13px", lineHeight:"1",
                         color: (orderMap[ipo.id] ?? 99) <= FREE_LIMIT ? C.deep : "#c4b5fd",
                         fontWeight:"900",
                         textShadow: (orderMap[ipo.id] ?? 99) <= FREE_LIMIT
-                          ? "0 0 1px rgba(8,43,46,0.3)"
-                          : "none" }}>
+                          ? "0 0 1px rgba(8,43,46,0.3)" : "none" }}>
                         {CIRCLED[(orderMap[ipo.id] ?? 1) - 1] ?? "●"}
                       </span>
                     ))}
