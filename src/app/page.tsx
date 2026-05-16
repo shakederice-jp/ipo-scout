@@ -234,7 +234,9 @@ export default async function Home({
           ) : (
             <div className="space-y-3">
               {list.map((company, index) => (
-                <IpoCard key={company.id} company={company as any} order={index + 1}/>
+                <a key={company.id} href={`/analysis/${company.id}`} style={{textDecoration:"none"}}>
+                <IpoCard company={company as any} order={index + 1}/>
+              </a>
               ))}
             </div>
           )}
