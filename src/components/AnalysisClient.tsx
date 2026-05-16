@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart2, ChevronLeft, Star, Lock, Zap, Crown,
   Building2, TrendingUp, Shield, AlertCircle, Calendar,
@@ -111,10 +111,23 @@ export function AnalysisClient({ company, order, allCompanies, error }: {
   allCompanies: IpoCompany[];
   error: string | null;
 }) {
+    const [aiData, setAiData] = useState<any>(null);
+const [aiLoading, setAiLoading] = useState(true);
+
+useEffect(() => {
+  fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(company),
+  })
+    .then((r) => r.json())
+    .then((data) => { setAiData(data); setAiLoading(false); })
+    .catch(() => setAiLoading(false));
+}, [company.id]);
   const [tab, setTab] = useState<Tab>("ultra");
   const isFree = order <= FREE_LIMIT;
-  const scores = deriveScores(company.ai_score);
-  const overall = scoreLabel(company.ai_score ?? 60);
+  const scores = deriveScores(aiData?.total_score ?? company.ai_score);
+  const overall = scoreLabel(aiData?.total_score ?? company.ai_score ?? 60);
 
   const price = company.price_range_min && company.price_range_max
     ? `¥${company.price_range_min.toLocaleString()}〜¥${company.price_range_max.toLocaleString()}`
@@ -258,7 +271,7 @@ export function AnalysisClient({ company, order, allCompanies, error }: {
           </div>
           {isFree ? (
             <p style={{ fontSize:"13px", color:C.mid, lineHeight:"1.8", margin:0 }}>
-              {company.ai_summary ?? "要約は未登録です。"}
+              {aiLoading ? "AI分析中..." : (aiData?.summary ?? company.ai_summary ?? "要約は未登録です。")}
             </p>
           ) : (
             <div style={{ borderRadius:"10px", padding:"12px",
@@ -271,9 +284,9 @@ export function AnalysisClient({ company, order, allCompanies, error }: {
                 </span>
               </div>
               <p style={{ fontSize:"11px", color:"#b45309", margin:0, lineHeight:"1.6" }}>
-                {company.ai_summary
-                  ? company.ai_summary.slice(0, 40) + "…（続きはプレミアムで）"
-                  : "超短期・短期・長期の9軸スコアと詳細な分析レポートを閲覧できます。"}
+              {aiLoading ? "AI分析中..." : (aiData?.summary
+  ? aiData.summary.slice(0, 40) + "… (続きはプレミアムで)"
+  : "超短期・短期・長期の9軸スコアと詳細な分析レポートを閲覧できます。")}
               </p>
             </div>
           )}
