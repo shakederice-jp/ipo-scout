@@ -114,7 +114,24 @@ export default function AdminPage() {
           </button>
           {result && <p style={{ marginTop:"12px", fontSize:"13px", color: result.startsWith("✅") ? "#2a7a7e" : "#b91c1c" }}>{result}</p>}
         </div>
-        <a href="/" style={{ display:"block", textAlign:"center", marginTop:"16px", fontSize:"12px", color:"#2a7a7e" }}>← トップへ戻る</a>
+        {/* ── ステータス自動更新 ── */}
+        <div style={{ background:"white", padding:"24px", borderRadius:"16px", border:"1px solid #b3e8ea", marginBottom:"16px" }}>
+          <p style={{ fontWeight:"900", fontSize:"14px", color:"#082b2e", marginBottom:"8px" }}>🔄 ステータス自動更新</p>
+          <p style={{ fontSize:"12px", color:"#2a7a7e", marginBottom:"12px" }}>日付をもとに全銘柄のステータスを自動更新します</p>
+          <button onClick={async () => {
+            const r = await fetch("/api/admin/update-status", { method:"POST" });
+            const d = await r.json();
+            alert(d.updated !== undefined ? `✅ ${d.updated}件更新しました` : "エラーが発生しました");
+          }} style={{ width:"100%", padding:"12px", backgroundColor:"#0d4f52", color:"white", border:"none", borderRadius:"8px", fontSize:"14px", fontWeight:"900", cursor:"pointer" }}>
+            🔄 ステータスを今すぐ更新する
+          </button>
+        </div>
+
+        {/* ── 初値・騰落率入力 ── */}
+        <div style={{ background:"white", padding:"24px", borderRadius:"16px", border:"1px solid #b3e8ea", marginBottom:"16px" }}>
+          <p style={{ fontWeight:"900", fontSize:"14px", color:"#082b2e", marginBottom:"16px" }}>📈 初値・騰落率の入力</p>
+          <InitialPriceForm />
+        </div><a href="/" style={{ display:"block", textAlign:"center", marginTop:"16px", fontSize:"12px", color:"#2a7a7e" }}>← トップへ戻る</a>
       </div>
     </div>
   );
