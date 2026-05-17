@@ -1,26 +1,21 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import CalendarClient from "@/components/CalendarClient";
 
 export default async function CalendarPage() {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
+  // サーバーサイドのみ：サービスロールキーでRLSをバイパス
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: companies } = await supabase
+  const { data: companies, error } = await supabase
     .from("ipo_companies")
     .select("*")
     .order("ipo_date", { ascending: true });
+
+  if (error) {
+    console.error("Supabase error:", error);
+  }
 
   return <CalendarClient companies={companies ?? []} />;
 }
