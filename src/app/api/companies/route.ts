@@ -10,7 +10,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("ipo_companies")
     .select("*")
-    .order("ipo_date", { ascending: true });
+    .order("listing_date", { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
