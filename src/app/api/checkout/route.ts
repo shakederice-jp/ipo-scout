@@ -12,26 +12,34 @@ const PRICE_MAP: Record<string, string | undefined> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { plan?: string; stockId?: string | null };
-    const plan    = body.plan ?? "complete";
+    const body    = await req.json() as { plan?: string; stockId?: string | null };
+    const plan    = body.plan    ?? "complete";
     const stockId = body.stockId ?? "";
     const priceId = PRICE_MAP[plan];
 
     if (!priceId) {
-      return NextResponse.json({ error: `プラン「${plan}」の料金IDが未設定です` }, { status: 500 });
+      return NextResponse.json(
+        { error: `プラン「${plan}」の料金IDが未設定です` },
+        { status: 500 }
+      );
     }
 
     const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const mode = plan === "single" ? "payment" : "subscription";
+    const mode   = plan === "single" ? "payment" : "subscription";
+
+    // 単品購入は分析ページへ戻る、サブスクはカレンダーへ
+    const successUrl = plan === "single" && stockId
+      ? `${origin}/analysis/${stockId}?checkout=success`
+      : `${origin}/calendar?checkout=success`;
 
     const session = await stripe.checkout.sessions.create({
       mode,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/?checkout=success`,
+      success_url: successUrl,
       cancel_url:  `${origin}/?checkout=cancel`,
-      locale: "ja",
-      metadata: { plan, stock_id: stockId },
+      locale:      "ja",
+      metadata:    { plan, stock_id: stockId },
     });
 
     return NextResponse.json({ url: session.url });
