@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import InitialPriceForm from "@/components/InitialPriceForm";
 
 const ADMIN_PASSWORD = "otemachi9";
 
@@ -131,7 +132,8 @@ export default function AdminPage() {
         <div style={{ background:"white", padding:"24px", borderRadius:"16px", border:"1px solid #b3e8ea", marginBottom:"16px" }}>
           <p style={{ fontWeight:"900", fontSize:"14px", color:"#082b2e", marginBottom:"16px" }}>📈 初値・騰落率の入力</p>
           <InitialPriceForm />
-        </div><a href="/" style={{ display:"block", textAlign:"center", marginTop:"16px", fontSize:"12px", color:"#2a7a7e" }}>← トップへ戻る</a>
+        </div>
+        <a href="/" style={{ display:"block", textAlign:"center", marginTop:"16px", fontSize:"12px", color:"#2a7a7e" }}>← トップへ戻る</a>
       </div>
     </div>
   );
