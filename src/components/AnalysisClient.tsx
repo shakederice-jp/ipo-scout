@@ -124,7 +124,60 @@ useEffect(() => {
     .then((data) => { setAiData(data); setAiLoading(false); })
     .catch(() => setAiLoading(false));
 }, [company.id]);
-  const [tab, setTab] = useState<Tab>("ultra");
+  // ── アクセス権チェック ──────────────────────────────
+  const [hasAccess,     setHasAccess]     = useState<boolean | null>(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+
+  useEffect(() => {
+    const isFree = order < FREE_LIMIT;
+    if (isFree) { setHasAccess(true); setAccessLoading(false); return; }
+    fetch(`/api/access?stock_id=${company.id}&free_rank=${order}`)
+      .then(r => r.json())
+      .then(d => { setHasAccess(d.access); setAccessLoading(false); })
+      .catch(() => { setHasAccess(false); setAccessLoading(false); });
+  }, [company.id, order]);
+
+  if (accessLoading) return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center",
+      justifyContent:"center", backgroundColor:"#f0fafa" }}>
+      <p style={{ color:"#2a7a7e", fontSize:"14px" }}>読み込み中...</p>
+    </div>
+  );
+
+  if (!hasAccess) return (
+    <div style={{ minHeight:"100vh", backgroundColor:"#f0fafa",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      fontFamily:"'Noto Sans JP',sans-serif" }}>
+      <div style={{ backgroundColor:"white", borderRadius:"20px", padding:"40px 32px",
+        maxWidth:"380px", width:"90%", textAlign:"center",
+        boxShadow:"0 8px 32px rgba(0,0,0,0.1)" }}>
+        <div style={{ fontSize:"48px", marginBottom:"16px" }}>🔒</div>
+        <h2 style={{ fontSize:"18px", fontWeight:"900", color:"#082b2e",
+          marginBottom:"8px" }}>{company.name}</h2>
+        <p style={{ fontSize:"13px", color:"#2a7a7e", marginBottom:"24px",
+          lineHeight:"1.7" }}>
+          この銘柄の詳細分析レポートは有料コンテンツです。<br/>
+          ¥500で購入するか、全銘柄読み放題プランをご利用ください。
+        </p>
+        <button onClick={async () => {
+          const r = await fetch("/api/checkout", { method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ plan:"single", stockId: company.id }) });
+          const d = await r.json();
+          if (d.url) window.location.href = d.url;
+        }} style={{ width:"100%", padding:"14px", backgroundColor:"#f59e0b",
+          color:"white", border:"none", borderRadius:"12px", fontSize:"15px",
+          fontWeight:"900", cursor:"pointer", marginBottom:"12px" }}>
+          ¥500 で購入する
+        </button>
+        <a href="/calendar" style={{ display:"block", fontSize:"12px",
+          color:"#2a7a7e", textDecoration:"none" }}>
+          ← 銘柄一覧に戻る
+        </a>
+      </div>
+    </div>
+  );
+const [tab, setTab] = useState<Tab>("ultra");
   const isFree = order <= FREE_LIMIT;
   const scores = deriveScores(aiData?.total_score ?? company.ai_score);
   const overall = scoreLabel(aiData?.total_score ?? company.ai_score ?? 60);
