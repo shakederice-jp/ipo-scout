@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,7 +9,7 @@ type Company = {
   ticker?: string;
   sector?: string;
   exchange?: string;
-  ipo_date: string;
+  listing_date: string;
   summary?: string;
   is_free?: boolean;
 };
@@ -48,15 +48,15 @@ export default function CalendarClient() {
   }, []);
 
   const sorted = [...companies].sort(
-    (a, b) => new Date(a.ipo_date).getTime() - new Date(b.ipo_date).getTime()
+    (a, b) => new Date(a.listing_date).getTime() - new Date(b.listing_date).getTime()
   );
   const indexMap: { [id: string]: number } = {};
   sorted.forEach((c, i) => { indexMap[c.id] = i; });
 
   const byDay: { [day: number]: Company[] } = {};
   sorted.forEach(c => {
-    if (!c.ipo_date) return;
-    const d = new Date(c.ipo_date);
+    if (!c.listing_date) return;
+    const d = new Date(c.listing_date);
     if (d.getFullYear() === year && d.getMonth() === month) {
       const day = d.getDate();
       if (!byDay[day]) byDay[day] = [];
@@ -152,7 +152,7 @@ export default function CalendarClient() {
         {loading && <div style={{ textAlign:"center", padding:"40px 0", color:C.muted, fontSize:13 }}>データを読み込み中...</div>}
 
         {!loading && sorted.map((company, i) => {
-          const d = new Date(company.ipo_date);
+          const d = new Date(company.listing_date);
           const weekStr = "日月火水木金土"[d.getDay()];
           const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${weekStr}）`;
           const isFree = company.is_free ?? i < 3;
