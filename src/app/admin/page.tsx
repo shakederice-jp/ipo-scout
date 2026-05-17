@@ -11,7 +11,9 @@ export default function AdminPage() {
     listing_date: "", bb_start_date: "", apply_start_date: "",
   });
   const [loading, setLoading] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [autoResult, setAutoResult] = useState<string | null>(null);
 
   if (!authed) return (
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh", backgroundColor:"#f4fbfc" }}>
@@ -28,9 +30,7 @@ export default function AdminPage() {
   );
 
   const handleSubmit = async () => {
-    if (!form.name || !form.ticker || !form.listing_date) {
-      alert("会社名・ティッカー・上場日は必須です"); return;
-    }
+    if (!form.name || !form.ticker || !form.listing_date) { alert("会社名・ティッカー・上場日は必須です"); return; }
     setLoading(true); setResult(null);
     try {
       const res = await fetch("/api/admin/add-ipo", {
@@ -41,10 +41,19 @@ export default function AdminPage() {
       if (data.error) setResult("❌ エラー: " + data.error);
       else setResult("✅ 追加成功: " + data.name);
       setForm({ name:"", ticker:"", exchange:"グロース", listing_date:"", bb_start_date:"", apply_start_date:"" });
-    } catch(e) {
-      setResult("❌ 通信エラー");
-    }
+    } catch(e) { setResult("❌ 通信エラー"); }
     setLoading(false);
+  };
+
+  const handleAutoFetch = async () => {
+    setAutoLoading(true); setAutoResult("IPOスケジュールを取得・分析中...");
+    try {
+      const res = await fetch("/api/admin/auto-fetch", { method: "POST" });
+      const data = await res.json();
+      if (data.error) setAutoResult("❌ エラー: " + data.error);
+      else setAutoResult(`✅ 完了: ${data.added}件追加、${data.skipped}件スキップ（既存）${data.errors ? " / エラー: " + data.errors.join(", ") : ""}`);
+    } catch(e) { setAutoResult("❌ 通信エラー"); }
+    setAutoLoading(false);
   };
 
   const fields = [
@@ -58,8 +67,27 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight:"100vh", backgroundColor:"#f4fbfc", padding:"24px" }}>
       <div style={{ maxWidth:"480px", margin:"0 auto" }}>
-        <h1 style={{ fontSize:"18px", color:"#082b2e", marginBottom:"24px" }}>📋 IPO銘柄追加（管理者）</h1>
+        <h1 style={{ fontSize:"18px", color:"#082b2e", marginBottom:"24px" }}>📋 IPO銘柄管理（管理者）</h1>
+
+        <div style={{ background:"white", padding:"24px", borderRadius:"16px", border:"2px solid #66c3c6", marginBottom:"24px" }}>
+          <h2 style={{ margin:"0 0 8px", fontSize:"14px", color:"#082b2e" }}>🤖 最新IPOを自動取得</h2>
+          <p style={{ fontSize:"12px", color:"#2a7a7e", margin:"0 0 4px" }}>
+            IPOスケジュールサイトから新しい銘柄を自動取得し、ClaudeとGeminiのダブルチェックで分析してDBに追加します
+          </p>
+          <p style={{ fontSize:"11px", color:"#92400e", margin:"0 0 16px", backgroundColor:"#fffbeb", padding:"6px 8px", borderRadius:"6px" }}>
+            ⚠️ 処理に30秒〜1分かかります。ボタンを押したら完了までお待ちください
+          </p>
+          <button onClick={handleAutoFetch} disabled={autoLoading}
+            style={{ width:"100%", padding:"12px", backgroundColor: autoLoading ? "#b3e8ea" : "#0d4f52",
+              color:"white", border:"none", borderRadius:"8px", cursor: autoLoading ? "default" : "pointer",
+              fontWeight:"900", fontSize:"14px" }}>
+            {autoLoading ? "⏳ 取得・分析中（しばらくお待ちください）..." : "🚀 最新IPOを自動取得する"}
+          </button>
+          {autoResult && <p style={{ marginTop:"12px", fontSize:"13px", color: autoResult.startsWith("✅") ? "#2a7a7e" : "#b91c1c" }}>{autoResult}</p>}
+        </div>
+
         <div style={{ background:"white", padding:"24px", borderRadius:"16px", border:"1px solid #b3e8ea" }}>
+          <h2 style={{ margin:"0 0 16px", fontSize:"14px", color:"#082b2e" }}>✏️ 手動で1件追加</h2>
           {fields.map(f => (
             <div key={f.key} style={{ marginBottom:"16px" }}>
               <label style={{ display:"block", fontSize:"12px", fontWeight:"700", color:"#2a7a7e", marginBottom:"6px" }}>
@@ -77,9 +105,7 @@ export default function AdminPage() {
               <option>グロース</option><option>スタンダード</option><option>プライム</option>
             </select>
           </div>
-          <p style={{ fontSize:"11px", color:"#2a7a7e", margin:"0 0 16px" }}>
-            ✨ セクター・業態・AI分析・スコアはClaudeが自動生成します
-          </p>
+          <p style={{ fontSize:"11px", color:"#2a7a7e", margin:"0 0 16px" }}>✨ セクター・業態・AI分析・スコアはClaudeが自動生成します</p>
           <button onClick={handleSubmit} disabled={loading}
             style={{ width:"100%", padding:"12px", backgroundColor: loading ? "#b3e8ea" : "#66c3c6",
               color:"white", border:"none", borderRadius:"8px", cursor: loading ? "default" : "pointer",
