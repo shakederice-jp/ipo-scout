@@ -527,7 +527,45 @@ const [tab, setTab] = useState<Tab>("ultra");
           ) : <div/>}
         </div>
 
-        {/* ── 注意事項 ── */}
+        {/* ── 参考文献・出典 ── */}
+        <div style={{ borderRadius:"12px", padding:"16px", marginBottom:"16px",
+          backgroundColor:"#f0fafa", border:"1px solid #b3e8ea" }}>
+          <p style={{ fontSize:"12px", fontWeight:"900", color:"#082b2e",
+            marginBottom:"12px" }}>📚 参考文献・出典</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+            {company.source_url && (
+              <a href={company.source_url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize:"11px", color:"#2a7a7e", textDecoration:"none",
+                  display:"flex", alignItems:"center", gap:"4px" }}>
+                🔗 データ取得元
+              </a>
+            )}
+            <a href={`https://www.jpx.co.jp/listing/stocks/new/index.html`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", color:"#2a7a7e", textDecoration:"none" }}>
+              📋 東証・新規上場情報
+            </a>
+            <a href={`https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?S1=${company.ticker}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", color:"#2a7a7e", textDecoration:"none" }}>
+              📄 EDINET（有価証券届出書）
+            </a>
+            <a href={`https://minkabu.jp/stock/${company.ticker}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", color:"#2a7a7e", textDecoration:"none" }}>
+              📈 みんかぶ
+            </a>
+            <a href={`https://ipokabu.net/`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", color:"#2a7a7e", textDecoration:"none" }}>
+              🗓 IPO株
+            </a>
+          </div>
+          <p style={{ fontSize:"10px", color:"#6b8e8e", marginTop:"12px", lineHeight:"1.6" }}>
+            ※本レポートのAI分析はClaude（Anthropic）とGemini（Google）による自動生成です。
+            投資判断はご自身の責任で行ってください。
+          </p>
+        </div>{/* ── 注意事項 ── */}
         <div style={{ borderRadius:"12px", padding:"12px 14px", marginBottom:"16px",
           backgroundColor:"#fffbeb", border:"1px solid #fde68a",
           display:"flex", alignItems:"flex-start", gap:"8px" }}>
