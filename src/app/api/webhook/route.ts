@@ -47,12 +47,12 @@ export async function POST(req: NextRequest) {
       // 単品購入 → purchased_stocks に記録
       await supabase.from("purchased_stocks").upsert(
         {
-          user_id:      userId,
-          stock_id:     stockId,
-          amount:       500,
-          purchased_at: new Date().toISOString(),
+          user_id:                  userId,
+          company_id:               stockId,
+          stripe_payment_intent_id: session.payment_intent as string ?? "",
+          amount:                   500,
         },
-        { onConflict: "user_id,stock_id" }
+        { onConflict: "user_id,company_id" }
       );
     } else if (plan) {
       // サブスク購入 → user_profiles のプランを更新
