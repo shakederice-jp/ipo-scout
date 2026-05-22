@@ -35,13 +35,11 @@ export async function POST(req: NextRequest) {
     );
 
     // メールからユーザーIDを取得
-    const { data: authData } = await supabase.auth.admin.listUsers();
-    const user = authData?.users?.find((u) => u.email === email);
-    if (!user) {
-      console.error("Webhook: user not found for email", email);
+    const userId = session.metadata?.user_id ?? "";
+    if (!userId) {
+      console.error("Webhook: user_id not found in metadata");
       return NextResponse.json({ received: true });
     }
-    const userId = user.id;
 
     if (plan === "single" && stockId) {
       // 単品購入 → purchased_stocks に記録
