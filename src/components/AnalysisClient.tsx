@@ -32,7 +32,8 @@ interface IpoCompany {
   biz_type: string | null;
   price_range_min: number | null;
   price_range_max: number | null;
-  listing_date: string | null;`n  source_url: string | null;
+  listing_date: string | null;
+  source_url?: string | null;
   apply_start_date: string | null;
   bb_start_date: string | null;
   lockup_90_date: string | null;
