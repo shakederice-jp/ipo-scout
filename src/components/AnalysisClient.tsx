@@ -52,7 +52,7 @@ function formatDate(d: string | null): string {
   return `${date.getMonth()+1}月${date.getDate()}日（${JP_DOW[date.getDay()]}）`;
 }
 
-// ── スコアバー ────────────────────────────────────────────────────────────
+// -- score bar
 function ScoreBar({ score, color }: { score: number; color: string }) {
   return (
     <div style={{ width:"100%", height:"6px", borderRadius:"3px",
