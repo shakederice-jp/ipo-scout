@@ -43,7 +43,7 @@ interface IpoCompany {
   ai_summary: string | null;
 }
 
-// ── 日付フォーマット ──────────────────────────────────────────────────────
+// -- date format
 const JP_DOW = ["日","月","火","水","木","金","土"];
 function formatDate(d: string | null): string {
   if (!d) return "未定";
@@ -585,3 +585,4 @@ const [tab, setTab] = useState<Tab>("ultra");
     </div>
   );
 }
+
