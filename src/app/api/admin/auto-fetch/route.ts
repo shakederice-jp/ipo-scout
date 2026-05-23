@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 
-function extractJson(text) {
+function extractJson(text: string): string {
   const start = text.indexOf('{');
   if (start === -1) return text;
   let depth = 0, inStr = false, esc = false;
