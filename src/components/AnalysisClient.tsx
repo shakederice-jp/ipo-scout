@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -44,7 +44,7 @@ interface IpoCompany {
   ai_summary: string | null;
 }
 
-// -- date format
+// ── 日付フォーマット ──────────────────────────────────────────────────────
 const JP_DOW = ["日","月","火","水","木","金","土"];
 function formatDate(d: string | null): string {
   if (!d) return "未定";
@@ -53,7 +53,7 @@ function formatDate(d: string | null): string {
   return `${date.getMonth()+1}月${date.getDate()}日（${JP_DOW[date.getDay()]}）`;
 }
 
-// -- score bar
+// ── スコアバー ────────────────────────────────────────────────────────────
 function ScoreBar({ score, color }: { score: number; color: string }) {
   return (
     <div style={{ width:"100%", height:"6px", borderRadius:"3px",
@@ -128,7 +128,7 @@ useEffect(() => {
   // ── アクセス権チェック ──────────────────────────────
   const [hasAccess,     setHasAccess]     = useState<boolean | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
-
+  const [tab, setTab] = useState<Tab>("ultra");
   useEffect(() => {
     const isFree = order < FREE_LIMIT;
     if (isFree) { setHasAccess(true); setAccessLoading(false); return; }
@@ -178,7 +178,7 @@ useEffect(() => {
       </div>
     </div>
   );
-const [tab, setTab] = useState<Tab>("ultra");
+
   const isFree = order <= FREE_LIMIT;
   const scores = deriveScores(aiData?.total_score ?? company.ai_score);
   const overall = scoreLabel(aiData?.total_score ?? company.ai_score ?? 60);
@@ -586,4 +586,3 @@ const [tab, setTab] = useState<Tab>("ultra");
     </div>
   );
 }
-
