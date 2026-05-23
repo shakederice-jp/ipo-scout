@@ -7,7 +7,7 @@ export async function POST() {
   try {
     const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const geminiModel = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const geminiModel = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
     const supabase = createSupabaseServerClient();
     if (!supabase) throw new Error("Supabase接続エラー");
 
