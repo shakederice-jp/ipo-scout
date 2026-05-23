@@ -11,7 +11,7 @@ function extractJson(text) {
   for (let i = start; i < text.length; i++) {
     const ch = text[i];
     if (esc) { esc = false; continue; }
-    if (ch === '\' && inStr) { esc = true; continue; }
+    if (ch === '\\' && inStr){ esc = true; continue; }
     if (ch === '"') { inStr = !inStr; continue; }
     if (inStr) continue;
     if (ch === '{') depth++;
