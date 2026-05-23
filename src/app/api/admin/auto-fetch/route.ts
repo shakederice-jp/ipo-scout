@@ -53,7 +53,7 @@ ${sourceText}
           }],
         });
         const rawAnalysis = (analysisMsg.content[0] as any).text; const jsonMatch = rawAnalysis.match(/\{[\s\S]*\}/); const analysisText = jsonMatch ? jsonMatch[0] : rawAnalysis.replace(/```json|```/g, "").trim();
-        let analysis = JSON.parse(analysisText);
+        let analysis; try { analysis = JSON.parse(analysisText); } catch { analysis = { sector: "その他", biz_type: "不明", ai_summary: "自動分析に失敗しました", ai_score: 50, highlight: false }; }
 
         // Step2: Gemini縺悟・繝・・繧ｿ縺ｨ縺ｮ謨ｴ蜷域ｧ繧偵メ繧ｧ繝・け
         const checkPrompt = `莉･荳九・IPO莨∵･ｭ諠・ｱ縺ｨ縲、I縺檎函謌舌＠縺溷・譫舌ｒ豈碑ｼ・＠縺ｦ縺上□縺輔＞縲・
@@ -78,7 +78,7 @@ ${sourceText}
 
         const geminiResult = await geminiModel.generateContent(checkPrompt);
         const rawGemini = geminiResult.response.text(); const geminiMatch = rawGemini.match(/\{[\s\S]*\}/); const geminiText = geminiMatch ? geminiMatch[0] : rawGemini.replace(/```json|```/g, "").trim();
-        const check = JSON.parse(geminiText);
+        let check; try { check = JSON.parse(geminiText); } catch { check = { ok: true, issues: "" }; }
 
         // Step3: 蝠城｡後′縺ゅｌ縺ｰClaude縺御ｿｮ豁｣
         if (!check.ok) {
@@ -95,7 +95,7 @@ ${check.issues}
             }],
           });
           const rawFix = (fixMsg.content[0] as any).text; const fixMatch = rawFix.match(/\{[\s\S]*\}/); const fixText = fixMatch ? fixMatch[0] : rawFix.replace(/```json|```/g, "").trim();
-          analysis = JSON.parse(fixText);
+          try { analysis = JSON.parse(fixText); } catch { /* keep previous */ }
         }
 
         // Step4: Supabase縺ｫ菫晏ｭ・
