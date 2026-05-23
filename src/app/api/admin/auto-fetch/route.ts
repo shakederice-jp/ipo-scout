@@ -93,7 +93,7 @@ ${sourceText}
 {"ok":false,"issues":"具体的な問題点"}`;
 
         //const geminiResult = await geminiModel.generateContent(checkPrompt);
-        const check = { ok: true, issues: "" };const rawGemini = geminiResult.response.text(); const geminiMatch = rawGemini.match(/\{[\s\S]*\}/); const geminiText = geminiMatch ? geminiMatch[0] : rawGemini.replace(/```json|```/g, "").trim();
+        const check = { ok: true, issues: "" };//const rawGemini = geminiResult.response.text(); const geminiMatch = rawGemini.match(/\{[\s\S]*\}/); const geminiText = geminiMatch ? geminiMatch[0] : rawGemini.replace(/```json|```/g, "").trim();
         //let check; try { check = JSON.parse(geminiText); } catch { check = { ok: true, issues: "" }; }
 
         // Step3: 問題があればClaudeが修正
