@@ -71,7 +71,7 @@ ${sourceText}
         const rawAnalysis = (analysisMsg.content[0] as any).text; const jsonMatch = rawAnalysis.match(/\{[\s\S]*\}/); const analysisText = jsonMatch ? jsonMatch[0] : rawAnalysis.replace(/```json|```/g, "").trim();
         let analysis; try { analysis = JSON.parse(analysisText); } catch { analysis = { sector: "���̑�", biz_type: "�s��", ai_summary: "�������͂Ɏ��s���܂���", ai_score: 50, highlight: false }; }
 
-       /*// Step2: Geminiが�EチE�Eタとの整合性をチェチE��
+       // Step2: Geminiが�EチE�Eタとの整合性をチェチE��
         const checkPrompt = `以下�EIPO企業惁E��と、AIが生成した�E析を比輁E��てください、E
 
 【�EチE�Eタ�E�EPOスケジュールサイトより）、E
@@ -92,9 +92,9 @@ ${sourceText}
 また�E
 {"ok":false,"issues":"具体的な問題点"}`;
 
-        const geminiResult = await geminiModel.generateContent(checkPrompt);
-        const rawGemini = geminiResult.response.text(); const geminiMatch = rawGemini.match(/\{[\s\S]*\}/); const geminiText = geminiMatch ? geminiMatch[0] : rawGemini.replace(/```json|```/g, "").trim();
-        let check; try { check = JSON.parse(geminiText); } catch { check = { ok: true, issues: "" }; }
+        //const geminiResult = await geminiModel.generateContent(checkPrompt);
+        const check = { ok: true, issues: "" };const rawGemini = geminiResult.response.text(); const geminiMatch = rawGemini.match(/\{[\s\S]*\}/); const geminiText = geminiMatch ? geminiMatch[0] : rawGemini.replace(/```json|```/g, "").trim();
+        //let check; try { check = JSON.parse(geminiText); } catch { check = { ok: true, issues: "" }; }
 
         // Step3: 問題があればClaudeが修正
         if (!check.ok) {
@@ -111,8 +111,8 @@ ${check.issues}
             }],
           });
           const rawFix = (fixMsg.content[0] as any).text; const fixMatch = rawFix.match(/\{[\s\S]*\}/); const fixText = fixMatch ? fixMatch[0] : rawFix.replace(/```json|```/g, "").trim();
-          try { analysis = JSON.parse(fixText); } catch { /* keep previous */ }
-        }*/
+          try { analysis = JSON.parse(fixText); } catch { }
+    }
 
         // Step4: Supabaseに保孁E
         await supabase.from("ipo_companies").insert({
