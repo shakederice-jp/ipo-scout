@@ -63,40 +63,35 @@ export async function POST(req: NextRequest) {
       max_tokens: 3000,
       messages: [{
         role: "user",
-        content: `IPO企業をJSON形式のみで分析してください。余計な文章は不要です。
+        content: `あなたは投資初心者に寄り添うIPOアドバイザーです。以下のIPO企業をJSON形式のみで分析してください。
+
+【必ず守ること】
+・「〜です」「〜ます」「〜でしょう」調の丁寧で温かみのある文体
+・専門用語は必ずカッコ内で説明（例：ロックアップ（一定期間株を売れない約束））
+・各descriptionは120字以上で具体的・丁寧に書く
+・冷たい表現は避け「〜と考えられます」「〜が期待されます」など柔らかい表現を使う
+
 企業：${company.name}／${company.sector || "不明"}／上場日${company.listing_date || "未定"}
 
 必ず以下の形式で返してください：
-{"summary":"この企業の事業内容と投資ポイントを200字で説明","total_score":65,"grade":"B","highlight_reason":null,"axes":{"ultra_short":[{"id":"float","index":"難・1","title":"需給・ロック内容","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"lockup","index":"難・2","title":"VC保有・売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"timing","index":"難・3","title":"市場環境・タイミング","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"}],"short":[{"id":"valuation","index":"週1-1","title":"バリュエーション","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"vc_sell","index":"週1-2","title":"ロックアップ解除後の売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"growth","index":"週1-3","title":"成長性・市場規模","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"}],"long":[{"id":"management","index":"長キ-1","title":"経営陣・ガバナンス","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"unit_econ","index":"長キ-2","title":"ユニットエコノミクス","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"competitor","index":"長キ-3","title":"競合優位性","score":65,"why_matters":"なぜ重要か説明","description":"詳細分析","verdict":"判断","doc_guide":"確認方法"}]},"sources":[{"label":"東証新規上場情報","url":"https://www.jpx.co.jp/listing/stocks/new/index.html"},{"label":"EDINET","url":"https://disclosure2.edinet-fsa.go.jp/"},{"label":"IPOkabu","url":"https://ipokabu.net/"}],"generated_at":"2025-01-01T00:00:00.000Z"}`
+{"summary":"この企業の事業内容と投資ポイントを200字で丁寧に説明","total_score":65,"grade":"B","highlight_reason":null,"axes":{"ultra_short":[{"id":"float","index":"難・1","title":"需給・ロック内容","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"lockup","index":"難・2","title":"VC保有・売り圧力","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"timing","index":"難・3","title":"市場環境・タイミング","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"}],"short":[{"id":"valuation","index":"週1-1","title":"バリュエーション","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"vc_sell","index":"週1-2","title":"ロックアップ解除後の売り圧力","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"growth","index":"週1-3","title":"成長性・市場規模","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"}],"long":[{"id":"management","index":"長キ-1","title":"経営陣・ガバナンス","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"unit_econ","index":"長キ-2","title":"ユニットエコノミクス","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"},{"id":"competitor","index":"長キ-3","title":"競合優位性","score":65,"why_matters":"なぜ重要か丁寧に説明","description":"120字以上の詳細分析","verdict":"判断","doc_guide":"確認方法"}]},"sources":[{"label":"東証新規上場情報","url":"https://www.jpx.co.jp/listing/stocks/new/index.html"},{"label":"EDINET","url":"https://disclosure2.edinet-fsa.go.jp/"},{"label":"IPOkabu","url":"https://ipokabu.net/"}],"generated_at":"2025-01-01T00:00:00.000Z"}`
       }]
     });
 
     const rawText = (msg.content[0] as any).text;
-    console.log("Raw response:", rawText.substring(0, 200));
-
     let analysis: any;
     try {
-      const jsonStr = extractJson(rawText);
-      analysis = JSON.parse(jsonStr);
-    } catch (parseErr) {
-      console.error("JSON parse error:", parseErr);
-      // パース失敗時はデフォルト構造を使用
+      analysis = JSON.parse(extractJson(rawText));
+    } catch {
       analysis = {
         summary: `${company.name}は${company.sector || ""}分野のIPO企業です。詳細分析を準備中です。`,
-        total_score: 60,
-        grade: "B",
-        highlight_reason: null,
+        total_score: 60, grade: "B", highlight_reason: null,
         axes: defaultAxes,
-        sources: [
-          { label: "東証新規上場情報", url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
-          { label: "EDINET", url: "https://disclosure2.edinet-fsa.go.jp/" },
-          { label: "IPOkabu", url: "https://ipokabu.net/" }
-        ],
+        sources: [{ label: "東証新規上場情報", url: "https://www.jpx.co.jp/listing/stocks/new/index.html" }],
         generated_at: new Date().toISOString()
       };
     }
 
-    // generated_atを確実に設定
     analysis.generated_at = new Date().toISOString();
 
     if (supabase) {
