@@ -11,25 +11,39 @@ const indexMap: Record<string, string> = {
   management: "長キ-1", unit_econ: "長キ-2", competitor: "長キ-3"
 };
 
-const parseArr = (msg: any) => {
-  try {
-    const t = (msg.content[0] as any).text;
-    // [ ] で囲まれた配列を探す
-    const start = t.indexOf('[');
-    const end = t.lastIndexOf(']');
-    if (start === -1 || end === -1) return [];
-    return JSON.parse(t.slice(start, end + 1))
-      .map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
-  } catch { return []; }
-};
-
-const callHaiku = (content: string, max_tokens = 800) =>
+const callHaiku = (content: string, max_tokens = 900) =>
   claude.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens,
     system: "JSONのみ返してください。余計な説明不要。",
     messages: [{ role: "user", content }]
   });
+
+const parseItems = (msg: any) => {
+  try {
+    const t = (msg.content[0] as any).text;
+    // まずオブジェクト形式で試す
+    const objStart = t.indexOf('{');
+    const objEnd = t.lastIndexOf('}');
+    if (objStart !== -1 && objEnd !== -1) {
+      const obj = JSON.parse(t.slice(objStart, objEnd + 1));
+      const arr = obj.items || obj.axes || obj.data || Object.values(obj).find(Array.isArray);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
+      }
+    }
+    // 配列形式で試す
+    const arrStart = t.indexOf('[');
+    const arrEnd = t.lastIndexOf(']');
+    if (arrStart !== -1 && arrEnd !== -1) {
+      const arr = JSON.parse(t.slice(arrStart, arrEnd + 1));
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
+      }
+    }
+    return [];
+  } catch { return []; }
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,9 +58,11 @@ export async function POST(req: NextRequest) {
         .single();
       if (data?.analysis_detail) {
         const detail = data.analysis_detail as any;
+        const axes = detail.axes || {};
+        const hasAxes = (axes.ultra_short?.length || 0) > 0;
         const generatedAt = new Date(detail.generated_at || 0);
         const hoursSince = (Date.now() - generatedAt.getTime()) / 3600000;
-        if (hoursSince < 48) return NextResponse.json(detail);
+        if (hoursSince < 48 && hasAxes) return NextResponse.json(detail);
       }
     }
 
@@ -54,12 +70,29 @@ export async function POST(req: NextRequest) {
     const sector = company.sector || "不明";
     const tone = "「〜です」「〜ます」調で丁寧に。専門用語はカッコで説明。";
 
-    // 4つを同時並行で実行（合計25秒程度で完了）
+    const axisPrompt = (type: string, items: string) =>
+      `「${name}」（${sector}業）の${type}IPO分析。${tone}以下のJSON形式で返答：{"items":[${items}]}`;
+
+    const item = (id: string, title: string) =>
+      `{"id":"${id}","title":"${title}","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}`;
+
     const [summaryMsg, usMsg, shMsg, loMsg] = await Promise.all([
-      callHaiku(`「${name}」（${sector}業）IPO分析。${tone}JSONのみ：{"summary":"200字で事業内容と投資ポイントを丁寧に説明","total_score":65,"grade":"B"}`, 500),
-      callHaiku(`「${name}」（${sector}業）超短期IPO分析。${tone}JSONのみ：[{"id":"float","title":"需給・ロック内容","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"lockup","title":"VC保有・売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"timing","title":"市場環境・タイミング","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`),
-      callHaiku(`「${name}」（${sector}業）短期IPO分析。${tone}JSONのみ：[{"id":"valuation","title":"バリュエーション","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"vc_sell","title":"ロックアップ解除後の売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"growth","title":"成長性・市場規模","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`),
-      callHaiku(`「${name}」（${sector}業）長期IPO分析。${tone}JSONのみ：[{"id":"management","title":"経営陣・ガバナンス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"unit_econ","title":"ユニットエコノミクス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"competitor","title":"競合優位性","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`)
+      callHaiku(`「${name}」（${sector}業）IPO分析。${tone}JSON：{"summary":"200字で事業内容と投資ポイントを丁寧に説明","total_score":65,"grade":"B"}`, 500),
+      callHaiku(axisPrompt("超短期", [
+        item("float", "需給・ロック内容"),
+        item("lockup", "VC保有・売り圧力"),
+        item("timing", "市場環境・タイミング")
+      ].join(","))),
+      callHaiku(axisPrompt("短期", [
+        item("valuation", "バリュエーション"),
+        item("vc_sell", "ロックアップ解除後の売り圧力"),
+        item("growth", "成長性・市場規模")
+      ].join(","))),
+      callHaiku(axisPrompt("長期", [
+        item("management", "経営陣・ガバナンス"),
+        item("unit_econ", "ユニットエコノミクス"),
+        item("competitor", "競合優位性")
+      ].join(",")))
     ]);
 
     let summary = `${name}は${sector}分野のIPO企業です。`;
@@ -78,9 +111,9 @@ export async function POST(req: NextRequest) {
       summary, total_score, grade,
       highlight_reason: null,
       axes: {
-        ultra_short: parseArr(usMsg),
-        short: parseArr(shMsg),
-        long: parseArr(loMsg)
+        ultra_short: parseItems(usMsg),
+        short: parseItems(shMsg),
+        long: parseItems(loMsg)
       },
       sources: [
         { label: "東証新規上場情報", url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
