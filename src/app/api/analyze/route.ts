@@ -14,10 +14,22 @@ const indexMap: Record<string, string> = {
 const parseArr = (msg: any) => {
   try {
     const t = (msg.content[0] as any).text;
-    const s = t.slice(t.indexOf('['), t.lastIndexOf(']') + 1);
-    return JSON.parse(s).map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
+    // [ ] で囲まれた配列を探す
+    const start = t.indexOf('[');
+    const end = t.lastIndexOf(']');
+    if (start === -1 || end === -1) return [];
+    return JSON.parse(t.slice(start, end + 1))
+      .map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
   } catch { return []; }
 };
+
+const callHaiku = (content: string, max_tokens = 800) =>
+  claude.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens,
+    system: "JSONのみ返してください。余計な説明不要。",
+    messages: [{ role: "user", content }]
+  });
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,14 +52,15 @@ export async function POST(req: NextRequest) {
 
     const name = company.name;
     const sector = company.sector || "不明";
-    const tone = "「〜です」「〜ます」調で丁寧に。専門用語はカッコで説明。JSONのみ返答。";
+    const tone = "「〜です」「〜ます」調で丁寧に。専門用語はカッコで説明。";
 
-    // Step1: サマリー
-    const summaryMsg = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001", max_tokens: 500,
-      system: "JSONのみ返してください。",
-      messages: [{ role: "user", content: `「${name}」（${sector}業）IPO分析。${tone}{"summary":"200字で事業内容と投資ポイントを丁寧に説明","total_score":65,"grade":"B"}` }]
-    });
+    // 4つを同時並行で実行（合計25秒程度で完了）
+    const [summaryMsg, usMsg, shMsg, loMsg] = await Promise.all([
+      callHaiku(`「${name}」（${sector}業）IPO分析。${tone}JSONのみ：{"summary":"200字で事業内容と投資ポイントを丁寧に説明","total_score":65,"grade":"B"}`, 500),
+      callHaiku(`「${name}」（${sector}業）超短期IPO分析。${tone}JSONのみ：[{"id":"float","title":"需給・ロック内容","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"lockup","title":"VC保有・売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"timing","title":"市場環境・タイミング","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`),
+      callHaiku(`「${name}」（${sector}業）短期IPO分析。${tone}JSONのみ：[{"id":"valuation","title":"バリュエーション","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"vc_sell","title":"ロックアップ解除後の売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"growth","title":"成長性・市場規模","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`),
+      callHaiku(`「${name}」（${sector}業）長期IPO分析。${tone}JSONのみ：[{"id":"management","title":"経営陣・ガバナンス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"unit_econ","title":"ユニットエコノミクス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"competitor","title":"競合優位性","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]`)
+    ]);
 
     let summary = `${name}は${sector}分野のIPO企業です。`;
     let total_score = 65;
@@ -60,27 +73,6 @@ export async function POST(req: NextRequest) {
       total_score = p.total_score || total_score;
       grade = p.grade || grade;
     } catch {}
-
-    // Step2: 超短期
-    const usMsg = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001", max_tokens: 800,
-      system: "JSONのみ返してください。",
-      messages: [{ role: "user", content: `「${name}」（${sector}業）超短期IPO分析。${tone}[{"id":"float","title":"需給・ロック内容","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"lockup","title":"VC保有・売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"timing","title":"市場環境・タイミング","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]` }]
-    });
-
-    // Step3: 短期
-    const shMsg = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001", max_tokens: 800,
-      system: "JSONのみ返してください。",
-      messages: [{ role: "user", content: `「${name}」（${sector}業）短期IPO分析。${tone}[{"id":"valuation","title":"バリュエーション","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"vc_sell","title":"ロックアップ解除後の売り圧力","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"growth","title":"成長性・市場規模","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]` }]
-    });
-
-    // Step4: 長期
-    const loMsg = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001", max_tokens: 800,
-      system: "JSONのみ返してください。",
-      messages: [{ role: "user", content: `「${name}」（${sector}業）長期IPO分析。${tone}[{"id":"management","title":"経営陣・ガバナンス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"unit_econ","title":"ユニットエコノミクス","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"},{"id":"competitor","title":"競合優位性","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}]` }]
-    });
 
     const analysis = {
       summary, total_score, grade,
