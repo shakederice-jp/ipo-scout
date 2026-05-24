@@ -86,7 +86,9 @@ export async function POST(req: NextRequest) {
       if(p){summary=p.summary||summary;total_score=p.total_score||total_score;grade=p.grade||grade;}
     } catch {}
 
-    const insights=parseArr((insMsg.content[0] as any).text).slice(0,3);
+    const insRaw=(insMsg.content[0] as any).text;
+console.log('insights_raw:', insRaw?.slice(0,300));
+const insights=parseArr(insRaw).slice(0,3);
     const scenarios_short=parseArr((scenMsg.content[0] as any).text).slice(0,3);
     const ultra_short=parseArr((usMsg.content[0] as any).text);
     const short=parseArr((shMsg.content[0] as any).text);
