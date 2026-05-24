@@ -107,8 +107,10 @@ export async function POST(req: NextRequest) {
       grade = p.grade || grade;
     } catch {}
 
+    const debug_us = (usMsg.content[0] as any).text.substring(0, 300);
     const analysis = {
       summary, total_score, grade,
+      debug_us,
       highlight_reason: null,
       axes: {
         ultra_short: parseItems(usMsg),
