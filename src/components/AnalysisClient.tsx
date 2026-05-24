@@ -13,115 +13,133 @@ interface Analysis {
 }
 interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string; }
 
-const C = { primary:"#66c3c6", dark:"#082b2e", mid:"#0d4f52", light:"#e8f9f9", border:"#b3e8ea", text:"#2a7a7e" };
+const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
-function ScoreRing({score,size=100}:{score:number;size?:number}) {
-  const r=size*0.375,circ=2*Math.PI*r,dash=(score/100)*circ;
-  const color=score>=80?C.primary:score>=60?"#f59e0b":"#ef4444";
+/* ── ScoreRing ── */
+function ScoreRing({score,size=80}:{score:number;size?:number}) {
+  const r=size*0.38,circ=2*Math.PI*r,dash=(Math.min(score,100)/100)*circ;
+  const col=score>=80?PRIMARY:score>=60?"#f59e0b":"#ef4444";
   return (
-    <div className="relative flex items-center justify-center" style={{width:size,height:size}}>
-      <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+    <div style={{position:"relative",width:size,height:size,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <svg width={size} height={size} style={{transform:"rotate(-90deg)",position:"absolute"}}>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={size*0.08}/>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={size*0.08}
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={col} strokeWidth={size*0.08}
           strokeDasharray={`${dash} ${circ-dash}`} strokeLinecap="round"/>
       </svg>
-      <div className="absolute flex flex-col items-center">
-        <span className="font-black text-slate-800" style={{fontSize:size*0.22,lineHeight:1}}>{score}</span>
-        <span className="text-slate-400 font-semibold" style={{fontSize:size*0.09}}>/ 100</span>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",zIndex:1}}>
+        <span style={{fontWeight:900,fontSize:size*0.24,color:"#1e293b",lineHeight:1}}>{score}</span>
+        <span style={{fontSize:size*0.1,color:"#94a3b8",fontWeight:600}}>/100</span>
       </div>
     </div>
   );
 }
 
+/* ── RadarSVG ── */
 function RadarSVG({data}:{data:{metric:string;value:number}[]}) {
-  if(!data.length) return null;
-  const n=data.length,cx=100,cy=100,r=72;
-  const pt=(i:number,v:number)=>{const a=(i*(360/n)-90)*Math.PI/180;return{x:cx+v*r/100*Math.cos(a),y:cy+v*r/100*Math.sin(a)};};
-  const rings=[20,40,60,80,100];
+  if(!data||!data.length) return null;
+  const n=data.length,cx=100,cy=100;
+  const pt=(i:number,v:number)=>{const a=(i*(360/n)-90)*Math.PI/180,rv=v*0.72;return{x:cx+rv*Math.cos(a),y:cy+rv*Math.sin(a)};};
   return (
     <svg viewBox="0 0 200 200" style={{width:"100%",height:"100%"}}>
-      {rings.map(rv=>(
+      {[20,40,60,80,100].map(rv=>(
         <polygon key={rv} fill="none" stroke="#e2e8f0" strokeWidth="0.8"
           points={data.map((_,i)=>{const p=pt(i,rv);return`${p.x},${p.y}`;}).join(" ")}/>
       ))}
       {data.map((_,i)=>{const p=pt(i,100);return<line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#e2e8f0" strokeWidth="0.8"/>;}) }
-      <polygon fill={C.primary} fillOpacity={0.2} stroke={C.primary} strokeWidth={1.5}
+      <polygon fill={PRIMARY} fillOpacity={0.18} stroke={PRIMARY} strokeWidth={2}
         points={data.map((d,i)=>{const p=pt(i,d.value);return`${p.x},${p.y}`;}).join(" ")}/>
-      {data.map((d,i)=>{const p=pt(i,d.value);return<circle key={i} cx={p.x} cy={p.y} r="2.5" fill={C.primary}/>;}) }
-      {data.map((d,i)=>{const p=pt(i,115);return(
+      {data.map((d,i)=>{const p=pt(i,d.value);return<circle key={i} cx={p.x} cy={p.y} r="3" fill={PRIMARY}/>;}) }
+      {data.map((d,i)=>{const p=pt(i,118);return(
         <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
-          style={{fontSize:8.5,fontWeight:700,fill:"#64748b"}}>{d.metric}</text>
+          style={{fontSize:9,fontWeight:700,fill:"#64748b"}}>{d.metric}</text>
       );})}
     </svg>
   );
 }
 
-const INSIGHT_ICONS=[<Zap size={14} key="z"/>,<TrendingUp size={14} key="t"/>,<Users size={14} key="u"/>];
+/* ── Card wrapper ── */
+function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProperties}) {
+  return (
+    <div style={{backgroundColor:"white",borderRadius:16,border:`1px solid ${BORDER}`,
+      boxShadow:"0 1px 4px rgba(102,195,198,0.12)",padding:"16px",...style}}>
+      {children}
+    </div>
+  );
+}
+
+/* ── InsightCard ── */
+const ICONS=[<Zap size={13} key="z"/>,<TrendingUp size={13} key="t"/>,<Users size={13} key="u"/>];
 function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   const [open,setOpen]=useState(false);
   return (
-    <div className="rounded-xl overflow-hidden" style={{border:`1px solid ${C.border}`}}>
-      <button onClick={()=>setOpen(!open)} className="w-full flex gap-2 p-3 text-left hover:opacity-80" style={{backgroundColor:C.light}}>
-        <span style={{color:C.primary,marginTop:2,flexShrink:0}}>{INSIGHT_ICONS[idx]||<Star size={14}/>}</span>
-        <div className="flex-1 min-w-0">
-          <div className="font-black text-xs leading-tight" style={{color:C.dark}}>{ins.title}</div>
-          <div className="text-[10px] text-slate-500 leading-relaxed mt-0.5">{ins.desc}</div>
+    <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${BORDER}`}}>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",gap:8,padding:"10px 12px",
+        backgroundColor:LIGHT,textAlign:"left",cursor:"pointer",border:"none",alignItems:"flex-start"}}>
+        <span style={{color:PRIMARY,marginTop:2,flexShrink:0}}>{ICONS[idx]||<Star size={13}/>}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:900,fontSize:12,color:DARK,lineHeight:1.3}}>{ins.title}</div>
+          <div style={{fontSize:10,color:"#64748b",marginTop:2,lineHeight:1.5}}>{ins.desc}</div>
         </div>
-        <span style={{color:C.primary,fontSize:10,flexShrink:0,display:"inline-block",transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+        <span style={{color:PRIMARY,fontSize:10,flexShrink:0,transition:"transform 0.2s",
+          display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
       </button>
       {open&&(
-        <div className="bg-white border-t p-3" style={{borderColor:C.border}}>
-          <p className="text-[11px] text-slate-700 leading-relaxed">{ins.detail}</p>
+        <div style={{backgroundColor:"white",borderTop:`1px solid ${BORDER}`,padding:"10px 12px"}}>
+          <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{ins.detail}</p>
         </div>
       )}
     </div>
   );
 }
 
+/* ── DeepDiveCard ── */
 function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   const [open,setOpen]=useState(false);
-  const sc=item.score;
-  const sLabel=sc>=80?"A":sc>=70?"B+":sc>=60?"B":sc>=50?"C+":"C";
+  const sc=Math.max(0,Math.min(100,item.score||0));
+  const lbl=sc>=80?"A":sc>=70?"B+":sc>=60?"B":sc>=50?"C+":"C";
   const r=22,circ=2*Math.PI*r,dash=(sc/100)*circ;
   return (
-    <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white"}}>
-      <button onClick={()=>setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:opacity-90"
-        style={{backgroundColor:open?"#f4fbfc":"white"}}>
-        <div className="relative flex items-center justify-center shrink-0" style={{width:52,height:52}}>
-          <svg width="52" height="52" style={{transform:"rotate(-90deg)"}}>
+    <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white",transition:"background 0.15s"}}>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",
+        gap:12,padding:"12px 16px",textAlign:"left",cursor:"pointer",border:"none",
+        backgroundColor:open?"#f4fbfc":"white"}}>
+        <div style={{position:"relative",width:52,height:52,flexShrink:0}}>
+          <svg width="52" height="52" style={{transform:"rotate(-90deg)",position:"absolute"}}>
             <circle cx="26" cy="26" r={r} fill="none" stroke={open?"rgba(255,255,255,0.3)":"#e2e8f0"} strokeWidth="4"/>
             <circle cx="26" cy="26" r={r} fill="none" stroke={open?"white":accentColor} strokeWidth="4"
               strokeDasharray={`${dash} ${circ-dash}`} strokeLinecap="round"/>
           </svg>
-          <div className="absolute" style={{width:52,height:52,borderRadius:"50%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",backgroundColor:open?accentColor:"transparent"}}>
-            <span className="font-black text-sm" style={{color:open?"white":accentColor,lineHeight:1}}>{sLabel}</span>
-            <span style={{fontSize:"8px",fontWeight:700,color:open?"rgba(255,255,255,0.8)":C.text}}>{sc}</span>
+          <div style={{position:"absolute",inset:0,borderRadius:"50%",display:"flex",flexDirection:"column",
+            alignItems:"center",justifyContent:"center",backgroundColor:open?accentColor:"transparent"}}>
+            <span style={{fontWeight:900,fontSize:14,color:open?"white":accentColor,lineHeight:1}}>{lbl}</span>
+            <span style={{fontSize:8,fontWeight:700,color:open?"rgba(255,255,255,0.8)":TTEXT}}>{sc}</span>
           </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-black tracking-widest" style={{fontSize:10,color:accentColor}}>{item.index}</div>
-          <div className="font-black leading-tight" style={{fontSize:15,color:C.dark}}>{item.title}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:900,fontSize:10,color:accentColor,letterSpacing:"0.05em"}}>{item.index||item.id}</div>
+          <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{item.title}</div>
         </div>
-        <span style={{color:accentColor,fontSize:12,flexShrink:0,display:"inline-block",transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+        <span style={{color:accentColor,fontSize:12,flexShrink:0,display:"inline-block",
+          transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
       </button>
       {open&&(
-        <div style={{borderTop:`1px solid ${C.border}`}}>
-          <div className="px-4 pt-3 pb-4 space-y-3">
-            <div className="rounded-xl p-3" style={{backgroundColor:C.light,border:`1px solid ${C.border}`}}>
-              <div className="font-black mb-1" style={{fontSize:10,color:C.text}}>💡 なぜ重要か</div>
-              <p className="text-slate-700 leading-relaxed" style={{fontSize:11}}>{item.why_matters}</p>
+        <div style={{borderTop:`1px solid ${BORDER}`,padding:"12px 16px 16px"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{backgroundColor:LIGHT,borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+              <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>💡 なぜ重要か</div>
+              <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{item.why_matters}</p>
             </div>
-            <div className="rounded-xl p-3" style={{backgroundColor:"white",border:`1px solid ${C.border}`}}>
-              <div className="font-black mb-1" style={{fontSize:10,color:C.text}}>📋 詳細分析</div>
-              <p className="text-slate-700 leading-relaxed" style={{fontSize:11}}>{item.description}</p>
+            <div style={{backgroundColor:"white",borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+              <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>📋 詳細分析</div>
+              <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{item.description}</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div className="rounded-xl p-2.5" style={{backgroundColor:"#f0fdf4",border:"1px solid #bbf7d0"}}>
-                <div className="font-black mb-0.5" style={{fontSize:9,color:"#15803d"}}>✅ 総評</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{backgroundColor:"#f0fdf4",borderRadius:10,padding:"8px 10px",border:"1px solid #bbf7d0"}}>
+                <div style={{fontWeight:900,fontSize:9,color:"#15803d",marginBottom:3}}>✅ 総評</div>
                 <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.verdict}</p>
               </div>
-              <div className="rounded-xl p-2.5" style={{backgroundColor:"#fffbeb",border:"1px solid #fde68a"}}>
-                <div className="font-black mb-0.5" style={{fontSize:9,color:"#92400e"}}>📄 参照書類確認箇所</div>
+              <div style={{backgroundColor:"#fffbeb",borderRadius:10,padding:"8px 10px",border:"1px solid #fde68a"}}>
+                <div style={{fontWeight:900,fontSize:9,color:"#92400e",marginBottom:3}}>📄 確認書類</div>
                 <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.doc_guide}</p>
               </div>
             </div>
@@ -132,41 +150,52 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   );
 }
 
+/* ── ScenarioCard ── */
 function ScenarioCard({s}:{s:Scenario}) {
   const [open,setOpen]=useState(false);
   const isUp=s.verdict==="強気",isDown=s.verdict==="弱気";
   const vs=isUp?{bg:"#f0fdf4",text:"#15803d",border:"#bbf7d0"}:isDown?{bg:"#fef2f2",text:"#b91c1c",border:"#fecaca"}:{bg:"#fffbeb",text:"#92400e",border:"#fde68a"};
-  const icon=isUp?<ArrowUpRight size={12}/>:isDown?<ArrowDownRight size={12}/>:<Minus size={12}/>;
+  const icon=isUp?<ArrowUpRight size={11}/>:isDown?<ArrowDownRight size={11}/>:<Minus size={11}/>;
   return (
-    <div className="rounded-xl overflow-hidden" style={{border:`1px solid ${vs.border}`}}>
-      <button onClick={()=>setOpen(!open)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{backgroundColor:vs.bg}}>
-        <span className="font-black text-[10px] px-2 py-0.5 rounded-full bg-white" style={{color:vs.text,border:`1px solid ${vs.border}`}}>{s.id}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 font-black text-[11px]" style={{color:vs.text}}>{icon}{s.name||s.verdict}</div>
+    <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${vs.border}`}}>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",
+        gap:6,padding:"8px 12px",backgroundColor:vs.bg,textAlign:"left",cursor:"pointer",border:"none"}}>
+        <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,
+          backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,flexShrink:0}}>{s.id}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:4,fontWeight:900,fontSize:11,color:vs.text}}>
+            {icon}{s.name||s.verdict}
+          </div>
         </div>
-        <div className="font-black text-xs shrink-0" style={{color:vs.text}}>{s.vsIpo}</div>
-        <span className="font-black text-[10px] px-1.5 py-0.5 rounded-full bg-white ml-1 shrink-0" style={{color:vs.text,border:`1px solid ${vs.border}`}}>{s.prob}</span>
+        <span style={{fontWeight:900,fontSize:12,color:vs.text,flexShrink:0}}>{s.vsIpo}</span>
+        <span style={{fontWeight:900,fontSize:10,padding:"2px 6px",borderRadius:20,
+          backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,marginLeft:4,flexShrink:0}}>{s.prob}</span>
         <span style={{color:vs.text,fontSize:10,flexShrink:0,display:"inline-block",transform:open?"rotate(90deg)":"none"}}>▶</span>
       </button>
       {open&&(
-        <div className="bg-white border-t px-3 py-2.5 space-y-2" style={{borderColor:vs.border}}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div style={{backgroundColor:"white",borderTop:`1px solid ${vs.border}`,padding:"10px 12px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
             <div>
-              <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 mb-1"><ArrowUpRight size={10}/>好材料</div>
-              <ul className="space-y-0.5">{(s.positives||[]).map((p,i)=><li key={i} className="flex gap-1.5 text-[10px] text-slate-600"><span className="text-emerald-500 shrink-0">✓</span>{p}</li>)}</ul>
+              <div style={{fontSize:10,fontWeight:900,color:"#15803d",marginBottom:4,display:"flex",alignItems:"center",gap:3}}><ArrowUpRight size={9}/>好材料</div>
+              {(s.positives||[]).map((p,i)=><div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2}}><span style={{color:"#22c55e",flexShrink:0}}>✓</span>{p}</div>)}
             </div>
             <div>
-              <div className="flex items-center gap-1 text-[10px] font-black text-red-500 mb-1"><ArrowDownRight size={10}/>リスク</div>
-              <ul className="space-y-0.5">{(s.negatives||[]).map((n,i)=><li key={i} className="flex gap-1.5 text-[10px] text-slate-600"><span className="text-red-400 shrink-0">✕</span>{n}</li>)}</ul>
+              <div style={{fontSize:10,fontWeight:900,color:"#ef4444",marginBottom:4,display:"flex",alignItems:"center",gap:3}}><ArrowDownRight size={9}/>リスク</div>
+              {(s.negatives||[]).map((n,i)=><div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2}}><span style={{color:"#f87171",flexShrink:0}}>✕</span>{n}</div>)}
             </div>
           </div>
-          {s.conclusion&&<div className="px-2.5 py-2 rounded-lg text-[10px] text-slate-700 leading-relaxed" style={{backgroundColor:vs.bg,border:`1px solid ${vs.border}`}}><Info size={9} className="inline mr-1"/><span className="font-black" style={{color:vs.text}}>要点：</span>{s.conclusion}</div>}
+          {s.conclusion&&(
+            <div style={{backgroundColor:vs.bg,borderRadius:8,padding:"8px 10px",border:`1px solid ${vs.border}`,fontSize:10,color:"#475569",lineHeight:1.6}}>
+              <span style={{fontWeight:900,color:vs.text}}><Info size={8} style={{display:"inline",marginRight:3}}/>要点：</span>{s.conclusion}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+/* ══ MAIN ══════════════════════════════════════════════════════ */
 export default function AnalysisClient({company,initialAnalysis}:{company:IpoCompany;initialAnalysis:Analysis|null}) {
   const [analysis,setAnalysis]=useState<Analysis|null>(initialAnalysis);
   const [loading,setLoading]=useState(!initialAnalysis);
@@ -183,247 +212,272 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     })();
   },[company?.id]);
 
-  const axes=analysis?.axes;
-  const radarData=[
-    {metric:"成長性",value:axes?.long?.find(x=>x.id==="competitor")?.score||65},
-    {metric:"収益性",value:axes?.long?.find(x=>x.id==="unit_econ")?.score||60},
-    {metric:"需給の軽さ",value:axes?.ultra_short?.find(x=>x.id==="float")?.score||65},
-    {metric:"経営陣",value:axes?.long?.find(x=>x.id==="management")?.score||70},
-    {metric:"競合優位性",value:axes?.long?.find(x=>x.id==="competitor")?.score||65},
-  ];
-
-  const GROUPS=[
-    {key:"ultra_short" as const,label:"超短期",sub:"初値売り・当日トレード",icon:"⚡",color:"#ef4444",bg:"#fef2f2",border:"#fecaca"},
-    {key:"short" as const,label:"短期",sub:"数週間〜数ヶ月",icon:"📈",color:"#d97706",bg:"#fffbeb",border:"#fde68a"},
-    {key:"long" as const,label:"長期",sub:"数年〜",icon:"🏔",color:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe"},
-  ];
-
   if(loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor:"#eef9f9"}}>
-      <div className="text-center">
-        <div className="w-12 h-12 rounded-full border-4 animate-spin mx-auto mb-4" style={{borderColor:C.primary,borderTopColor:"transparent"}}/>
-        <p className="font-bold text-slate-600">AI分析を生成中...</p>
-        <p className="text-sm text-slate-400 mt-1">30秒ほどお待ちください</p>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:48,height:48,borderRadius:"50%",border:`4px solid ${PRIMARY}`,
+          borderTopColor:"transparent",animation:"spin 1s linear infinite",margin:"0 auto 12px"}}/>
+        <p style={{fontWeight:700,color:"#475569"}}>AI分析を生成中...</p>
+        <p style={{fontSize:13,color:"#94a3b8",marginTop:4}}>30秒ほどお待ちください</p>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
   );
 
   if(!analysis) return (
-    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor:"#eef9f9"}}>
-      <div className="text-center p-6">
-        <AlertTriangle size={32} className="text-amber-500 mx-auto mb-3"/>
-        <p className="font-bold text-slate-700">分析データを取得できませんでした</p>
-        <a href="/calendar" className="mt-4 inline-block text-sm px-4 py-2 rounded-xl text-white font-bold" style={{backgroundColor:C.primary}}>← カレンダーへ戻る</a>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
+      <div style={{textAlign:"center",padding:24}}>
+        <AlertTriangle size={32} color="#f59e0b" style={{margin:"0 auto 12px"}}/>
+        <p style={{fontWeight:700,color:"#475569"}}>分析データを取得できませんでした</p>
+        <a href="/calendar" style={{display:"inline-block",marginTop:16,padding:"8px 16px",borderRadius:10,
+          backgroundColor:PRIMARY,color:"white",fontWeight:700,fontSize:13,textDecoration:"none"}}>← カレンダーへ戻る</a>
       </div>
     </div>
   );
 
   const score=analysis.total_score||65;
   const grade=analysis.grade||"B";
+  const axes=analysis.axes||{ultra_short:[],short:[],long:[]};
   const insights=analysis.insights||[];
   const scenarios=analysis.scenarios_short||[];
 
+  const radarData=[
+    {metric:"成長性",   value:axes.long?.find(x=>x.id==="competitor")?.score||65},
+    {metric:"収益性",   value:axes.long?.find(x=>x.id==="unit_econ")?.score||60},
+    {metric:"需給の軽さ",value:axes.ultra_short?.find(x=>x.id==="float")?.score||65},
+    {metric:"経営陣",   value:axes.long?.find(x=>x.id==="management")?.score||70},
+    {metric:"競合優位性",value:axes.long?.find(x=>x.id==="competitor")?.score||65},
+  ];
+
+  const GROUPS=[
+    {key:"ultra_short" as const,label:"超短期",sub:"初値売り・当日トレード",icon:"⚡",color:"#ef4444",bg:"#fef2f2",border:"#fecaca"},
+    {key:"short"       as const,label:"短期",  sub:"数週間〜数ヶ月",        icon:"📈",color:"#d97706",bg:"#fffbeb",border:"#fde68a"},
+    {key:"long"        as const,label:"長期",  sub:"数年〜",                icon:"🏔",color:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe"},
+  ];
+
+  const wrap:React.CSSProperties={maxWidth:720,margin:"0 auto",padding:"0 16px"};
+
   return (
-    <div style={{backgroundColor:"#eef9f9",fontFamily:"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif",minHeight:"100vh"}}>
-      {/* ナビ */}
-      <div style={{backgroundColor:C.dark}} className="px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="rounded p-1" style={{backgroundColor:C.primary}}><BarChart2 size={14} className="text-white"/></div>
+    <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
+
+      {/* ── ナビ ── */}
+      <div style={{backgroundColor:DARK,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{backgroundColor:PRIMARY,borderRadius:6,padding:5,display:"flex"}}>
+            <BarChart2 size={14} color="white"/>
+          </div>
           <div>
-            <div className="text-white font-black text-sm leading-tight">IPO企業情報AI分析レポート</div>
-            <div className="font-semibold" style={{fontSize:9,color:C.primary}}>担当：大手町調査室九課</div>
+            <div style={{color:"white",fontWeight:900,fontSize:13,lineHeight:1.2}}>IPO企業情報AI分析レポート</div>
+            <div style={{color:PRIMARY,fontWeight:600,fontSize:9}}>担当：大手町調査室九課</div>
           </div>
         </div>
-        <a href="/calendar" className="text-slate-400 hover:text-white text-xs flex items-center gap-1">
-          <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/> カレンダーへ
+        <a href="/calendar" style={{color:"#94a3b8",fontSize:12,display:"flex",alignItems:"center",gap:4,textDecoration:"none"}}>
+          <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>カレンダーへ
         </a>
       </div>
 
-      <div className="px-3 sm:px-4 py-3 max-w-3xl mx-auto space-y-3">
+      <div style={{...wrap,paddingTop:12,paddingBottom:40,display:"flex",flexDirection:"column",gap:12}}>
 
         {/* 企業ヘッダー */}
-        <div className="rounded-2xl overflow-hidden" style={{border:`2px solid ${C.primary}`}}>
-          <div className="px-4 py-4" style={{backgroundColor:C.primary}}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  {company.exchange&&<span className="font-black text-[10px] px-2 py-0.5 rounded-lg" style={{backgroundColor:"rgba(255,255,255,0.25)",color:C.dark}}>{company.exchange}</span>}
-                  {company.ticker&&<span className="font-bold text-[10px]" style={{color:C.mid}}>{company.ticker}</span>}
+        <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${PRIMARY}`}}>
+          <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {company.exchange&&<span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,
+                    backgroundColor:"rgba(255,255,255,0.25)",color:DARK}}>{company.exchange}</span>}
+                  {company.ticker&&<span style={{fontWeight:700,fontSize:10,color:MID}}>{company.ticker}</span>}
                 </div>
-                <h1 className="font-black leading-tight mb-1" style={{fontSize:22,color:C.dark}}>{company.name}</h1>
-                {company.sector&&<div className="font-semibold" style={{fontSize:11,color:C.mid}}>{company.sector}</div>}
-                <div className="flex flex-wrap gap-2 mt-2.5">
+                <h1 style={{fontWeight:900,fontSize:24,color:DARK,lineHeight:1.2,margin:"0 0 4px"}}>{company.name}</h1>
+                {company.sector&&<div style={{fontWeight:600,fontSize:12,color:MID,marginBottom:10}}>{company.sector}</div>}
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {company.listing_date&&(
-                    <div className="rounded-lg px-2.5 py-1.5" style={{backgroundColor:"rgba(255,255,255,0.8)"}}>
-                      <div style={{fontSize:9,color:C.mid,fontWeight:700}}>上場日</div>
-                      <div className="font-black" style={{fontSize:12,color:C.dark}}>{company.listing_date}</div>
+                    <div style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:8,padding:"6px 10px"}}>
+                      <div style={{fontSize:9,color:MID,fontWeight:700}}>上場日</div>
+                      <div style={{fontWeight:900,fontSize:13,color:DARK}}>{company.listing_date}</div>
                     </div>
                   )}
                   {company.biz_type&&(
-                    <div className="rounded-lg px-2.5 py-1.5" style={{backgroundColor:"rgba(255,255,255,0.8)"}}>
-                      <div style={{fontSize:9,color:C.mid,fontWeight:700}}>業態</div>
-                      <div className="font-black" style={{fontSize:12,color:C.dark}}>{company.biz_type}</div>
+                    <div style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:8,padding:"6px 10px"}}>
+                      <div style={{fontSize:9,color:MID,fontWeight:700}}>業態</div>
+                      <div style={{fontWeight:900,fontSize:13,color:DARK}}>{company.biz_type}</div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex flex-col items-center shrink-0 rounded-xl px-3 py-2" style={{backgroundColor:"rgba(255,255,255,0.85)"}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,
+                backgroundColor:"rgba(255,255,255,0.9)",borderRadius:12,padding:"10px 14px"}}>
                 <ScoreRing score={score} size={80}/>
-                <div className="font-black mt-1" style={{fontSize:10,color:C.text}}>AI総合評価</div>
-                <div className="font-black" style={{fontSize:11,color:C.primary}}>{grade}ランク</div>
+                <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginTop:4}}>AI総合評価</div>
+                <div style={{fontWeight:900,fontSize:12,color:PRIMARY}}>{grade}ランク</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* AI分析要約 */}
-        <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-          <div className="flex items-center gap-2 mb-2">
-            <Zap size={14} style={{color:C.primary}}/><h2 className="font-black text-sm" style={{color:C.dark}}>AI分析要約</h2>
+        <Card>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+            <Zap size={14} color={PRIMARY}/>
+            <span style={{fontWeight:900,fontSize:14,color:DARK}}>AI分析要約</span>
           </div>
-          <p className="text-slate-700 leading-relaxed" style={{fontSize:13}}>{analysis.summary}</p>
-        </div>
+          <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
+        </Card>
 
-        {/* まずここに注目！*/}
+        {/* まずここに注目！ */}
         {insights.length>0&&(
-          <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-            <div className="flex items-center gap-1.5 mb-3">
-              <Star size={14} className="text-amber-500"/>
-              <h2 className="font-black text-sm text-slate-800">まずここに注目！</h2>
+          <Card>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+              <Star size={14} color="#f59e0b"/>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>まずここに注目！</span>
             </div>
-            <div className="space-y-2">
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {insights.map((ins,i)=><InsightCard key={i} ins={ins} idx={i}/>)}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* レーダー + VC分析 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart2 size={15} style={{color:C.primary}}/>
-              <h2 className="font-black text-sm text-slate-800">パフォーマンス・レーダー</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:12}}>
+          <Card>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+              <BarChart2 size={14} color={PRIMARY}/>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>パフォーマンス・レーダー</span>
             </div>
             <div style={{height:180}}><RadarSVG data={radarData}/></div>
-            <div className="space-y-1.5 mt-2">
+            <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
               {radarData.map(({metric,value})=>(
-                <div key={metric} className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-600 w-20 shrink-0">{metric}</span>
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{backgroundColor:C.border}}>
-                    <div className="h-full rounded-full" style={{width:`${value}%`,backgroundColor:value>=80?C.primary:value>=65?"#f59e0b":"#f97316"}}/>
+                <div key={metric} style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#475569",width:72,flexShrink:0}}>{metric}</span>
+                  <div style={{flex:1,height:6,borderRadius:3,backgroundColor:BORDER,overflow:"hidden"}}>
+                    <div style={{height:"100%",borderRadius:3,width:`${value}%`,
+                      backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
                   </div>
-                  <span className="text-[11px] font-black text-slate-700 w-6 text-right">{value}</span>
+                  <span style={{fontSize:11,fontWeight:900,color:"#1e293b",width:24,textAlign:"right"}}>{value}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-            <div className="flex items-center gap-2 mb-3">
-              <Shield size={15} style={{color:C.primary}}/>
-              <h2 className="font-black text-sm text-slate-800">需給・VC分析</h2>
-              <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">参考値</span>
+          <Card>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+              <Shield size={14} color={PRIMARY}/>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
+              <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
             </div>
-            {[{label:"創業者・役員持分",pct:38,risk:"high",unlock:"上場後180日"},{label:"主要VCファンド",pct:29,risk:"medium",unlock:"上場後90日"},{label:"事業会社（戦略株主）",pct:18,risk:"low",unlock:"上場後360日"},{label:"一般投資家（公募）",pct:15,risk:"none",unlock:"上場時より流通"}].map((d,i)=>(
-              <div key={i} className="flex items-center gap-2 mb-2">
-                <div className="w-24 shrink-0">
-                  <div className="text-[10px] font-bold text-slate-600 leading-tight">{d.label}</div>
-                  <div className="text-[9px] text-slate-400">{d.unlock}</div>
+            {[{label:"創業者・役員持分",pct:38,risk:"high",unlock:"上場後180日"},
+              {label:"主要VCファンド",pct:29,risk:"medium",unlock:"上場後90日"},
+              {label:"事業会社（戦略株主）",pct:18,risk:"low",unlock:"上場後360日"},
+              {label:"一般投資家（公募）",pct:15,risk:"none",unlock:"上場時より流通"}
+            ].map((d,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <div style={{width:96,flexShrink:0}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#475569",lineHeight:1.3}}>{d.label}</div>
+                  <div style={{fontSize:9,color:"#94a3b8"}}>{d.unlock}</div>
                 </div>
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{backgroundColor:C.border}}>
-                  <div className="h-full rounded-full" style={{width:`${d.pct}%`,backgroundColor:d.risk==="high"?"#f87171":d.risk==="medium"?"#fbbf24":d.risk==="low"?C.primary:"#34d399"}}/>
+                <div style={{flex:1,height:8,borderRadius:4,backgroundColor:BORDER,overflow:"hidden"}}>
+                  <div style={{height:"100%",borderRadius:4,width:`${d.pct}%`,
+                    backgroundColor:d.risk==="high"?"#f87171":d.risk==="medium"?"#fbbf24":d.risk==="low"?PRIMARY:"#34d399"}}/>
                 </div>
-                <div className="w-7 text-right text-[10px] font-black text-slate-600">{d.pct}%</div>
+                <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:28,textAlign:"right"}}>{d.pct}%</span>
               </div>
             ))}
-            <div className="grid grid-cols-3 gap-1.5 mt-3">
-              {[{label:"VC保有合計",val:"29%",c:"text-amber-600"},{label:"90日後解放",val:"約29%",c:"text-red-500"},{label:"売り圧力",val:"中〜高",c:"text-slate-600"}].map(({label,val,c})=>(
-                <div key={label} className="rounded-xl p-2 text-center" style={{backgroundColor:C.light,border:`1px solid ${C.border}`}}>
-                  <div className={`text-[9px] font-bold mb-0.5 ${c}`}>{label}</div>
-                  <div className="text-xs font-black text-slate-800">{val}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:8}}>
+              {[{label:"VC保有合計",val:"29%",c:"#d97706"},{label:"90日後解放",val:"約29%",c:"#ef4444"},{label:"売り圧力",val:"中〜高",c:"#475569"}].map(({label,val,c})=>(
+                <div key={label} style={{backgroundColor:LIGHT,borderRadius:10,padding:"8px",textAlign:"center",border:`1px solid ${BORDER}`}}>
+                  <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
+                  <div style={{fontSize:12,fontWeight:900,color:"#1e293b"}}>{val}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* 株価シナリオ分析 */}
-        <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart2 size={15} style={{color:C.primary}}/><h2 className="font-black text-sm text-slate-800">株価シナリオ分析</h2>
+        <Card>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+            <BarChart2 size={14} color={PRIMARY}/>
+            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>株価シナリオ分析</span>
           </div>
-          <div className="flex gap-2 mb-3">
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
             {(["short","long"] as const).map(tab=>(
-              <button key={tab} onClick={()=>setScenTab(tab)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all"
-                style={{backgroundColor:scenTab===tab?C.dark:"#f1f5f9",color:scenTab===tab?"white":"#64748b"}}>
-                {tab==="short"?<><Clock size={11}/>短期（〜6ヶ月）</>:<><Calendar size={11}/>長期（5〜10年）</>}
+              <button key={tab} onClick={()=>setScenTab(tab)} style={{display:"flex",alignItems:"center",
+                gap:4,padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:900,cursor:"pointer",border:"none",
+                backgroundColor:scenTab===tab?DARK:"#f1f5f9",color:scenTab===tab?"white":"#64748b"}}>
+                {tab==="short"?<><Clock size={10}/>短期（〜6ヶ月）</>:<><Calendar size={10}/>長期（5〜10年）</>}
               </button>
             ))}
           </div>
-          {scenTab==="short"?(
-            <div className="space-y-1.5">
-              {scenarios.length>0?scenarios.map(s=><ScenarioCard key={s.id} s={s}/>)
-                :<div className="text-center py-6 text-slate-400 text-sm">シナリオ生成中...</div>}
-            </div>
-          ):(
-            <div className="space-y-1.5">
-              {[{id:"α",name:"成長実現シナリオ",verdict:"強気",prob:"25%",vsIpo:"+200〜500%",positives:["事業の商業化成功","大型契約締結"],negatives:["長期間必要"],conclusion:"長期成長シナリオ実現なら大きなリターン可能性"},
-                {id:"β",name:"安定成長シナリオ",verdict:"中立",prob:"45%",vsIpo:"+50〜150%",positives:["着実な成長","市場での地位確立"],negatives:["急激な成長見込みにくい"],conclusion:"最も現実的なシナリオ"},
-                {id:"γ",name:"停滞シナリオ",verdict:"弱気",prob:"30%",vsIpo:"▲20〜50%",positives:["事業消滅リスクは低い"],negatives:["競合台頭","成長鈍化"],conclusion:"長期的な株価低迷に注意"}
-              ].map(s=><ScenarioCard key={s.id} s={s}/>)}
-            </div>
-          )}
-        </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {scenTab==="short"?(
+              scenarios.length>0?scenarios.map(s=><ScenarioCard key={s.id} s={s}/>)
+                :<div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:13}}>シナリオ生成中...</div>
+            ):(
+              [{id:"α",name:"成長実現シナリオ",verdict:"強気",prob:"25%",vsIpo:"+200〜500%",positives:["商業化成功","大型契約"],negatives:["長期間必要"],conclusion:"長期成長シナリオ実現なら大きなリターン可能性"},
+               {id:"β",name:"安定成長シナリオ",verdict:"中立",prob:"45%",vsIpo:"+50〜150%",positives:["着実な成長","市場での地位確立"],negatives:["急成長は見込みにくい"],conclusion:"最も現実的なシナリオ"},
+               {id:"γ",name:"停滞シナリオ",verdict:"弱気",prob:"30%",vsIpo:"▲20〜50%",positives:["事業消滅リスク低い"],negatives:["競合台頭","成長鈍化"],conclusion:"長期的な株価低迷に注意"}
+              ].map(s=><ScenarioCard key={s.id} s={s}/>)
+            )}
+          </div>
+        </Card>
 
         {/* 詳細分析 深掘りレポート */}
-        <div className="rounded-2xl overflow-hidden" style={{border:`2px solid ${C.border}`}}>
-          <div className="px-4 py-4" style={{backgroundColor:C.primary}}>
-            <div className="flex items-start justify-between gap-3 mb-3">
+        <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
+          <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:12}}>
               <div>
-                <span className="font-black tracking-widest px-2 py-0.5 rounded text-white text-[9px] inline-block mb-2" style={{backgroundColor:C.dark}}>DEEP ANALYSIS</span>
-                <h2 className="font-black leading-tight" style={{fontSize:17,color:C.dark}}>詳細分析 深掘りレポート</h2>
-                <p style={{fontSize:10,color:C.mid,marginTop:2}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
+                <span style={{fontWeight:900,fontSize:9,letterSpacing:"0.1em",padding:"2px 8px",borderRadius:4,
+                  backgroundColor:DARK,color:"white",display:"inline-block",marginBottom:6}}>DEEP ANALYSIS</span>
+                <h2 style={{fontWeight:900,fontSize:18,color:DARK,margin:"0 0 2px"}}>詳細分析 深掘りレポート</h2>
+                <p style={{fontSize:10,color:MID,margin:0}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
               </div>
-              <div className="flex flex-col items-center shrink-0 rounded-xl px-3 py-2" style={{backgroundColor:"rgba(255,255,255,0.85)"}}>
-                <div className="font-black" style={{fontSize:26,color:C.dark,lineHeight:1}}>{score}</div>
-                <div style={{fontSize:9,color:C.text,fontWeight:700}}>総合 / 100</div>
+              <div style={{backgroundColor:"rgba(255,255,255,0.9)",borderRadius:10,padding:"8px 14px",textAlign:"center",flexShrink:0}}>
+                <div style={{fontWeight:900,fontSize:26,color:DARK,lineHeight:1}}>{score}</div>
+                <div style={{fontSize:9,fontWeight:700,color:TTEXT}}>総合 / 100</div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               {GROUPS.map(g=>{
-                const items=axes?.[g.key]||[];
-                const avg=items.length?Math.round(items.reduce((s:number,x:AxisItem)=>s+x.score,0)/items.length):0;
+                const items=axes[g.key]||[];
+                const avg=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
                 return (
-                  <div key={g.key} className="rounded-xl p-2 text-center" style={{backgroundColor:"rgba(255,255,255,0.82)"}}>
-                    <div style={{fontSize:16,lineHeight:1,marginBottom:3}}>{g.icon}</div>
-                    <div className="font-black" style={{fontSize:10,color:C.dark}}>{g.label}</div>
-                    <div className="font-black" style={{fontSize:20,color:g.color,lineHeight:1}}>{avg}</div>
-                    <div style={{fontSize:8,color:C.text}}>/ 100</div>
+                  <div key={g.key} style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:10,padding:"8px",textAlign:"center"}}>
+                    <div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{g.icon}</div>
+                    <div style={{fontWeight:900,fontSize:10,color:DARK}}>{g.label}</div>
+                    <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>{avg}</div>
+                    <div style={{fontSize:8,color:TTEXT}}>/100</div>
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className="bg-white divide-y" style={{borderColor:"#f1f5f9"}}>
+
+          <div style={{backgroundColor:"white"}}>
             {GROUPS.map(g=>{
-              const items=axes?.[g.key]||[];
+              const items=axes[g.key]||[];
               if(!items.length) return null;
-              const avg=items.length?Math.round(items.reduce((s:number,x:AxisItem)=>s+x.score,0)/items.length):0;
+              const avg=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
               return (
-                <div key={g.key}>
-                  <div className="px-4 py-3" style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.border}`}}>
-                    <div className="flex items-center gap-3">
+                <div key={g.key} style={{borderBottom:`1px solid #f1f5f9`}}>
+                  <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.border}`,padding:"12px 16px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <span style={{fontSize:20,lineHeight:1}}>{g.icon}</span>
-                      <div className="flex-1">
-                        <span className="font-black" style={{fontSize:16,color:C.dark}}>{g.label}</span>
-                        <span className="font-bold rounded-full px-2.5 py-0.5 text-white text-[10px] ml-2" style={{backgroundColor:g.color}}>{g.sub}</span>
+                      <div style={{flex:1}}>
+                        <span style={{fontWeight:900,fontSize:16,color:DARK}}>{g.label}</span>
+                        <span style={{fontWeight:700,fontSize:10,padding:"2px 8px",borderRadius:20,
+                          backgroundColor:g.color,color:"white",marginLeft:8}}>{g.sub}</span>
                       </div>
-                      <div className="font-black" style={{fontSize:22,color:g.color,lineHeight:1}}>{avg}<span style={{fontSize:10,color:C.text}}>/100</span></div>
+                      <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>
+                        {avg}<span style={{fontSize:10,color:TTEXT}}>/100</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="divide-y" style={{borderColor:"#f1f5f9"}}>
-                    {items.map((item:AxisItem)=><DeepDiveCard key={item.id} item={item} accentColor={g.color}/>)}
+                  <div>
+                    {items.map((item:AxisItem)=>(
+                      <div key={item.id} style={{borderBottom:`1px solid #f8fafc`}}>
+                        <DeepDiveCard item={item} accentColor={g.color}/>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
@@ -433,24 +487,34 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
 
         {/* 参考文献 */}
         {(analysis.sources||[]).length>0&&(
-          <div className="bg-white rounded-2xl p-4" style={{border:`1px solid ${C.border}`}}>
-            <div className="flex items-center gap-2 mb-2"><Info size={14} className="text-slate-400"/><h2 className="font-black text-sm text-slate-700">参考文献・確認先</h2></div>
-            <ul className="space-y-1.5">
-              {(analysis.sources||[]).map(src=>(
-                <li key={src.url} className="flex items-start gap-1.5">
-                  <span className="text-slate-300 text-[10px] shrink-0 mt-0.5">→</span>
-                  <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-[11px] hover:underline" style={{color:C.text}}>{src.label}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Card>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+              <Info size={13} color="#94a3b8"/>
+              <span style={{fontWeight:900,fontSize:13,color:"#475569"}}>参考文献・確認先</span>
+            </div>
+            {(analysis.sources||[]).map(src=>(
+              <div key={src.url} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:4}}>
+                <span style={{color:"#cbd5e1",fontSize:10,flexShrink:0,marginTop:1}}>→</span>
+                <a href={src.url} target="_blank" rel="noopener noreferrer"
+                  style={{fontSize:11,color:TTEXT,textDecoration:"none"}}
+                  onMouseEnter={e=>(e.target as HTMLElement).style.textDecoration="underline"}
+                  onMouseLeave={e=>(e.target as HTMLElement).style.textDecoration="none"}>
+                  {src.label}
+                </a>
+              </div>
+            ))}
+          </Card>
         )}
 
         {/* フッター */}
-        <div className="text-center text-[10px] text-slate-400 pb-6 space-y-1.5">
-          <div className="font-black text-slate-500 text-xs">⚠ 免責事項</div>
-          <p className="leading-relaxed max-w-lg mx-auto">本レポートはAIによる情報整理・判断材料の提供を目的としており、<span className="font-bold text-slate-600">投資勧誘ではありません。</span>スコア・価格目標はAIの試算値であり将来の結果を保証しません。最終的な投資判断はご自身の責任において行ってください。</p>
-          <p className="text-slate-300">© 大手町調査室九課</p>
+        <div style={{textAlign:"center",fontSize:10,color:"#94a3b8",paddingTop:8}}>
+          <div style={{fontWeight:900,fontSize:11,color:"#64748b",marginBottom:4}}>⚠ 免責事項</div>
+          <p style={{lineHeight:1.7,maxWidth:560,margin:"0 auto 8px"}}>
+            本レポートはAIによる情報整理・判断材料の提供を目的としており、
+            <strong style={{color:"#475569"}}>投資勧誘ではありません。</strong>
+            スコア・価格目標はAIの試算値であり将来の結果を保証しません。最終的な投資判断はご自身の責任において行ってください。
+          </p>
+          <p style={{color:"#cbd5e1"}}>© 大手町調査室九課</p>
         </div>
       </div>
     </div>
