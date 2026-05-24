@@ -16,29 +16,21 @@ const indexMap: Record<string, string> = {
   management: "長キ-1", unit_econ: "長キ-2", competitor: "長キ-3"
 };
 
-const callHaiku = (content: string, max_tokens = 900) =>
+const callHaiku = (content: string, max_tokens = 1000) =>
   claude.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens,
-    system: "JSONのみ返してください。余計な説明不要。",
+    system: "あなたはIPO分析の専門家です。必ずJSONのみで回答してください。",
     messages: [{ role: "user", content }]
   });
 
-const parseItems = (msg: any) => {
+const parseItems = (msg: any): any[] => {
   try {
     const t = (msg.content[0] as any).text;
-    const objStart = t.indexOf('{');
-    const objEnd = t.lastIndexOf('}');
-    if (objStart !== -1 && objEnd !== -1) {
-      const obj = JSON.parse(t.slice(objStart, objEnd + 1));
-      const arr = obj.items || obj.axes || obj.data || Object.values(obj).find(Array.isArray);
-      if (Array.isArray(arr) && arr.length > 0)
-        return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
-    }
-    const arrStart = t.indexOf('[');
-    const arrEnd = t.lastIndexOf(']');
-    if (arrStart !== -1 && arrEnd !== -1) {
-      const arr = JSON.parse(t.slice(arrStart, arrEnd + 1));
+    // [ から始まる配列を探す
+    const match = t.match(/\[[\s\S]*\]/);
+    if (match) {
+      const arr = JSON.parse(match[0]);
       if (Array.isArray(arr) && arr.length > 0)
         return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
     }
@@ -51,7 +43,6 @@ export async function POST(req: NextRequest) {
     const company = await req.json();
     const supabase = getSupabase();
 
-    // キャッシュ確認
     const { data } = await supabase
       .from("ipo_companies")
       .select("analysis_detail")
@@ -67,16 +58,21 @@ export async function POST(req: NextRequest) {
 
     const name = company.name;
     const sector = company.sector || "不明";
-    const tone = "「〜です」「〜ます」調で丁寧に。専門用語はカッコで説明。";
-    const item = (id: string, title: string) =>
-      `{"id":"${id}","title":"${title}","score":65,"why_matters":"なぜ重要か説明","description":"120字以上の詳細分析","verdict":"総評","doc_guide":"確認方法"}`;
 
-    // 並列実行
     const [summaryMsg, usMsg, shMsg, loMsg] = await Promise.all([
-      callHaiku(`「${name}」（${sector}業）IPO分析。${tone}JSON：{"summary":"200字で丁寧に説明","total_score":65,"grade":"B"}`, 500),
-      callHaiku(`「${name}」（${sector}業）超短期IPO分析。${tone}JSON：{"items":[${[item("float","需給・ロック内容"),item("lockup","VC保有・売り圧力"),item("timing","市場環境・タイミング")].join(",")}]}`),
-      callHaiku(`「${name}」（${sector}業）短期IPO分析。${tone}JSON：{"items":[${[item("valuation","バリュエーション"),item("vc_sell","ロックアップ解除後の売り圧力"),item("growth","成長性・市場規模")].join(",")}]}`),
-      callHaiku(`「${name}」（${sector}業）長期IPO分析。${tone}JSON：{"items":[${[item("management","経営陣・ガバナンス"),item("unit_econ","ユニットエコノミクス"),item("competitor","競合優位性")].join(",")}]}`)
+      callHaiku(
+        `「${name}」（${sector}業）のIPOを分析してください。「〜です・〜ます」調で丁寧に書いてください。\n{"summary":"この会社の事業内容と投資ポイントを200字で説明","total_score":65,"grade":"B"}`,
+        500
+      ),
+      callHaiku(
+        `「${name}」（${sector}業）の超短期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に、専門用語はカッコで説明してください。\n以下のJSON配列形式で回答：\n[\n{"id":"float","title":"需給・ロック内容","score":70,"why_matters":"重要な理由を説明してください","description":"詳細分析を120字以上で説明してください","verdict":"総評を書いてください","doc_guide":"目論見書のどこを確認すべきか書いてください"},\n{"id":"lockup","title":"VC保有・売り圧力","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"timing","title":"市場環境・タイミング","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
+      ),
+      callHaiku(
+        `「${name}」（${sector}業）の短期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に。\n[\n{"id":"valuation","title":"バリュエーション","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"vc_sell","title":"ロックアップ解除後の売り圧力","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"growth","title":"成長性・市場規模","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
+      ),
+      callHaiku(
+        `「${name}」（${sector}業）の長期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に。\n[\n{"id":"management","title":"経営陣・ガバナンス","score":70,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"unit_econ","title":"ユニットエコノミクス","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"competitor","title":"競合優位性","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
+      )
     ]);
 
     let summary = `${name}は${sector}分野のIPO企業です。`;
@@ -89,13 +85,15 @@ export async function POST(req: NextRequest) {
       grade = p.grade || grade;
     } catch {}
 
+    const ultra_short = parseItems(usMsg);
+    const short = parseItems(shMsg);
+    const long = parseItems(loMsg);
+
+    console.log("axes lengths:", ultra_short.length, short.length, long.length);
+
     const analysis = {
       summary, total_score, grade, highlight_reason: null,
-      axes: {
-        ultra_short: parseItems(usMsg),
-        short: parseItems(shMsg),
-        long: parseItems(loMsg)
-      },
+      axes: { ultra_short, short, long },
       sources: [
         { label: "東証新規上場情報", url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
         { label: "EDINET・有価証券届出書", url: "https://disclosure2.edinet-fsa.go.jp/" },
@@ -104,17 +102,11 @@ export async function POST(req: NextRequest) {
       generated_at: new Date().toISOString()
     };
 
-    // 保存
-    const { error: updateError } = await supabase
-      .from("ipo_companies")
-      .update({ analysis_detail: analysis })
-      .eq("id", company.id);
-
-    console.log("save result:", updateError ? updateError.message : "OK", "axes:", analysis.axes.ultra_short.length);
+    await supabase.from("ipo_companies").update({ analysis_detail: analysis }).eq("id", company.id);
 
     return NextResponse.json(analysis);
   } catch (error: any) {
-    console.error("analyze error:", error?.message);
+    console.error("error:", error?.message);
     return NextResponse.json({ error: error?.message }, { status: 500 });
   }
 }
