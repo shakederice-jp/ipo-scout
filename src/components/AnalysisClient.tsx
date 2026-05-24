@@ -85,7 +85,7 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
       </button>
       {open&&(
         <div style={{backgroundColor:"white",borderTop:`1px solid ${BORDER}`,padding:"10px 12px"}}>
-          <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{ins.detail}</p>
+          <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{ins.detail}</p>
         </div>
       )}
     </div>
@@ -127,11 +127,11 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div style={{backgroundColor:LIGHT,borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
               <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>💡 なぜ重要か</div>
-              <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{item.why_matters}</p>
+              <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.why_matters}</p>
             </div>
             <div style={{backgroundColor:"white",borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
               <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>📋 詳細分析</div>
-              <p style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{item.description}</p>
+              <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.description}</p>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <div style={{backgroundColor:"#f0fdf4",borderRadius:10,padding:"8px 10px",border:"1px solid #bbf7d0"}}>
