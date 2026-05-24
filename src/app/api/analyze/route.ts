@@ -16,27 +16,32 @@ const indexMap: Record<string, string> = {
   management: "長キ-1", unit_econ: "長キ-2", competitor: "長キ-3"
 };
 
-const callHaiku = (content: string, max_tokens = 1000) =>
+// サマリー用（オブジェクト返却）
+const callSummary = (name: string, sector: string) =>
   claude.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens,
-    system: "あなたはIPO分析の専門家です。必ずJSONのみで回答してください。",
-    messages: [{ role: "user", content }]
+    max_tokens: 600,
+    system: "JSONのみ返答。",
+    messages: [
+      { role: "user", content: `「${name}」（${sector}業）のIPO分析。「〜です・〜ます」調で丁寧に。` },
+      { role: "assistant", content: `{"summary":"` }
+    ]
   });
 
-const parseItems = (msg: any): any[] => {
-  try {
-    const t = (msg.content[0] as any).text;
-    // [ から始まる配列を探す
-    const match = t.match(/\[[\s\S]*\]/);
-    if (match) {
-      const arr = JSON.parse(match[0]);
-      if (Array.isArray(arr) && arr.length > 0)
-        return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
-    }
-    return [];
-  } catch { return []; }
-};
+// 軸分析用（配列返却）- プリフィルで[を先頭に強制
+const callAxes = (name: string, sector: string, type: string, ids: string[]) =>
+  claude.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1000,
+    system: "JSONのみ返答。",
+    messages: [
+      {
+        role: "user",
+        content: `「${name}」（${sector}業）の${type}投資分析。「〜です・〜ます」調で丁寧に、専門用語はカッコで説明。\n対象項目：${ids.join("、")}\n各項目を以下キーで分析：id, title, score(50-80), why_matters(60字), description(120字以上), verdict(30字), doc_guide(40字)`
+      },
+      { role: "assistant", content: "[" }
+    ]
+  });
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,34 +65,37 @@ export async function POST(req: NextRequest) {
     const sector = company.sector || "不明";
 
     const [summaryMsg, usMsg, shMsg, loMsg] = await Promise.all([
-      callHaiku(
-        `「${name}」（${sector}業）のIPOを分析してください。「〜です・〜ます」調で丁寧に書いてください。\n{"summary":"この会社の事業内容と投資ポイントを200字で説明","total_score":65,"grade":"B"}`,
-        500
-      ),
-      callHaiku(
-        `「${name}」（${sector}業）の超短期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に、専門用語はカッコで説明してください。\n以下のJSON配列形式で回答：\n[\n{"id":"float","title":"需給・ロック内容","score":70,"why_matters":"重要な理由を説明してください","description":"詳細分析を120字以上で説明してください","verdict":"総評を書いてください","doc_guide":"目論見書のどこを確認すべきか書いてください"},\n{"id":"lockup","title":"VC保有・売り圧力","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"timing","title":"市場環境・タイミング","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
-      ),
-      callHaiku(
-        `「${name}」（${sector}業）の短期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に。\n[\n{"id":"valuation","title":"バリュエーション","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"vc_sell","title":"ロックアップ解除後の売り圧力","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"growth","title":"成長性・市場規模","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
-      ),
-      callHaiku(
-        `「${name}」（${sector}業）の長期IPO投資観点を3点分析してください。「〜です・〜ます」調で丁寧に。\n[\n{"id":"management","title":"経営陣・ガバナンス","score":70,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"unit_econ","title":"ユニットエコノミクス","score":60,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"},\n{"id":"competitor","title":"競合優位性","score":65,"why_matters":"重要な理由","description":"詳細分析120字以上","verdict":"総評","doc_guide":"確認箇所"}\n]`
-      )
+      callSummary(name, sector),
+      callAxes(name, sector, "超短期IPO", ["float（需給・ロック内容）", "lockup（VC保有・売り圧力）", "timing（市場環境・タイミング）"]),
+      callAxes(name, sector, "短期IPO", ["valuation（バリュエーション）", "vc_sell（ロックアップ解除後の売り圧力）", "growth（成長性・市場規模）"]),
+      callAxes(name, sector, "長期IPO", ["management（経営陣・ガバナンス）", "unit_econ（ユニットエコノミクス）", "competitor（競合優位性）"])
     ]);
 
+    // サマリーパース（{"summary":"...で始まるプリフィル済み）
     let summary = `${name}は${sector}分野のIPO企業です。`;
     let total_score = 65, grade = "B";
     try {
-      const t = (summaryMsg.content[0] as any).text;
-      const p = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+      const raw = `{"summary":"` + (summaryMsg.content[0] as any).text;
+      const p = JSON.parse(raw);
       summary = p.summary || summary;
       total_score = p.total_score || total_score;
       grade = p.grade || grade;
     } catch {}
 
-    const ultra_short = parseItems(usMsg);
-    const short = parseItems(shMsg);
-    const long = parseItems(loMsg);
+    // 軸パース（[で始まるプリフィル済み）
+    const parseArr = (msg: any): any[] => {
+      try {
+        const raw = "[" + (msg.content[0] as any).text;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length > 0)
+          return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
+        return [];
+      } catch { return []; }
+    };
+
+    const ultra_short = parseArr(usMsg);
+    const short = parseArr(shMsg);
+    const long = parseArr(loMsg);
 
     console.log("axes lengths:", ultra_short.length, short.length, long.length);
 
