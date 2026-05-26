@@ -8,11 +8,13 @@ const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
 const indexMap: Record<string,string> = {
-  float:"難・1",lockup:"難・2",timing:"難・3",
+  float:"週・1",lockup:"週・2",timing:"週・3",
   valuation:"週・1",vc_sell:"週・2",growth:"週・3",
   management:"長・1",unit_econ:"長・2",competitor:"長・3"
 };
+
 const parseArr = (text: string): any[] => {
   try {
     const s=text.indexOf('['), e=text.lastIndexOf(']');
@@ -22,6 +24,7 @@ const parseArr = (text: string): any[] => {
     return [];
   } catch { return []; }
 };
+
 const parseObj = (text: string): any => {
   try {
     const s=text.indexOf('{'), e=text.lastIndexOf('}');
@@ -45,38 +48,49 @@ export async function POST(req: NextRequest) {
     const n=company.name, sec=company.sector||"不明";
 
     const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `「${n}」（${sec}業）のIPO投資分析。下記JSONの各フィールドを日本語で埋めて返答。scoreは0〜100の整数。descriptionは100字以上。\n[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"この指標がIPO投資で重要な理由","description":"${n}について具体的に分析した内容","verdict":"総合評価一言","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
+      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者にもわかりやすく分析してください。
+
+【文章のルール】
+・難しい専門用語には必ずカッコで簡単な説明を添える（例：PER（株価収益率）、ロックアップ（売却禁止期間））
+・2〜3文ごとに改行を入れて読みやすくする
+・「目論見書・リスク要因によると〜」「有価証券届出書・事業の概況によると〜」のように出典を明示する
+・①②③の番号付き小見出しで構造化する
+・結論は必ず「つまり、初心者の方へのポイントは〜」で締める
+・堅い表現を避け、会話するような平易な言葉で書く
+
+下記JSONの各フィールドを日本語で埋めて返答。scoreは0〜100の整数。JSON配列のみ返答。
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"この指標がIPO投資で重要な理由を初心者向けに2文で説明","description":"①[小見出し]\\n\\nここに分析内容を出典付きで記載。\\n\\n②[小見出し]\\n\\nここに続きの分析を記載。\\n\\n③[小見出し]\\n\\nここにまとめを記載。つまり、初心者の方へのポイントは〜","verdict":"総合評価を一言で","doc_guide":"目論見書のどこを確認すべきか"}`).join(",")}]`;
 
     const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。JSON：{"summary":"事業内容と投資ポイントを200字で説明","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。株初心者向けにわかりやすく。JSON：{"summary":"事業内容と投資ポイントを200字で平易に","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:2000,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC保有・売り圧力"},{id:"timing",title:"市場環境・タイミング"}])}]
+        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
       }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:2000,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"VC売り圧力の詳細"},{id:"growth",title:"成長性・市場規模"}])}]
+        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
       }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:2000,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合優位性・参入障壁"}])}]
+        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:600,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO投資で特に注目すべき点TOP3。JSON配列のみ：[{"title":"15字以内","desc":"40字","detail":"100字以上"},{"title":"","desc":"","detail":""},{"title":"","desc":"","detail":""}]`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO投資で株初心者が特に注目すべき点TOP3。やさしい言葉で。JSON配列のみ：[{"title":"注目点タイトル","desc":"説明50字","icon":"trend-up"}]`}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:700,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）の上場後6ヶ月の株価シナリオ3つ。JSON配列のみ：[{"id":"A","name":"強気シナリオ名","verdict":"強気","prob":"30%","vsIpo":"+50〜100%","positives":["好材料1","好材料2"],"negatives":["リスク1"],"conclusion":"要点50字"},{"id":"B","name":"中立シナリオ名","verdict":"中立","prob":"45%","vsIpo":"±20%","positives":[""],"negatives":[""],"conclusion":""},{"id":"C","name":"弱気シナリオ名","verdict":"弱気","prob":"25%","vsIpo":"▲20〜50%","positives":[""],"negatives":["",""],"conclusion":""}]`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）の上場後6ヶ月の株価シナリオ3つ。初心者向けにわかりやすく。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"理由を平易に"},{"id":"B","label":"中立","price_target":"+5%","rationale":"理由を平易に"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"理由を平易に"}]`}]
       }),
     ]);
 
@@ -87,8 +101,8 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     const insRaw=(insMsg.content[0] as any).text;
-console.log('insights_raw:', insRaw?.slice(0,300));
-const insights=parseArr(insRaw).slice(0,3);
+    console.log('insights_raw:', insRaw?.slice(0,300));
+    const insights=parseArr(insRaw).slice(0,3);
     const scenarios_short=parseArr((scenMsg.content[0] as any).text).slice(0,3);
     const ultra_short=parseArr((usMsg.content[0] as any).text);
     const short=parseArr((shMsg.content[0] as any).text);
