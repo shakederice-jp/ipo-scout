@@ -19,7 +19,9 @@ const parseArr = (text: string): any[] => {
   try {
     const s=text.indexOf('['), e=text.lastIndexOf(']');
     if(s===-1||e===-1) return [];
-    const arr=JSON.parse(text.slice(s,e+1));
+    // 実際の改行文字をJSONエスケープに変換してからパース
+    const cleaned=text.slice(s,e+1).replace(/\r?\n/g,'\\n');
+    const arr=JSON.parse(cleaned);
     if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
     return [];
   } catch { return []; }
@@ -48,18 +50,17 @@ export async function POST(req: NextRequest) {
     const n=company.name, sec=company.sector||"不明";
 
     const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者にもわかりやすく分析してください。
+      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者向けに分析してください。
 
-【文章のルール】
-・難しい専門用語には必ずカッコで簡単な説明を添える（例：PER（株価収益率）、ロックアップ（売却禁止期間））
-・2〜3文ごとに改行を入れて読みやすくする
-・「目論見書・リスク要因によると〜」「有価証券届出書・事業の概況によると〜」のように出典を明示する
-・①②③の番号付き小見出しで構造化する
-・結論は必ず「つまり、初心者の方へのポイントは〜」で締める
-・堅い表現を避け、会話するような平易な言葉で書く
+【ルール】
+・専門用語には必ずカッコで説明を添える（例：PER（株価収益率））
+・「目論見書・リスク要因によると〜」など出典を明示する
+・descriptionは①②③の小見出しで3段落に分ける
+・最後は「つまり、初心者の方へのポイントは〜」で締める
+・平易でわかりやすい言葉を使う
 
-下記JSONの各フィールドを日本語で埋めて返答。scoreは0〜100の整数。JSON配列のみ返答。
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"この指標がIPO投資で重要な理由を初心者向けに2文で説明","description":"①[小見出し]\\n\\nここに分析内容を出典付きで記載。\\n\\n②[小見出し]\\n\\nここに続きの分析を記載。\\n\\n③[小見出し]\\n\\nここにまとめを記載。つまり、初心者の方へのポイントは〜","verdict":"総合評価を一言で","doc_guide":"目論見書のどこを確認すべきか"}`).join(",")}]`;
+JSON配列のみ返答（他のテキスト・コードブロック不要）：
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③まとめ。つまり、初心者の方へのポイントは内容","verdict":"一言評価","doc_guide":"目論見書確認箇所"}`).join(",")}]`;
 
     const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
@@ -68,18 +69,18 @@ export async function POST(req: NextRequest) {
         messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。株初心者向けにわかりやすく。JSON：{"summary":"事業内容と投資ポイントを200字で平易に","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSONのみ返答。",
+        model:"claude-sonnet-4-6", max_tokens:4000,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
         messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSONのみ返答。",
+        model:"claude-sonnet-4-6", max_tokens:4000,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
         messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSONのみ返答。",
+        model:"claude-sonnet-4-6", max_tokens:4000,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
         messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
