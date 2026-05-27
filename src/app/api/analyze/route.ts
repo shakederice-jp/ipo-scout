@@ -19,7 +19,6 @@ const parseArr = (text: string): any[] => {
   try {
     const s=text.indexOf('['), e=text.lastIndexOf(']');
     if(s===-1||e===-1) return [];
-    // 実際の改行文字をJSONエスケープに変換してからパース
     const cleaned=text.slice(s,e+1).replace(/\r?\n/g,'\\n');
     const arr=JSON.parse(cleaned);
     if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
@@ -35,11 +34,29 @@ const parseObj = (text: string): any => {
   } catch { return null; }
 };
 
+// 目論見書テキストを整形してプロンプト用に圧縮
+function buildProspectusContext(raw: Record<string,string> | null): string {
+  if (!raw || Object.keys(raw).length === 0) return "";
+  const parts: string[] = [];
+  if (raw["事業の概況"]) parts.push(`【有価証券届出書・事業の概況】\n${raw["事業の概況"].slice(0,800)}`);
+  if (raw["リスク要因"]) parts.push(`【目論見書・リスク要因】\n${raw["リスク要因"].slice(0,800)}`);
+  if (raw["財務諸表"]) parts.push(`【有価証券届出書・財務諸表】\n${raw["財務諸表"].slice(0,400)}`);
+  if (raw["株主構成"]) parts.push(`【目論見書・株主の状況】\n${raw["株主構成"].slice(0,400)}`);
+  if (raw["資金使途"]) parts.push(`【目論見書・調達資金の使途】\n${raw["資金使途"].slice(0,300)}`);
+  if (raw["経営陣"]) parts.push(`【有価証券届出書・役員の状況】\n${raw["経営陣"].slice(0,300)}`);
+  return parts.join("\n\n");
+}
+
 export async function POST(req: NextRequest) {
   try {
     const company = await req.json();
     const supabase = getSupabase();
-    const { data } = await supabase.from("ipo_companies").select("analysis_detail").eq("id",company.id).single();
+    const { data } = await supabase
+      .from("ipo_companies")
+      .select("analysis_detail, raw_prospectus")
+      .eq("id", company.id)
+      .single();
+
     if(data?.analysis_detail){
       const d=data.analysis_detail as any;
       const hasAxes=(d.axes?.ultra_short?.length||0)>0;
@@ -48,25 +65,29 @@ export async function POST(req: NextRequest) {
     }
 
     const n=company.name, sec=company.sector||"不明";
+    const prospectus = buildProspectusContext(data?.raw_prospectus as any);
+    const hasProspectus = prospectus.length > 0;
+
+    console.log(`prospectus available: ${hasProspectus} (${prospectus.length}chars)`);
 
     const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者向けに分析してください。
-
-【ルール】
+      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者にもわかりやすく分析してください。
+${hasProspectus ? `\n以下は実際の有価証券届出書・目論見書からの抜粋です。この情報を最優先に使って分析してください：\n\n${prospectus}\n` : ""}
+【文章のルール】
 ・専門用語には必ずカッコで説明を添える（例：PER（株価収益率））
-・「目論見書・リスク要因によると〜」など出典を明示する
+${hasProspectus ? "・「目論見書・リスク要因によると〜」「有価証券届出書・事業の概況によると〜」のように必ず出典を明示する" : "・「目論見書・〇〇によると〜」の形式で出典スタイルを使う"}
 ・descriptionは①②③の小見出しで3段落に分ける
 ・最後は「つまり、初心者の方へのポイントは〜」で締める
 ・平易でわかりやすい言葉を使う
 
-JSON配列のみ返答（他のテキスト・コードブロック不要）：
+JSON配列のみ返答（コードブロック不要）：
 [${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③まとめ。つまり、初心者の方へのポイントは内容","verdict":"一言評価","doc_guide":"目論見書確認箇所"}`).join(",")}]`;
 
     const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。株初心者向けにわかりやすく。JSON：{"summary":"事業内容と投資ポイントを200字で平易に","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。株初心者向けにわかりやすく。${hasProspectus?`実際の目論見書データ：${prospectus.slice(0,500)}`:""}JSON：{"summary":"事業内容と投資ポイントを200字で平易に","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:4000,
