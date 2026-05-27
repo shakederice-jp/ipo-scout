@@ -34,7 +34,6 @@ const parseObj = (text: string): any => {
   } catch { return null; }
 };
 
-// 目論見書テキストを整形してプロンプト用に圧縮
 function buildProspectusContext(raw: Record<string,string> | null): string {
   if (!raw || Object.keys(raw).length === 0) return "";
   const parts: string[] = [];
@@ -68,26 +67,33 @@ export async function POST(req: NextRequest) {
     const prospectus = buildProspectusContext(data?.raw_prospectus as any);
     const hasProspectus = prospectus.length > 0;
 
-    console.log(`prospectus available: ${hasProspectus} (${prospectus.length}chars)`);
+    console.log(`prospectus: ${hasProspectus} (${prospectus.length}chars)`);
 
     const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `あなたはIPO投資の専門家です。「${n}」（${sec}業）について、株式投資の初心者にもわかりやすく分析してください。
-${hasProspectus ? `\n以下は実際の有価証券届出書・目論見書からの抜粋です。この情報を最優先に使って分析してください：\n\n${prospectus}\n` : ""}
+      `あなたは20年以上の経験を持つトップクラスのIPOアナリストです。「${n}」（${sec}業）について、機関投資家レベルの深い分析を、株式投資の初心者にもわかる言葉で書いてください。
+${hasProspectus ? `\n【実際の有価証券届出書・目論見書データ（最優先で活用すること）】\n${prospectus}\n` : ""}
+【分析の哲学】
+・表面的な事実の羅列ではなく、「なぜそれが重要か」「他の人が見落としている点は何か」を掘り下げる
+・目論見書の数字を複数組み合わせて、他のIPOサイトやブログが書かない独自の洞察を導く
+・リスクは「可能性がある」ではなく「具体的にどう顕在化するか」のシナリオで書く
+・ポジティブな面もネガティブな面も、証拠となる数字・事実を必ず添えて書く
+・「つまりこの銘柄で投資家が本当に確認すべき1点は何か」を明確にする
+
 【文章のルール】
-・専門用語には必ずカッコで説明を添える（例：PER（株価収益率））
-${hasProspectus ? "・「目論見書・リスク要因によると〜」「有価証券届出書・事業の概況によると〜」のように必ず出典を明示する" : "・「目論見書・〇〇によると〜」の形式で出典スタイルを使う"}
-・descriptionは①②③の小見出しで3段落に分ける
-・最後は「つまり、初心者の方へのポイントは〜」で締める
-・平易でわかりやすい言葉を使う
+・専門用語には必ずカッコで説明（例：PER（株価収益率）、ロックアップ（一定期間の売却禁止））
+${hasProspectus ? "・「目論見書・リスク要因によると〜」「有価証券届出書・株主の状況によると〜」など必ず出典を明示" : "・「目論見書・〇〇によると〜」の出典スタイルを使う"}
+・①②③の小見出しで3段落に分け、各段落は3〜4文の充実した内容にする
+・最後は「つまり、初心者の方へのポイントは〜」で、他では読めない核心的な一言で締める
 
 JSON配列のみ返答（コードブロック不要）：
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③まとめ。つまり、初心者の方へのポイントは内容","verdict":"一言評価","doc_guide":"目論見書確認箇所"}`).join(",")}]`;
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"この指標が今回のIPOで特に重要な理由を、数字や具体的事実を交えて2文で","description":"①[見出し]\\n具体的な分析内容（数字・事実・出典付き）\\n\\n②[見出し]\\n他のサイトが書かない独自の視点からの分析\\n\\n③[見出し]\\nリスクと機会の両面を踏まえた結論。つまり、初心者の方へのポイントは〜","verdict":"この軸での核心的な一言評価","doc_guide":"目論見書のどのページ・どの項目を確認すべきか具体的に"}`).join(",")}]`;
 
     const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:500,
+        model:"claude-sonnet-4-6", max_tokens:800,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO分析。株初心者向けにわかりやすく。${hasProspectus?`実際の目論見書データ：${prospectus.slice(0,500)}`:""}JSON：{"summary":"事業内容と投資ポイントを200字で平易に","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:`あなたはIPO分析の専門家です。「${n}」（${sec}業）を機関投資家の視点で分析し、初心者にもわかる言葉で要約してください。${hasProspectus?`\n実際の目論見書データ：${prospectus.slice(0,600)}`:""}
+JSON：{"summary":"この企業の本質的な投資価値と最大のリスクを200字で。数字や具体的事実を含めること","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:4000,
@@ -105,14 +111,15 @@ JSON配列のみ返答（コードブロック不要）：
         messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:600,
+        model:"claude-sonnet-4-6", max_tokens:800,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）のIPO投資で株初心者が特に注目すべき点TOP3。やさしい言葉で。JSON配列のみ：[{"title":"注目点タイトル","desc":"説明50字","icon":"trend-up"}]`}]
+        messages:[{role:"user",content:`IPOアナリストとして「${n}」（${sec}業）の投資判断で見落とされがちな重要ポイントTOP3を、初心者向けに具体的に。${hasProspectus?`目論見書データ：${prospectus.slice(0,400)}`:""}
+JSON配列のみ：[{"title":"注目点のタイトル（具体的に）","desc":"なぜ重要かを60字で。数字や事実を含めること","icon":"trend-up"}]`}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:700,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）の上場後6ヶ月の株価シナリオ3つ。初心者向けにわかりやすく。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"理由を平易に"},{"id":"B","label":"中立","price_target":"+5%","rationale":"理由を平易に"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"理由を平易に"}]`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）の上場後6ヶ月の株価シナリオ3つ。各シナリオに具体的な根拠を含めること。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"具体的な根拠を平易に"},{"id":"B","label":"中立","price_target":"+5%","rationale":"具体的な根拠を平易に"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"具体的な根拠を平易に"}]`}]
       }),
     ]);
 
