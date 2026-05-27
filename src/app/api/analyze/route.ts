@@ -89,10 +89,10 @@ export async function POST(req: NextRequest) {
     const raw = data?.raw_prospectus as Record<string,string> | null;
     const hasProspectus = !!(raw && Object.keys(raw).length > 0);
 
-    const p1 = buildProspectusContext(raw, ["株主構成","資金使途"]);
-    const p2 = buildProspectusContext(raw, ["財務諸表","リスク要因"]);
-    const p3 = buildProspectusContext(raw, ["経営陣","事業の概況"]);
-    const pSum = buildProspectusContext(raw, ["事業の概況","リスク要因"]);
+    const p1 = "";
+    const p2 = "";
+    const p3 = "";
+    const pSum = "";
 
     console.log(`prospectus: ${hasProspectus}, keys: ${raw ? Object.keys(raw).join(",") : "none"}`);
 
@@ -112,8 +112,8 @@ JSON配列のみ（コードブロック禁止・改行禁止）：[${items.map(
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:2000,
         system:"JSON配列のみ返答。コードブロック禁止。文字列値内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}], p1)}]
-      }),
+        messages:[{role:"user",content:makeAxesPrompt([{id:"floa
+t",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}], p1)}]      }),
       claude.messages.create({
         model:"claude-sonnet-4-6", max_tokens:2000,
         system:"JSON配列のみ返答。コードブロック禁止。文字列値内の改行は\\nで表現。",
