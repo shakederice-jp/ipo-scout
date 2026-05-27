@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import JSZip from "jszip";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,7 @@ const getSupabase = () => createClient(
 
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
-// EDINETから書類一覧を検索（会社名で検索）
+// EDINETから書類一覧を検索
 async function searchEdinetDoc(companyName: string): Promise<string | null> {
   try {
     const today = new Date();
@@ -32,19 +33,16 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
   } catch { return null; }
 }
 
-// テキストからセクションを抽出（XBRL・HTML対応）
+// テキストからセクションを抽出
 function extractSection(text: string, keywords: string[]): string {
-  // まずXBRLタグを除去
   const plain = text
     .replace(/<[^>]+>/g, " ")
-    .replace(/&[a-zA-Z]+;/g, " ")
+    .replace(/&[a-zA-Z#0-9]+;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  
   for (const kw of keywords) {
     const idx = plain.indexOf(kw);
     if (idx !== -1) {
-      // キーワードの前後1500文字を取得
       const start = Math.max(0, idx - 50);
       return plain.slice(start, start + 1500);
     }
@@ -52,47 +50,81 @@ function extractSection(text: string, keywords: string[]): string {
   return "";
 }
 
+// ZIPを解凍してHTMLテキストを取得
+async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    let allText = "";
+    const files = Object.keys(zip.files);
+    
+    // HTMLファイルを優先して読み込む
+    const htmlFiles = files.filter(f => f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml"));
+    const targetFiles = htmlFiles.length > 0 ? htmlFiles : files.filter(f => !zip.files[f].dir);
+    
+    for (const filename of targetFiles.slice(0, 5)) {
+      try {
+        const content = await zip.files[filename].async("string");
+        if (content.length > 500) {
+          allText += content + "\n";
+        }
+      } catch { continue; }
+    }
+    return allText;
+  } catch (e) {
+    console.error("ZIP extraction error:", e);
+    return "";
+  }
+}
+
 // EDINET書類からセクションを抽出
 async function fetchProspectusText(docId: string): Promise<Record<string, string>> {
   const sections: Record<string, string> = {};
+  
+  // type=1: 提出書類ZIP（メイン）
+  for (const docType of [1, 5]) {
+    try {
+      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=${docType}&Subscription-Key=${EDINET_KEY}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+      if (!res.ok) continue;
 
-  // type=5: インラインXBRL（有価証券届出書本文）
-  try {
-    const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=5&Subscription-Key=${EDINET_KEY}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-    
-    if (res.ok) {
       const contentType = res.headers.get("content-type") || "";
+      const buffer = await res.arrayBuffer();
       let text = "";
-      
-      if (contentType.includes("zip") || contentType.includes("octet-stream")) {
-        // ZIPの場合はスキップ（type=4で再試行）
+
+      if (contentType.includes("zip") || contentType.includes("octet-stream") || buffer.byteLength > 10000) {
+        // ZIPとして解凍を試みる
+        text = await extractTextFromZip(buffer);
       } else {
-        text = await res.text();
+        text = new TextDecoder("utf-8").decode(buffer);
       }
 
-      if (text.length > 100) {
-        const s1 = extractSection(text, ["事業の概況", "事業概況", "ビジネス"]);
-        if (s1) sections["事業の概況"] = s1;
+      if (text.length < 100) continue;
 
-        const s2 = extractSection(text, ["リスク要因", "事業等のリスク", "投資リスク"]);
-        if (s2) sections["リスク要因"] = s2;
+      console.log(`type=${docType}: got ${text.length} chars`);
 
-        const s3 = extractSection(text, ["財務諸表", "財政状態", "損益計算"]);
-        if (s3) sections["財務諸表"] = s3;
+      const s1 = extractSection(text, ["事業の概況", "事業概況", "ビジネスの内容"]);
+      if (s1) sections["事業の概況"] = s1;
 
-        const s4 = extractSection(text, ["大株主", "株主の状況", "主要株主"]);
-        if (s4) sections["株主構成"] = s4;
+      const s2 = extractSection(text, ["リスク要因", "事業等のリスク", "投資リスク"]);
+      if (s2) sections["リスク要因"] = s2;
 
-        const s5 = extractSection(text, ["調達資金の使途", "資金の使途", "調達する資金"]);
-        if (s5) sections["資金使途"] = s5;
+      const s3 = extractSection(text, ["財務諸表", "財政状態", "損益計算書"]);
+      if (s3) sections["財務諸表"] = s3;
 
-        const s6 = extractSection(text, ["役員の状況", "経営者の概要", "取締役"]);
-        if (s6) sections["経営陣"] = s6;
-      }
+      const s4 = extractSection(text, ["大株主", "株主の状況", "主要株主"]);
+      if (s4) sections["株主構成"] = s4;
+
+      const s5 = extractSection(text, ["調達資金の使途", "資金の使途", "調達する資金"]);
+      if (s5) sections["資金使途"] = s5;
+
+      const s6 = extractSection(text, ["役員の状況", "経営者の概要", "取締役"]);
+      if (s6) sections["経営陣"] = s6;
+
+      if (Object.keys(sections).length > 0) break;
+    } catch (e) {
+      console.error(`type=${docType} error:`, e);
+      continue;
     }
-  } catch (e) {
-    console.error("EDINET fetch error:", e);
   }
 
   return sections;
@@ -115,10 +147,8 @@ export async function POST(req: NextRequest) {
 
     const sections = await fetchProspectusText(docId);
     const sectionCount = Object.keys(sections).length;
+    console.log(`EDINET ${docId}: ${sectionCount}sections`, Object.keys(sections));
 
-    console.log(`EDINET docId: ${docId}, sections: ${sectionCount}`, Object.keys(sections));
-
-    // Supabaseに保存（セクションが0でも書類IDは保存）
     await supabase.from("ipo_companies").update({
       edinet_doc_id: docId,
       raw_prospectus: sectionCount > 0 ? sections : null,
@@ -130,7 +160,7 @@ export async function POST(req: NextRequest) {
         success: false,
         doc_id: docId,
         sections_found: [],
-        message: `書類ID（${docId}）は確認できましたが、本文テキストの抽出に失敗しました。EDINETのXBRL形式の問題の可能性があります。`
+        message: `書類ID（${docId}）は確認できましたが、本文テキストの抽出に失敗しました。`
       });
     }
 
