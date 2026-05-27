@@ -34,16 +34,20 @@ const parseObj = (text: string): any => {
   } catch { return null; }
 };
 
-function buildProspectusContext(raw: Record<string,string> | null): string {
+function buildProspectusContext(raw: Record<string,string> | null, keys: string[]): string {
   if (!raw || Object.keys(raw).length === 0) return "";
-  const parts: string[] = [];
-  if (raw["事業の概況"]) parts.push(`【有価証券届出書・事業の概況】\n${raw["事業の概況"].slice(0,800)}`);
-  if (raw["リスク要因"]) parts.push(`【目論見書・リスク要因】\n${raw["リスク要因"].slice(0,800)}`);
-  if (raw["財務諸表"]) parts.push(`【有価証券届出書・財務諸表】\n${raw["財務諸表"].slice(0,400)}`);
-  if (raw["株主構成"]) parts.push(`【目論見書・株主の状況】\n${raw["株主構成"].slice(0,400)}`);
-  if (raw["資金使途"]) parts.push(`【目論見書・調達資金の使途】\n${raw["資金使途"].slice(0,300)}`);
-  if (raw["経営陣"]) parts.push(`【有価証券届出書・役員の状況】\n${raw["経営陣"].slice(0,300)}`);
-  return parts.join("\n\n");
+  const labelMap: Record<string,string> = {
+    "事業の概況": "【有価証券届出書・事業の概況】",
+    "リスク要因": "【目論見書・リスク要因】",
+    "財務諸表": "【有価証券届出書・財務諸表】",
+    "株主構成": "【目論見書・株主の状況】",
+    "資金使途": "【目論見書・調達資金の使途】",
+    "経営陣": "【有価証券届出書・役員の状況】",
+  };
+  return keys
+    .filter(k => raw[k])
+    .map(k => `${labelMap[k]||k}\n${raw[k].slice(0,600)}`)
+    .join("\n\n");
 }
 
 export async function POST(req: NextRequest) {
@@ -64,62 +68,56 @@ export async function POST(req: NextRequest) {
     }
 
     const n=company.name, sec=company.sector||"不明";
-    const prospectus = buildProspectusContext(data?.raw_prospectus as any);
-    const hasProspectus = prospectus.length > 0;
+    const raw = data?.raw_prospectus as Record<string,string> | null;
+    const hasProspectus = !!(raw && Object.keys(raw).length > 0);
 
-    console.log(`prospectus: ${hasProspectus} (${prospectus.length}chars)`);
+    // 各軸グループに関連するセクションだけを渡す
+    const p1 = buildProspectusContext(raw, ["株主構成","資金使途"]);
+    const p2 = buildProspectusContext(raw, ["財務諸表","リスク要因"]);
+    const p3 = buildProspectusContext(raw, ["経営陣","事業の概況"]);
+    const pSum = buildProspectusContext(raw, ["事業の概況","リスク要因"]);
 
-    const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `あなたは20年以上の経験を持つトップクラスのIPOアナリストです。「${n}」（${sec}業）について、機関投資家レベルの深い分析を、株式投資の初心者にもわかる言葉で書いてください。
-${hasProspectus ? `\n【実際の有価証券届出書・目論見書データ（最優先で活用すること）】\n${prospectus}\n` : ""}
-【分析の哲学】
-・表面的な事実の羅列ではなく、「なぜそれが重要か」「他の人が見落としている点は何か」を掘り下げる
-・目論見書の数字を複数組み合わせて、他のIPOサイトやブログが書かない独自の洞察を導く
-・リスクは「可能性がある」ではなく「具体的にどう顕在化するか」のシナリオで書く
-・ポジティブな面もネガティブな面も、証拠となる数字・事実を必ず添えて書く
-・「つまりこの銘柄で投資家が本当に確認すべき1点は何か」を明確にする
+    console.log(`prospectus: ${hasProspectus}, sections: ${raw ? Object.keys(raw).join(",") : "none"}`);
 
-【文章のルール】
-・専門用語には必ずカッコで説明（例：PER（株価収益率）、ロックアップ（一定期間の売却禁止））
-${hasProspectus ? "・「目論見書・リスク要因によると〜」「有価証券届出書・株主の状況によると〜」など必ず出典を明示" : "・「目論見書・〇〇によると〜」の出典スタイルを使う"}
-・①②③の小見出しで3段落に分け、各段落は3〜4文の充実した内容にする
-・最後は「つまり、初心者の方へのポイントは〜」で、他では読めない核心的な一言で締める
+    const makeAxesPrompt=(items:{id:string,title:string}[], ctx: string)=>
+      `あなたは20年以上の経験を持つIPOアナリストです。「${n}」（${sec}業）を分析してください。
+${ctx ? `\n【目論見書・有価証券届出書データ】\n${ctx}\n` : ""}
+【ルール】専門用語はカッコで説明。出典を明示。①②③の小見出しで3段落。「つまり、初心者の方へのポイントは〜」で締め。平易な言葉。
 
 JSON配列のみ返答（コードブロック不要）：
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"この指標が今回のIPOで特に重要な理由を、数字や具体的事実を交えて2文で","description":"①[見出し]\\n具体的な分析内容（数字・事実・出典付き）\\n\\n②[見出し]\\n他のサイトが書かない独自の視点からの分析\\n\\n③[見出し]\\nリスクと機会の両面を踏まえた結論。つまり、初心者の方へのポイントは〜","verdict":"この軸での核心的な一言評価","doc_guide":"目論見書のどのページ・どの項目を確認すべきか具体的に"}`).join(",")}]`;
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文（具体的数字含む）","description":"①見出し\\n分析内容（出典付き）\\n\\n②見出し\\n独自の視点からの分析\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"核心的な一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
 
     const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
+        model:"claude-haiku-4-5-20251001", max_tokens:500,
+        system:"JSONのみ返答。",
+        messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。${pSum?`目論見書：${pSum.slice(0,400)}`:""}
+JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
+      }),
+      claude.messages.create({
+        model:"claude-sonnet-4-6", max_tokens:2500,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}], p1)}]
+      }),
+      claude.messages.create({
+        model:"claude-sonnet-4-6", max_tokens:2500,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}], p2)}]
+      }),
+      claude.messages.create({
+        model:"claude-sonnet-4-6", max_tokens:2500,
+        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}], p3)}]
+      }),
+      claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:600,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`あなたはIPO分析の専門家です。「${n}」（${sec}業）を機関投資家の視点で分析し、初心者にもわかる言葉で要約してください。${hasProspectus?`\n実際の目論見書データ：${prospectus.slice(0,600)}`:""}
-JSON：{"summary":"この企業の本質的な投資価値と最大のリスクを200字で。数字や具体的事実を含めること","total_score":65,"grade":"B"}`}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:4000,
-        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:4000,
-        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:4000,
-        system:"JSON配列のみ返答。コードブロック不要。文字列内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）IPO投資で見落とされがちな重要ポイントTOP3。JSON配列のみ：[{"title":"タイトル","desc":"説明60字","icon":"trend-up"}]`}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:600,
         system:"JSONのみ返答。",
-        messages:[{role:"user",content:`IPOアナリストとして「${n}」（${sec}業）の投資判断で見落とされがちな重要ポイントTOP3を、初心者向けに具体的に。${hasProspectus?`目論見書データ：${prospectus.slice(0,400)}`:""}
-JSON配列のみ：[{"title":"注目点のタイトル（具体的に）","desc":"なぜ重要かを60字で。数字や事実を含めること","icon":"trend-up"}]`}]
-      }),
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:700,
-        system:"JSONのみ返答。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）の上場後6ヶ月の株価シナリオ3つ。各シナリオに具体的な根拠を含めること。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"具体的な根拠を平易に"},{"id":"B","label":"中立","price_target":"+5%","rationale":"具体的な根拠を平易に"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"具体的な根拠を平易に"}]`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）上場後6ヶ月の株価シナリオ3つ。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠を平易に"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠を平易に"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠を平易に"}]`}]
       }),
     ]);
 
@@ -130,7 +128,7 @@ JSON配列のみ：[{"title":"注目点のタイトル（具体的に）","desc"
     } catch {}
 
     const insRaw=(insMsg.content[0] as any).text;
-    console.log('insights_raw:', insRaw?.slice(0,300));
+    console.log('insights_raw:', insRaw?.slice(0,200));
     const insights=parseArr(insRaw).slice(0,3);
     const scenarios_short=parseArr((scenMsg.content[0] as any).text).slice(0,3);
     const ultra_short=parseArr((usMsg.content[0] as any).text);
