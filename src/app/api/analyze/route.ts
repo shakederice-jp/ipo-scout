@@ -15,39 +15,28 @@ const indexMap: Record<string,string> = {
   management:"長・1",unit_econ:"長・2",competitor:"長・3"
 };
 
-// JSON文字列内の改行だけを正しくエスケープするパーサー
-function fixAndParseJson(text: string): any {
-  const s = text.indexOf('['), e = text.lastIndexOf(']');
-  if (s === -1 || e === -1) return null;
-  const raw = text.slice(s, e + 1);
-
-  // まずそのまま試す
-  try { return JSON.parse(raw); } catch {}
-
-  // 文字列内の未エスケープ改行を修正して再試行
-  let inString = false, escaped = false, fixed = '';
-  for (const ch of raw) {
-    if (escaped) { fixed += ch; escaped = false; continue; }
-    if (ch === '\\') { fixed += ch; escaped = true; continue; }
-    if (ch === '"') { inString = !inString; fixed += ch; continue; }
-    if (inString && ch === '\n') { fixed += '\\n'; continue; }
-    if (inString && ch === '\r') { fixed += '\\r'; continue; }
-    fixed += ch;
-  }
-  try { return JSON.parse(fixed); } catch {}
-  return null;
-}
-
 const parseArr = (text: string): any[] => {
+  if (!text) return [];
   try {
-    const arr = fixAndParseJson(text);
-    if (Array.isArray(arr) && arr.length > 0)
-      return arr.map((x: any) => ({ ...x, index: indexMap[x.id] || x.id }));
+    const s=text.indexOf('['), e=text.lastIndexOf(']');
+    if(s===-1||e===-1) return [];
+    const raw = text.slice(s, e+1);
+    // 試行1: そのままパース
+    try {
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
+    } catch {}
+    // 試行2: 改行を置換してパース
+    try {
+      const arr = JSON.parse(raw.replace(/\r?\n/g,'\\n'));
+      if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
+    } catch {}
     return [];
   } catch { return []; }
 };
 
 const parseObj = (text: string): any => {
+  if (!text) return null;
   try {
     const s=text.indexOf('{'), e=text.lastIndexOf('}');
     if(s===-1||e===-1) return null;
@@ -55,26 +44,13 @@ const parseObj = (text: string): any => {
   } catch { return null; }
 };
 
-function buildProspectusContext(raw: Record<string,string> | null, keys: string[]): string {
-  if (!raw || Object.keys(raw).length === 0) return "";
-  const labelMap: Record<string,string> = {
-    "事業の概況":"【有価証券届出書・事業の概況】",
-    "リスク要因":"【目論見書・リスク要因】",
-    "財務諸表":"【有価証券届出書・財務諸表】",
-    "株主構成":"【目論見書・株主の状況】",
-    "資金使途":"【目論見書・調達資金の使途】",
-    "経営陣":"【有価証券届出書・役員の状況】",
-  };
-  return keys.filter(k=>raw[k]).map(k=>`${labelMap[k]||k}\n${raw[k].slice(0,600)}`).join("\n\n");
-}
-
 export async function POST(req: NextRequest) {
   try {
     const company = await req.json();
     const supabase = getSupabase();
     const { data } = await supabase
       .from("ipo_companies")
-      .select("analysis_detail, raw_prospectus")
+      .select("analysis_detail")
       .eq("id", company.id)
       .single();
 
@@ -86,43 +62,36 @@ export async function POST(req: NextRequest) {
     }
 
     const n=company.name, sec=company.sector||"不明";
-    const raw = data?.raw_prospectus as Record<string,string> | null;
-    const hasProspectus = !!(raw && Object.keys(raw).length > 0);
 
-    const p1 = "";
-    const p2 = "";
-    const p3 = "";
-    const pSum = "";
-
-    console.log(`prospectus: ${hasProspectus}, keys: ${raw ? Object.keys(raw).join(",") : "none"}`);
-
-    const makeAxesPrompt=(items:{id:string,title:string}[], ctx: string)=>
+    const makeAxesPrompt=(items:{id:string,title:string}[])=>
       `あなたは20年以上の経験を持つIPOアナリストです。「${n}」（${sec}業）を分析してください。
-${ctx ? `\n【目論見書・有価証券届出書データ】\n${ctx}\n` : ""}
-【ルール】専門用語はカッコで説明。出典明示。①②③の小見出しで3段落。「つまり、初心者の方へのポイントは〜」で締め。平易な言葉。
 
-JSON配列のみ（コードブロック禁止・改行禁止）：[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文","description":"①見出し\\n分析内容\\n\\n②見出し\\n独自視点\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"一言評価","doc_guide":"確認箇所"}`).join(",")}]`;
+【ルール】専門用語はカッコで説明。出典明示（「目論見書・〇〇によると〜」）。①②③の小見出しで3段落。「つまり、初心者の方へのポイントは〜」で締め。平易な言葉。他サイトが書かない独自の視点を含める。
 
-    const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
+JSON配列のみ返答（コードブロック禁止）：
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文（具体的数字含む）","description":"①見出し\\n分析内容（出典付き）\\n\\n②見出し\\n独自の視点からの分析\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"核心的な一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
+
+    // Promise.allSettledで各コールを独立して処理
+    const results = await Promise.allSettled([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
         system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。${pSum?`目論見書：${pSum.slice(0,300)}`:""}JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。文字列値内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"floa
-t",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}], p1)}]      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。文字列値内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}], p2)}]
+        model:"claude-sonnet-4-6", max_tokens:3000,
+        system:"JSON配列のみ返答。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。文字列値内の改行は\\nで表現。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}], p3)}]
+        model:"claude-sonnet-4-6", max_tokens:3000,
+        system:"JSON配列のみ返答。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
+      }),
+      claude.messages.create({
+        model:"claude-sonnet-4-6", max_tokens:3000,
+        system:"JSON配列のみ返答。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
@@ -136,20 +105,29 @@ t",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id
       }),
     ]);
 
+    const getText = (r: PromiseSettledResult<any>) =>
+      r.status === "fulfilled" ? ((r.value.content[0] as any)?.text || "") : "";
+
+    const [sumRes, usRes, shRes, loRes, insRes, scenRes] = results;
+
     let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
     try {
-      const p=parseObj((sumMsg.content[0] as any).text);
+      const p=parseObj(getText(sumRes));
       if(p){summary=p.summary||summary;total_score=p.total_score||total_score;grade=p.grade||grade;}
     } catch {}
 
-    const insRaw=(insMsg.content[0] as any).text;
-    console.log('insights_raw:', insRaw?.slice(0,100));
-    const insights=parseArr(insRaw).slice(0,3);
-    const scenarios_short=parseArr((scenMsg.content[0] as any).text).slice(0,3);
-    const ultra_short=parseArr((usMsg.content[0] as any).text);
-    const short=parseArr((shMsg.content[0] as any).text);
-    const long=parseArr((loMsg.content[0] as any).text);
+    const ultra_short=parseArr(getText(usRes));
+    const short=parseArr(getText(shRes));
+    const long=parseArr(getText(loRes));
+    const insights=parseArr(getText(insRes)).slice(0,3);
+    const scenarios_short=parseArr(getText(scenRes)).slice(0,3);
 
+    // 各コールの結果をログ
+    results.forEach((r,i)=>{
+      const label=["sum","us","sh","lo","ins","scen"][i];
+      if(r.status==="rejected") console.error(`${label} failed:`, r.reason);
+      else console.log(`${label} ok, text length:`, (r.value.content[0] as any)?.text?.length);
+    });
     console.log(`axes: ${ultra_short.length} ${short.length} ${long.length} insights: ${insights.length} scenarios: ${scenarios_short.length}`);
 
     const analysis = {
