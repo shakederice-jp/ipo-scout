@@ -1,149 +1,119 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
-const indexMap: Record<string,string> = {
-  float:"週・1",lockup:"週・2",timing:"週・3",
-  valuation:"週・1",vc_sell:"週・2",growth:"週・3",
-  management:"長・1",unit_econ:"長・2",competitor:"長・3"
-};
-
-function safeParseArr(text: string): any[] {
-  if (!text) return [];
-  const s = text.indexOf('['), e = text.lastIndexOf(']');
-  if (s === -1 || e === -1) return [];
-  const raw = text.slice(s, e + 1);
-  try {
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr) && arr.length > 0)
-      return arr.map((x: any) => ({...x, index: indexMap[x.id] || x.id}));
-  } catch {}
-  try {
-    let fixed = '', inString = false, escaped = false;
-    for (const ch of raw) {
-      if (escaped) { fixed += ch; escaped = false; continue; }
-      if (ch === '\\') { fixed += ch; escaped = true; continue; }
-      if (ch === '"') { inString = !inString; fixed += ch; continue; }
-      if (inString && (ch === '\n' || ch === '\r')) { fixed += '\\n'; continue; }
-      fixed += ch;
-    }
-    const arr = JSON.parse(fixed);
-    if (Array.isArray(arr) && arr.length > 0)
-      return arr.map((x: any) => ({...x, index: indexMap[x.id] || x.id}));
-  } catch {}
-  return [];
-}
-
-const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
-
-// Gemini Flash で9軸生成（超高速）
-async function generateAxesWithGemini(n: string, sec: string): Promise<string> {
-  const axes = [
-    {id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"},
-    {id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"},
-    {id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"},
-  ];
-  const prompt = `「${n}」（${sec}業）のIPO投資分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」で出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締め。
-
-JSON配列のみ返答（コードブロック禁止）：[${axes.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
-      })
-    }
-  );
-  const json = await res.json();
-  return json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+function extractJson(text: string): string {
+  const start = text.indexOf('{');
+  if (start === -1) return text;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    if (ch === '}' && --depth === 0) return text.slice(start, i + 1);
+  }
+  return text.slice(start);
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const company = await req.json();
-    const supabase = getSupabase();
-    const { data } = await supabase
+    const body = await req.json();
+    const supabase = createSupabaseServerClient();
+
+    const { data: company } = await supabase
       .from("ipo_companies")
-      .select("analysis_detail")
-      .eq("id", company.id)
+      .select("*")
+      .eq("id", body.id)
       .single();
 
-    if(data?.analysis_detail){
-      const d=data.analysis_detail as any;
-      const hasAxes=(d.axes?.ultra_short?.length||0)>0;
-      const fresh=(Date.now()-new Date(d.generated_at||0).getTime())/3600000<48;
-      if(fresh&&hasAxes) return NextResponse.json(d);
+    if (!company) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+    const n   = company.name ?? "不明";
+    const sec = company.sector ?? "テクノロジー";
+
+    const msg = await claude.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4000,
+      messages: [{
+        role: "user",
+        content: `あなたはIPO分析の専門アナリストです。以下の企業のIPO分析を行い、必ずJSON形式のみで回答してください（前置き・説明文・コードブロック記号は不要）。
+
+企業名: ${n}
+セクター: ${sec}
+
+{
+  "summary": "この企業の特徴・ビジネスモデル・IPOの注目点を200字程度で説明",
+  "total_score": 65,
+  "grade": "B",
+  "insights": [
+    {"title": "注目ポイントのタイトル", "body": "2〜3文の説明"},
+    {"title": "注目ポイントのタイトル", "body": "2〜3文の説明"},
+    {"title": "注目ポイントのタイトル", "body": "2〜3文の説明"}
+  ],
+  "scenarios": [
+    {"label": "強気シナリオ", "target": "公募価格の◯倍", "condition": "実現条件"},
+    {"label": "中立シナリオ", "target": "公募価格±◯%", "condition": "実現条件"},
+    {"label": "弱気シナリオ", "target": "公募価格の◯倍", "condition": "実現条件"}
+  ],
+  "axes": [
+    {"id": "float", "label": "需給の軽さ", "score": 70, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "lockup", "label": "ロックアップ", "score": 65, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "timing", "label": "上場タイミング", "score": 75, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "valuation", "label": "バリュエーション", "score": 60, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "vc_sell", "label": "VC売り圧力", "score": 55, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "growth", "label": "成長性", "score": 80, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "management", "label": "経営陣", "score": 70, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "unit_econ", "label": "ユニットエコノミクス", "score": 65, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"},
+    {"id": "competitor", "label": "競合環境", "score": 60, "summary": "1〜2文の要点", "detail": "3〜4文の詳細分析"}
+  ]
+}`
+      }]
+    });
+
+    const raw  = (msg.content[0] as any).text ?? "";
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(extractJson(raw));
+    } catch {
+      parsed = {};
     }
 
-    const n=company.name, sec=company.sector||"不明";
+    const allAxes     = Array.isArray(parsed.axes) ? parsed.axes : [];
+    const ultra_short = allAxes.filter((x: any) => ["float","lockup","timing"].includes(x.id));
+    const short       = allAxes.filter((x: any) => ["valuation","vc_sell","growth"].includes(x.id));
+    const long        = allAxes.filter((x: any) => ["management","unit_econ","competitor"].includes(x.id));
 
-    // 2コール並列：Haiku（メタ）+ Gemini Flash（9軸）
-    const [metaMsg, axesText] = await Promise.all([
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:1000,
-        system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:
-          `「${n}」（${sec}業）のIPO分析をJSON1つで：
-{"summary":"投資価値とリスクを200字で","total_score":65,"grade":"B",
-"insights":[{"title":"注目点1","desc":"60字","icon":"trend-up"},{"title":"注目点2","desc":"60字","icon":"bar-chart"},{"title":"注目点3","desc":"60字","icon":"users"}],
-"scenarios":[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]}`
-        }]
-      }),
-      generateAxesWithGemini(n, sec),
-    ]);
-
-    // メタデータのパース
-    let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
-    let insights: any[] = [], scenarios_short: any[] = [];
-    try {
-      const metaText = getText(metaMsg);
-      const s=metaText.indexOf('{'), e=metaText.lastIndexOf('}');
-      if(s!==-1&&e!==-1){
-        const meta = JSON.parse(metaText.slice(s,e+1));
-        if(meta.summary) summary=meta.summary;
-        if(meta.total_score) total_score=meta.total_score;
-        if(meta.grade) grade=meta.grade;
-        if(Array.isArray(meta.insights)) insights=meta.insights.slice(0,3);
-        if(Array.isArray(meta.scenarios)) scenarios_short=meta.scenarios.slice(0,3);
-      }
-    } catch {}
-
-    // 軸データのパース
-    const allAxes = safeParseArr(axesText);
-    const ultra_short = allAxes.filter(x=>["float","lockup","timing"].includes(x.id));
-    const short = allAxes.filter(x=>["valuation","vc_sell","growth"].includes(x.id));
-    const long = allAxes.filter(x=>["management","unit_econ","competitor"].includes(x.id));
-
-    console.log(`Gemini axes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length}`);
+    console.log(`axes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${(parsed.insights||[]).length} scen:${(parsed.scenarios||[]).length}`);
 
     const analysis = {
-      summary, total_score, grade,
-      insights: insights.length ? insights : [],
-      scenarios_short,
-      axes: { ultra_short, short, long },
+      summary:         parsed.summary         ?? `${n}は${sec}分野のIPO企業です。`,
+      total_score:     parsed.total_score      ?? 65,
+      grade:           parsed.grade            ?? "B",
+      insights:        Array.isArray(parsed.insights)  ? parsed.insights.slice(0,3)  : [],
+      scenarios_short: Array.isArray(parsed.scenarios) ? parsed.scenarios.slice(0,3) : [],
+      axes:            { ultra_short, short, long },
       sources: [
-        {label:"東証新規上場情報",url:"https://www.jpx.co.jp/listing/stocks/new/index.html"},
-        {label:"EDINET・有価証券届出書",url:"https://disclosure2.edinet-fsa.go.jp/"},
-        {label:"IPOkabu",url:"https://ipokabu.net/"},
+        { label: "東証新規上場情報",       url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
+        { label: "EDINET・有価証券届出書", url: "https://disclosure2.edinet-fsa.go.jp/" },
+        { label: "IPOkabu",               url: "https://ipokabu.net/" },
       ],
-      generated_at: new Date().toISOString()
+      generated_at: new Date().toISOString(),
     };
 
-    await supabase.from("ipo_companies").update({analysis_detail:analysis}).eq("id",company.id);
+    await supabase
+      .from("ipo_companies")
+      .update({ analysis_detail: analysis })
+      .eq("id", company.id);
+
     return NextResponse.json(analysis);
-  } catch(e:any){
-    console.error("error:",e?.message);
-    return NextResponse.json({error:e?.message},{status:500});
+  } catch (e: any) {
+    console.error("analyze error:", e?.message);
+    return NextResponse.json({ error: e?.message }, { status: 500 });
   }
 }
