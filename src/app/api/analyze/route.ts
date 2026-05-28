@@ -43,6 +43,32 @@ function safeParseArr(text: string): any[] {
 
 const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
 
+// Gemini Flash で9軸生成（超高速）
+async function generateAxesWithGemini(n: string, sec: string): Promise<string> {
+  const axes = [
+    {id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"},
+    {id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"},
+    {id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"},
+  ];
+  const prompt = `「${n}」（${sec}業）のIPO投資分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」で出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締め。
+
+JSON配列のみ返答（コードブロック禁止）：[${axes.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+      })
+    }
+  );
+  const json = await res.json();
+  return json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const company = await req.json();
@@ -62,34 +88,19 @@ export async function POST(req: NextRequest) {
 
     const n=company.name, sec=company.sector||"不明";
 
-    const axes = [
-      {id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"},
-      {id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"},
-      {id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"},
-    ];
-
-    // 2コールのみ（レート制限回避）
-    const [metaMsg, axesMsg] = await Promise.all([
-      // Call 1: Haiku でサマリー・インサイト・シナリオをまとめて
+    // 2コール並列：Haiku（メタ）+ Gemini Flash（9軸）
+    const [metaMsg, axesText] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:1000,
         system:"JSONのみ返答。コードブロック禁止。",
         messages:[{role:"user",content:
-          `「${n}」（${sec}業）のIPO分析をJSON1つで返答：
+          `「${n}」（${sec}業）のIPO分析をJSON1つで：
 {"summary":"投資価値とリスクを200字で","total_score":65,"grade":"B",
 "insights":[{"title":"注目点1","desc":"60字","icon":"trend-up"},{"title":"注目点2","desc":"60字","icon":"bar-chart"},{"title":"注目点3","desc":"60字","icon":"users"}],
 "scenarios":[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]}`
         }]
       }),
-      // Call 2: Sonnet で9軸分析（簡潔な説明）
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:3500,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:
-          `「${n}」（${sec}業）のIPO投資分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」で出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締め。
-JSON配列のみ：[${axes.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`
-        }]
-      }),
+      generateAxesWithGemini(n, sec),
     ]);
 
     // メタデータのパース
@@ -109,12 +120,12 @@ JSON配列のみ：[${axes.map(({id,title})=>`{"id":"${id}","title":"${title}","
     } catch {}
 
     // 軸データのパース
-    const allAxes = safeParseArr(getText(axesMsg));
+    const allAxes = safeParseArr(axesText);
     const ultra_short = allAxes.filter(x=>["float","lockup","timing"].includes(x.id));
     const short = allAxes.filter(x=>["valuation","vc_sell","growth"].includes(x.id));
     const long = allAxes.filter(x=>["management","unit_econ","competitor"].includes(x.id));
 
-    console.log(`allAxes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
+    console.log(`Gemini axes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length}`);
 
     const analysis = {
       summary, total_score, grade,
