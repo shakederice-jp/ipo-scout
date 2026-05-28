@@ -53,10 +53,9 @@ const parseObj = (text: string): any => {
 const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
 
 const makeAxesPrompt = (n: string, sec: string, items: {id:string,title:string}[]) =>
-  `「${n}」（${sec}業）のIPO分析。専門用語はカッコで説明。出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締める。【文字数制限】why_matters:60字、description:180字、verdict:15字、doc_guide:40字。
+  `IPOアナリストとして「${n}」（${sec}業）を分析。専門用語はカッコで説明。出典明示。①②③で3段落（各2文）。「つまり初心者へのポイントは〜」で締め。
 
-JSON配列のみ返答（コードブロック禁止）：
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"60字以内","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"15字以内","doc_guide":"40字以内"}`).join(",")}]`;
+JSON配列のみ（コードブロック禁止）：[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容2文\\n\\n②見出し\\n内容2文\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,41 +76,39 @@ export async function POST(req: NextRequest) {
 
     const n=company.name, sec=company.sector||"不明";
 
-    // Haiku系は並列実行（高速）
-    const [sumMsg, insMsg, scenMsg] = await Promise.all([
+    // 全6コール並列（Haiku高速）
+    const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:400,
         system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:`「${n}」（${sec}業）IPO。JSON：{"summary":"投資価値とリスクを200字で","total_score":65,"grade":"B"}`}]
+      }),
+      claude.messages.create({
+        model:"claude-haiku-4-5-20251001", max_tokens:1200,
+        system:"JSON配列のみ。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
+      }),
+      claude.messages.create({
+        model:"claude-haiku-4-5-20251001", max_tokens:1200,
+        system:"JSON配列のみ。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
+      }),
+      claude.messages.create({
+        model:"claude-haiku-4-5-20251001", max_tokens:1200,
+        system:"JSON配列のみ。コードブロック禁止。",
+        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
-        system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）IPO投資で見落とされがちな重要ポイントTOP3。JSON配列のみ：[{"title":"タイトル","desc":"説明60字","icon":"trend-up"}]`}]
+        system:"JSONのみ。コードブロック禁止。",
+        messages:[{role:"user",content:`「${n}」（${sec}業）IPOで見落とされがちな重要ポイントTOP3。JSON配列のみ：[{"title":"タイトル","desc":"60字","icon":"trend-up"}]`}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:400,
-        system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）上場後6ヶ月の株価シナリオ3つ。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]`}]
+        system:"JSONのみ。コードブロック禁止。",
+        messages:[{role:"user",content:`「${n}」（${sec}業）上場後6ヶ月シナリオ3つ。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]`}]
       }),
     ]);
-
-    // Sonnet系は直列実行（レート制限回避）
-    const usMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:1000,
-      system:"JSON配列のみ返答。コードブロック禁止。",
-      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
-    });
-    const shMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:1000,
-      system:"JSON配列のみ返答。コードブロック禁止。",
-      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
-    });
-    const loMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:1000,
-      system:"JSON配列のみ返答。コードブロック禁止。",
-      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
-    });
 
     let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
     try {
