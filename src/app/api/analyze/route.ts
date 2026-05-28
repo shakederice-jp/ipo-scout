@@ -98,17 +98,17 @@ export async function POST(req: NextRequest) {
 
     // Sonnet系は直列実行（レート制限回避）
     const usMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:2000,
+      model:"claude-sonnet-4-6", max_tokens:1000,
       system:"JSON配列のみ返答。コードブロック禁止。",
       messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
     });
     const shMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:2000,
+      model:"claude-sonnet-4-6", max_tokens:1000,
       system:"JSON配列のみ返答。コードブロック禁止。",
       messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
     });
     const loMsg = await claude.messages.create({
-      model:"claude-sonnet-4-6", max_tokens:2000,
+      model:"claude-sonnet-4-6", max_tokens:1000,
       system:"JSON配列のみ返答。コードブロック禁止。",
       messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
     });
