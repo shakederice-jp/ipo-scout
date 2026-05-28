@@ -41,21 +41,7 @@ function safeParseArr(text: string): any[] {
   return [];
 }
 
-const parseObj = (text: string): any => {
-  if (!text) return null;
-  try {
-    const s=text.indexOf('{'), e=text.lastIndexOf('}');
-    if(s===-1||e===-1) return null;
-    return JSON.parse(text.slice(s,e+1));
-  } catch { return null; }
-};
-
 const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
-
-const makeAxesPrompt = (n: string, sec: string, items: {id:string,title:string}[]) =>
-  `IPOアナリストとして「${n}」（${sec}業）を分析。専門用語はカッコで説明。出典明示。①②③で3段落（各2文）。「つまり初心者へのポイントは〜」で締め。
-
-JSON配列のみ（コードブロック禁止）：[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容2文\\n\\n②見出し\\n内容2文\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -76,58 +62,64 @@ export async function POST(req: NextRequest) {
 
     const n=company.name, sec=company.sector||"不明";
 
-    // 全6コール並列（Haiku高速）
-    const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
+    const axes = [
+      {id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"},
+      {id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"},
+      {id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"},
+    ];
+
+    // 2コールのみ（レート制限回避）
+    const [metaMsg, axesMsg] = await Promise.all([
+      // Call 1: Haiku でサマリー・インサイト・シナリオをまとめて
       claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:400,
+        model:"claude-haiku-4-5-20251001", max_tokens:1000,
         system:"JSONのみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）IPO。JSON：{"summary":"投資価値とリスクを200字で","total_score":65,"grade":"B"}`}]
+        messages:[{role:"user",content:
+          `「${n}」（${sec}業）のIPO分析をJSON1つで返答：
+{"summary":"投資価値とリスクを200字で","total_score":65,"grade":"B",
+"insights":[{"title":"注目点1","desc":"60字","icon":"trend-up"},{"title":"注目点2","desc":"60字","icon":"bar-chart"},{"title":"注目点3","desc":"60字","icon":"users"}],
+"scenarios":[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]}`
+        }]
       }),
+      // Call 2: Sonnet で9軸分析（簡潔な説明）
       claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:1200,
-        system:"JSON配列のみ。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:1200,
-        system:"JSON配列のみ。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:1200,
-        system:"JSON配列のみ。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n,sec,[{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:500,
-        system:"JSONのみ。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）IPOで見落とされがちな重要ポイントTOP3。JSON配列のみ：[{"title":"タイトル","desc":"60字","icon":"trend-up"}]`}]
-      }),
-      claude.messages.create({
-        model:"claude-haiku-4-5-20251001", max_tokens:400,
-        system:"JSONのみ。コードブロック禁止。",
-        messages:[{role:"user",content:`「${n}」（${sec}業）上場後6ヶ月シナリオ3つ。JSON配列のみ：[{"id":"A","label":"強気","price_target":"+30%","rationale":"根拠"},{"id":"B","label":"中立","price_target":"+5%","rationale":"根拠"},{"id":"C","label":"弱気","price_target":"-15%","rationale":"根拠"}]`}]
+        model:"claude-sonnet-4-6", max_tokens:2500,
+        system:"JSON配列のみ返答。コードブロック禁止。",
+        messages:[{role:"user",content:
+          `「${n}」（${sec}業）のIPO投資分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」で出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締め。
+JSON配列のみ：[${axes.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要理由2文","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"一言","doc_guide":"確認箇所"}`).join(",")}]`
+        }]
       }),
     ]);
 
+    // メタデータのパース
     let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
+    let insights: any[] = [], scenarios_short: any[] = [];
     try {
-      const p=parseObj(getText(sumMsg));
-      if(p){summary=p.summary||summary;total_score=p.total_score||total_score;grade=p.grade||grade;}
+      const metaText = getText(metaMsg);
+      const s=metaText.indexOf('{'), e=metaText.lastIndexOf('}');
+      if(s!==-1&&e!==-1){
+        const meta = JSON.parse(metaText.slice(s,e+1));
+        if(meta.summary) summary=meta.summary;
+        if(meta.total_score) total_score=meta.total_score;
+        if(meta.grade) grade=meta.grade;
+        if(Array.isArray(meta.insights)) insights=meta.insights.slice(0,3);
+        if(Array.isArray(meta.scenarios)) scenarios_short=meta.scenarios.slice(0,3);
+      }
     } catch {}
 
-    const ultra_short = safeParseArr(getText(usMsg));
-    const short = safeParseArr(getText(shMsg));
-    const long = safeParseArr(getText(loMsg));
-    const insights = safeParseArr(getText(insMsg)).slice(0,3);
-    const scenarios_short = safeParseArr(getText(scenMsg)).slice(0,3);
+    // 軸データのパース
+    const allAxes = safeParseArr(getText(axesMsg));
+    const ultra_short = allAxes.filter(x=>["float","lockup","timing"].includes(x.id));
+    const short = allAxes.filter(x=>["valuation","vc_sell","growth"].includes(x.id));
+    const long = allAxes.filter(x=>["management","unit_econ","competitor"].includes(x.id));
 
-    console.log(`us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
+    console.log(`allAxes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
 
     const analysis = {
       summary, total_score, grade,
       insights: insights.length ? insights : [],
-      scenarios_short: scenarios_short.length ? scenarios_short : [],
+      scenarios_short,
       axes: { ultra_short, short, long },
       sources: [
         {label:"東証新規上場情報",url:"https://www.jpx.co.jp/listing/stocks/new/index.html"},
