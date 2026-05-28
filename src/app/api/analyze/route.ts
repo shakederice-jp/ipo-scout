@@ -21,12 +21,10 @@ const parseArr = (text: string): any[] => {
     const s=text.indexOf('['), e=text.lastIndexOf(']');
     if(s===-1||e===-1) return [];
     const raw = text.slice(s, e+1);
-    // 試行1: そのままパース
     try {
       const arr = JSON.parse(raw);
       if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
     } catch {}
-    // 試行2: 改行を置換してパース
     try {
       const arr = JSON.parse(raw.replace(/\r?\n/g,'\\n'));
       if(Array.isArray(arr)&&arr.length>0) return arr.map((x:any)=>({...x,index:indexMap[x.id]||x.id}));
@@ -43,6 +41,18 @@ const parseObj = (text: string): any => {
     return JSON.parse(text.slice(s,e+1));
   } catch { return null; }
 };
+
+const ALL_AXES = [
+  {id:"float",title:"需給・ロック内容"},
+  {id:"lockup",title:"VC・株主構成"},
+  {id:"timing",title:"上場タイミング"},
+  {id:"valuation",title:"バリュエーション"},
+  {id:"vc_sell",title:"売り圧力リスク"},
+  {id:"growth",title:"成長性"},
+  {id:"management",title:"経営陣・ガバナンス"},
+  {id:"unit_econ",title:"収益性・ユニットエコノミクス"},
+  {id:"competitor",title:"競合・差別化"},
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,35 +73,23 @@ export async function POST(req: NextRequest) {
 
     const n=company.name, sec=company.sector||"不明";
 
-    const makeAxesPrompt=(items:{id:string,title:string}[])=>
-      `あなたは20年以上の経験を持つIPOアナリストです。「${n}」（${sec}業）を分析してください。
+    const allAxesPrompt = `あなたは20年以上の経験を持つIPOアナリストです。「${n}」（${sec}業）について9つの投資軸を分析してください。
 
-【ルール】専門用語はカッコで説明。出典明示（「目論見書・〇〇によると〜」）。①②③の小見出しで3段落。「つまり、初心者の方へのポイントは〜」で締め。平易な言葉。他サイトが書かない独自の視点を含める。
+【ルール】専門用語はカッコで説明。出典明示（「目論見書・〇〇によると〜」）。①②③の小見出しで3段落。「つまり、初心者の方へのポイントは〜」で締め。平易な言葉。
 
 JSON配列のみ返答（コードブロック禁止）：
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由2文（具体的数字含む）","description":"①見出し\\n分析内容（出典付き）\\n\\n②見出し\\n独自の視点からの分析\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"核心的な一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
+[${ALL_AXES.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"重要な理由を2文で","description":"①見出し\\n分析内容\\n\\n②見出し\\n独自の視点\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
 
-    // Promise.allSettledで各コールを独立して処理
-    const results = await Promise.allSettled([
+    const [sumRes, axesRes, insRes, scenRes] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
         system:"JSONのみ返答。コードブロック禁止。",
         messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:3000,
+        model:"claude-sonnet-4-6", max_tokens:8000,
         system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:3000,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:3000,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt([{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
+        messages:[{role:"user",content:allAxesPrompt}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
@@ -105,10 +103,7 @@ JSON配列のみ返答（コードブロック禁止）：
       }),
     ]);
 
-    const getText = (r: PromiseSettledResult<any>) =>
-      r.status === "fulfilled" ? ((r.value.content[0] as any)?.text || "") : "";
-
-    const [sumRes, usRes, shRes, loRes, insRes, scenRes] = results;
+    const getText = (msg: any) => (msg.content[0] as any)?.text || "";
 
     let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
     try {
@@ -116,19 +111,14 @@ JSON配列のみ返答（コードブロック禁止）：
       if(p){summary=p.summary||summary;total_score=p.total_score||total_score;grade=p.grade||grade;}
     } catch {}
 
-    const ultra_short=parseArr(getText(usRes));
-    const short=parseArr(getText(shRes));
-    const long=parseArr(getText(loRes));
-    const insights=parseArr(getText(insRes)).slice(0,3);
-    const scenarios_short=parseArr(getText(scenRes)).slice(0,3);
+    const allAxes = parseArr(getText(axesRes));
+    const ultra_short = allAxes.filter(x=>["float","lockup","timing"].includes(x.id));
+    const short = allAxes.filter(x=>["valuation","vc_sell","growth"].includes(x.id));
+    const long = allAxes.filter(x=>["management","unit_econ","competitor"].includes(x.id));
+    const insights = parseArr(getText(insRes)).slice(0,3);
+    const scenarios_short = parseArr(getText(scenRes)).slice(0,3);
 
-    // 各コールの結果をログ
-    results.forEach((r,i)=>{
-      const label=["sum","us","sh","lo","ins","scen"][i];
-      if(r.status==="rejected") console.error(`${label} failed:`, r.reason);
-      else console.log(`${label} ok, text length:`, (r.value.content[0] as any)?.text?.length);
-    });
-    console.log(`axes: ${ultra_short.length} ${short.length} ${long.length} insights: ${insights.length} scenarios: ${scenarios_short.length}`);
+    console.log(`allAxes:${allAxes.length} us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
 
     const analysis = {
       summary, total_score, grade,
