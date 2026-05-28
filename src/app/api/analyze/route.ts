@@ -87,7 +87,7 @@ JSON配列のみ返答（コードブロック禁止）：
         messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
       }),
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:8000,
+        model:"claude-haiku-4-5-20251001", max_tokens:4000,
         system:"JSON配列のみ返答。コードブロック禁止。",
         messages:[{role:"user",content:allAxesPrompt}]
       }),
