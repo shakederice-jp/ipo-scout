@@ -53,10 +53,10 @@ const parseObj = (text: string): any => {
 const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
 
 const makeAxesPrompt = (n: string, sec: string, items: {id:string,title:string}[]) =>
-  `「${n}」（${sec}業）のIPO分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」の形で出典明示。①②③の小見出しで3段落。最後は「つまり、初心者の方へのポイントは〜」で締める。
+  `「${n}」（${sec}業）のIPO分析。専門用語はカッコで説明。出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締める。【文字数制限】why_matters:60字、description:180字、verdict:15字、doc_guide:40字。
 
 JSON配列のみ返答（コードブロック禁止）：
-[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"なぜ重要か2文","description":"①見出し\\n分析内容\\n\\n②見出し\\n分析内容\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
+[${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"60字以内","description":"①見出し\\n内容\\n\\n②見出し\\n内容\\n\\n③つまり初心者へのポイントは〜","verdict":"15字以内","doc_guide":"40字以内"}`).join(",")}]`;
 
 export async function POST(req: NextRequest) {
   try {
