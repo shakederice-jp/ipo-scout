@@ -15,21 +15,16 @@ const indexMap: Record<string,string> = {
   management:"長・1",unit_econ:"長・2",competitor:"長・3"
 };
 
-// 文字列内の改行だけを正しくエスケープして安全にパース
 function safeParseArr(text: string): any[] {
   if (!text) return [];
   const s = text.indexOf('['), e = text.lastIndexOf(']');
   if (s === -1 || e === -1) return [];
   const raw = text.slice(s, e + 1);
-
-  // 試行1: そのままパース（構造的な改行は有効なJSON空白として機能）
   try {
     const arr = JSON.parse(raw);
     if (Array.isArray(arr) && arr.length > 0)
       return arr.map((x: any) => ({...x, index: indexMap[x.id] || x.id}));
   } catch {}
-
-  // 試行2: 文字列値内の未エスケープ改行のみを修正（構造的な改行は保持）
   try {
     let fixed = '', inString = false, escaped = false;
     for (const ch of raw) {
@@ -43,7 +38,6 @@ function safeParseArr(text: string): any[] {
     if (Array.isArray(arr) && arr.length > 0)
       return arr.map((x: any) => ({...x, index: indexMap[x.id] || x.id}));
   } catch {}
-
   return [];
 }
 
@@ -56,8 +50,10 @@ const parseObj = (text: string): any => {
   } catch { return null; }
 };
 
+const getText = (msg: any) => (msg?.content?.[0] as any)?.text || "";
+
 const makeAxesPrompt = (n: string, sec: string, items: {id:string,title:string}[]) =>
-  `あなたはIPOアナリストです。「${n}」（${sec}業）の以下の投資軸を分析してください。専門用語にはカッコで説明。「目論見書・〇〇によると〜」の形で出典を明示。①②③の小見出しで3段落。最後は「つまり、初心者の方へのポイントは〜」で締める。
+  `「${n}」（${sec}業）のIPO分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」の形で出典明示。①②③の小見出しで3段落。最後は「つまり、初心者の方へのポイントは〜」で締める。
 
 JSON配列のみ返答（コードブロック禁止）：
 [${items.map(({id,title})=>`{"id":"${id}","title":"${title}","score":65,"why_matters":"なぜ重要か2文","description":"①見出し\\n分析内容\\n\\n②見出し\\n分析内容\\n\\n③まとめ。つまり、初心者の方へのポイントは〜","verdict":"一言評価","doc_guide":"目論見書の確認箇所"}`).join(",")}]`;
@@ -81,26 +77,12 @@ export async function POST(req: NextRequest) {
 
     const n=company.name, sec=company.sector||"不明";
 
-    const [sumMsg, usMsg, shMsg, loMsg, insMsg, scenMsg] = await Promise.all([
+    // Haiku系は並列実行（高速）
+    const [sumMsg, insMsg, scenMsg] = await Promise.all([
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:400,
         system:"JSONのみ返答。コードブロック禁止。",
         messages:[{role:"user",content:`「${n}」（${sec}業）IPO分析。初心者向け。JSON：{"summary":"投資価値と最大リスクを200字で","total_score":65,"grade":"B"}`}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
-      }),
-      claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2000,
-        system:"JSON配列のみ返答。コードブロック禁止。",
-        messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
       }),
       claude.messages.create({
         model:"claude-haiku-4-5-20251001", max_tokens:500,
@@ -114,7 +96,22 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    const getText = (msg: any) => (msg.content[0] as any)?.text || "";
+    // Sonnet系は直列実行（レート制限回避）
+    const usMsg = await claude.messages.create({
+      model:"claude-sonnet-4-6", max_tokens:2000,
+      system:"JSON配列のみ返答。コードブロック禁止。",
+      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"float",title:"需給・ロック内容"},{id:"lockup",title:"VC・株主構成"},{id:"timing",title:"上場タイミング"}])}]
+    });
+    const shMsg = await claude.messages.create({
+      model:"claude-sonnet-4-6", max_tokens:2000,
+      system:"JSON配列のみ返答。コードブロック禁止。",
+      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"valuation",title:"バリュエーション"},{id:"vc_sell",title:"売り圧力リスク"},{id:"growth",title:"成長性"}])}]
+    });
+    const loMsg = await claude.messages.create({
+      model:"claude-sonnet-4-6", max_tokens:2000,
+      system:"JSON配列のみ返答。コードブロック禁止。",
+      messages:[{role:"user",content:makeAxesPrompt(n, sec, [{id:"management",title:"経営陣・ガバナンス"},{id:"unit_econ",title:"収益性・ユニットエコノミクス"},{id:"competitor",title:"競合・差別化"}])}]
+    });
 
     let summary=`${n}は${sec}分野のIPO企業です。`, total_score=65, grade="B";
     try {
@@ -129,9 +126,6 @@ export async function POST(req: NextRequest) {
     const scenarios_short = safeParseArr(getText(scenMsg)).slice(0,3);
 
     console.log(`us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
-    console.log(`usRaw:`, getText(usMsg).slice(0,100));
-    console.log(`shRaw:`, getText(shMsg).slice(0,100));
-    console.log(`loRaw:`, getText(loMsg).slice(0,100));
 
     const analysis = {
       summary, total_score, grade,
