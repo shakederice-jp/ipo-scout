@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`us:${ultra_short.length} sh:${short.length} lo:${long.length} ins:${insights.length} scen:${scenarios_short.length}`);
     console.log(`usRaw:`, getText(usMsg).slice(0,100));
+    console.log(`shRaw:`, getText(shMsg).slice(0,100));
+    console.log(`loRaw:`, getText(loMsg).slice(0,100));
 
     const analysis = {
       summary, total_score, grade,
