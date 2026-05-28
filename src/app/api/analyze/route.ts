@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       }),
       // Call 2: Sonnet で9軸分析（簡潔な説明）
       claude.messages.create({
-        model:"claude-sonnet-4-6", max_tokens:2500,
+        model:"claude-sonnet-4-6", max_tokens:3500,
         system:"JSON配列のみ返答。コードブロック禁止。",
         messages:[{role:"user",content:
           `「${n}」（${sec}業）のIPO投資分析。専門用語はカッコで説明。「目論見書・〇〇によると〜」で出典明示。①②③の小見出しで各1〜2文。最後は「つまり初心者へのポイントは〜」で締め。
