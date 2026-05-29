@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import InitialPriceForm from "@/components/InitialPriceForm";
 
 const ADMIN_PASSWORD = "otemachi9";
@@ -22,7 +22,34 @@ export default function AdminPage() {
   const [edinetDocId, setEdinetDocId] = useState("");
   const [edinetLoading, setEdinetLoading] = useState(false);
   const [edinetResult, setEdinetResult] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [analyzeLoading, setAnalyzeLoading] = useState<Record<string,boolean>>({});
+  const [analyzeResult, setAnalyzeResult] = useState<Record<string,string>>({});
+  useEffect(() => {
+    if (!authed) return;
+    fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+  }, [authed]);
 
+  const handleGenerateAnalysis = async (companyId: string) => {
+    setAnalyzeLoading(prev => ({...prev, [companyId]: true}));
+    setAnalyzeResult(prev => ({...prev, [companyId]: ""}));
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({id: companyId}),
+      });
+      const data = await res.json();
+      if (data.error) setAnalyzeResult(prev => ({...prev, [companyId]: "❌ " + data.error}));
+      else {
+        setAnalyzeResult(prev => ({...prev, [companyId]: "✅ 分析完了！"}));
+        fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+      }
+    } catch {
+      setAnalyzeResult(prev => ({...prev, [companyId]: "❌ エラーが発生しました"}));
+    }
+    setAnalyzeLoading(prev => ({...prev, [companyId]: false}));
+  };
   if (!authed) return (
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh", backgroundColor:"#f4fbfc" }}>
       <div style={{ background:"white", padding:"32px", borderRadius:"16px", border:"1px solid #b3e8ea", minWidth:"300px" }}>
@@ -123,7 +150,49 @@ export default function AdminPage() {
           </button>
           {result && <p style={{ marginTop:"8px", fontSize:"12px", color: result.includes("エラー") ? "#e53e3e" : "#2a7a7e" }}>{result}</p>}
         </div>
-
+{/* 銘柄一覧・分析生成 */}
+<div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>
+            📊 銘柄一覧・分析生成
+          </h2>
+          {companies.length === 0 ? (
+            <p style={{ fontSize:"12px", color:"#64748b" }}>銘柄がありません</p>
+          ) : (
+            companies.map(c => (
+              <div key={c.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"10px 12px", marginBottom:"8px", borderRadius:"8px",
+                backgroundColor: c.analysis_detail ? "#f0fdf4" : "#fff7ed",
+                border: `1px solid ${c.analysis_detail ? "#86efac" : "#fed7aa"}` }}>
+                <div>
+                  <div style={{ fontWeight:"700", fontSize:"13px", color:"#082b2e" }}>{c.name}</div>
+                  <div style={{ fontSize:"11px", color:"#64748b", marginTop:"2px" }}>
+                    {c.listing_date} ／ {c.sector ?? "未設定"}
+                    {c.analysis_detail
+                      ? <span style={{ color:"#16a34a", marginLeft:"8px" }}>✅ 分析済み</span>
+                      : <span style={{ color:"#ea580c", marginLeft:"8px" }}>⏳ 未生成</span>}
+                  </div>
+                  {analyzeResult[c.id] && (
+                    <div style={{ fontSize:"11px", marginTop:"4px",
+                      color: analyzeResult[c.id].startsWith("✅") ? "#16a34a" : "#dc2626" }}>
+                      {analyzeResult[c.id]}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleGenerateAnalysis(c.id)}
+                  disabled={analyzeLoading[c.id]}
+                  style={{ padding:"6px 12px",
+                    backgroundColor: analyzeLoading[c.id] ? "#94a3b8" : "#0e7490",
+                    color:"white", border:"none", borderRadius:"6px",
+                    cursor: analyzeLoading[c.id] ? "default" : "pointer",
+                    fontSize:"11px", fontWeight:"700", whiteSpace:"nowrap",
+                    flexShrink:0, marginLeft:"12px" }}>
+                  {analyzeLoading[c.id] ? "生成中..." : c.analysis_detail ? "再生成" : "分析生成"}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
         {/* 初値・騰落率入力 */}
         <div style={sectionStyle}>
           <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📈 初値・騰落率入力</h2>
