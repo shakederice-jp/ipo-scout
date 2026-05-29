@@ -198,33 +198,10 @@ function ScenarioCard({s}:{s:Scenario}) {
 /* ══ MAIN ══════════════════════════════════════════════════════ */
 export default function AnalysisClient({company,initialAnalysis}:{company:IpoCompany;initialAnalysis:Analysis|null}) {
   const [analysis,setAnalysis]=useState<Analysis|null>(initialAnalysis);
-  const [loading,setLoading]=useState(!initialAnalysis);
+  const [loading,setLoading]=useState(false);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
 
-  useEffect(()=>{
-    if(!company?.id) return;
-    (async()=>{
-      try {
-        const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(company)});
-        if(res.ok) setAnalysis(await res.json());
-      } catch(e){console.error(e);}
-      finally{setLoading(false);}
-    })();
-  },[company?.id]);
-
-  if(loading) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
-      <div style={{textAlign:"center"}}>
-        <div style={{width:48,height:48,borderRadius:"50%",border:`4px solid ${PRIMARY}`,
-          borderTopColor:"transparent",animation:"spin 1s linear infinite",margin:"0 auto 12px"}}/>
-        <p style={{fontWeight:700,color:"#475569"}}>AI分析を生成中...</p>
-        <p style={{fontSize:13,color:"#94a3b8",marginTop:4}}>30秒ほどお待ちください</p>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    </div>
-  );
-
-  if(!analysis) return (
+    if(!analysis) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
       <div style={{textAlign:"center",padding:24}}>
         <AlertTriangle size={32} color="#f59e0b" style={{margin:"0 auto 12px"}}/>
