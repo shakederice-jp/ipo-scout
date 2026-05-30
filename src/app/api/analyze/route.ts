@@ -114,11 +114,14 @@ ${hasE ? `【目論見書データ（EDINET取得済み）】\n${eCtx}\n\n上記
   ]
 }`;
 
-    const msg = await claude.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 3000,
-      messages: [{ role: "user", content: prompt }]
-    });
+const msg = await claude.messages.create({
+  model: "claude-haiku-4-5",
+  max_tokens: 3000,
+  messages: [
+    { role: "user", content: prompt },
+    { role: "assistant", content: "{" }
+  ]
+});
 
     const text = (msg.content[0] as any).text ?? "";
     console.log("response_preview:", text.slice(0, 150));
