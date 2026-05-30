@@ -12,12 +12,11 @@ const JP: Record<string,string> = {
 };
 
 function extractJson(text: string): any {
-  // マークダウンのコードブロックを除去
-  let clean = text;
-  clean = clean.replace(/^```json\s*/m, "");
-  clean = clean.replace(/^```\s*/m, "");
-  clean = clean.replace(/\s*```$/m, "");
-  clean = clean.trim();
+ // すべてのバッククォートブロックを除去
+ let clean = text
+ .split("```json").join("")
+ .split("```").join("")
+ .trim();
   
   // JSONの開始位置を探す
   const s = clean.indexOf('{');
@@ -40,7 +39,7 @@ function extractJson(text: string): any {
       } catch(e: any) { 
         console.error("json_parse_error:", e?.message, clean.slice(s, s+200));
         return null; 
-      }
+      }S
     }
   }
   return null;
