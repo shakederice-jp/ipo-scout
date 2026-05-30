@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
 
@@ -9,7 +9,7 @@ const getSupabase = () => createClient(
 
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
-// EDINETから書類一覧を検索
+// EDINET縺九ｉ譖ｸ鬘樔ｸ隕ｧ繧呈､懃ｴ｢
 async function searchEdinetDoc(companyName: string): Promise<string | null> {
   try {
     const today = new Date();
@@ -33,7 +33,7 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
   } catch { return null; }
 }
 
-// テキストからセクションを抽出
+// 繝・く繧ｹ繝医°繧峨そ繧ｯ繧ｷ繝ｧ繝ｳ繧呈歓蜃ｺ
 function extractSection(text: string, keywords: string[]): string {
   const plain = text
     .replace(/<[^>]+>/g, " ")
@@ -44,20 +44,20 @@ function extractSection(text: string, keywords: string[]): string {
     const idx = plain.indexOf(kw);
     if (idx !== -1) {
       const start = Math.max(0, idx - 50);
-      return plain.slice(start, start + 1500);
+      return plain.slice(start, start + 5000);
     }
   }
   return "";
 }
 
-// ZIPを解凍してHTMLテキストを取得
+// ZIP繧定ｧ｣蜃阪＠縺ｦHTML繝・く繧ｹ繝医ｒ蜿門ｾ・
 async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   try {
     const zip = await JSZip.loadAsync(buffer);
     let allText = "";
     const files = Object.keys(zip.files);
     
-    // HTMLファイルを優先して読み込む
+    // HTML繝輔ぃ繧､繝ｫ繧貞━蜈医＠縺ｦ隱ｭ縺ｿ霎ｼ繧
     const htmlFiles = files.filter(f => f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml"));
     const targetFiles = htmlFiles.length > 0 ? htmlFiles : files.filter(f => !zip.files[f].dir);
     
@@ -76,11 +76,11 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   }
 }
 
-// EDINET書類からセクションを抽出
+// EDINET譖ｸ鬘槭°繧峨そ繧ｯ繧ｷ繝ｧ繝ｳ繧呈歓蜃ｺ
 async function fetchProspectusText(docId: string): Promise<Record<string, string>> {
   const sections: Record<string, string> = {};
   
-  // type=1: 提出書類ZIP（メイン）
+  // type=1: 謠仙・譖ｸ鬘杙IP・医Γ繧､繝ｳ・・
   for (const docType of [1, 5]) {
     try {
       const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=${docType}&Subscription-Key=${EDINET_KEY}`;
@@ -92,7 +92,7 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       let text = "";
 
       if (contentType.includes("zip") || contentType.includes("octet-stream") || buffer.byteLength > 10000) {
-        // ZIPとして解凍を試みる
+        // ZIP縺ｨ縺励※隗｣蜃阪ｒ隧ｦ縺ｿ繧・
         text = await extractTextFromZip(buffer);
       } else {
         text = new TextDecoder("utf-8").decode(buffer);
@@ -102,23 +102,23 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
 
       console.log(`type=${docType}: got ${text.length} chars`);
 
-      const s1 = extractSection(text, ["事業の概況", "事業概況", "ビジネスの内容"]);
-      if (s1) sections["事業の概況"] = s1;
+      const s1 = extractSection(text, ["莠区･ｭ縺ｮ讎よｳ・, "莠区･ｭ讎よｳ・, "繝薙ず繝阪せ縺ｮ蜀・ｮｹ"]);
+      if (s1) sections["莠区･ｭ縺ｮ讎よｳ・] = s1;
 
-      const s2 = extractSection(text, ["リスク要因", "事業等のリスク", "投資リスク"]);
-      if (s2) sections["リスク要因"] = s2;
+      const s2 = extractSection(text, ["繝ｪ繧ｹ繧ｯ隕∝屏", "莠区･ｭ遲峨・繝ｪ繧ｹ繧ｯ", "謚戊ｳ・Μ繧ｹ繧ｯ"]);
+      if (s2) sections["繝ｪ繧ｹ繧ｯ隕∝屏"] = s2;
 
-      const s3 = extractSection(text, ["財務諸表", "財政状態", "損益計算書"]);
-      if (s3) sections["財務諸表"] = s3;
+      const s3 = extractSection(text, ["雋｡蜍呵ｫｸ陦ｨ", "雋｡謾ｿ迥ｶ諷・, "謳咲寢險育ｮ玲嶌"]);
+      if (s3) sections["雋｡蜍呵ｫｸ陦ｨ"] = s3;
 
-      const s4 = extractSection(text, ["大株主", "株主の状況", "主要株主"]);
-      if (s4) sections["株主構成"] = s4;
+      const s4 = extractSection(text, ["螟ｧ譬ｪ荳ｻ", "譬ｪ荳ｻ縺ｮ迥ｶ豕・, "荳ｻ隕∵ｪ荳ｻ"]);
+      if (s4) sections["譬ｪ荳ｻ讒区・"] = s4;
 
-      const s5 = extractSection(text, ["調達資金の使途", "資金の使途", "調達する資金"]);
-      if (s5) sections["資金使途"] = s5;
+      const s5 = extractSection(text, ["隱ｿ驕碑ｳ・≡縺ｮ菴ｿ騾・, "雉・≡縺ｮ菴ｿ騾・, "隱ｿ驕斐☆繧玖ｳ・≡"]);
+      if (s5) sections["雉・≡菴ｿ騾・] = s5;
 
-      const s6 = extractSection(text, ["役員の状況", "経営者の概要", "取締役"]);
-      if (s6) sections["経営陣"] = s6;
+      const s6 = extractSection(text, ["蠖ｹ蜩｡縺ｮ迥ｶ豕・, "邨悟霧閠・・讎りｦ・, "蜿也ｷ蠖ｹ"]);
+      if (s6) sections["邨悟霧髯｣"] = s6;
 
       if (Object.keys(sections).length > 0) break;
     } catch (e) {
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       docId = await searchEdinetDoc(company_name);
       if (!docId) {
         return NextResponse.json({
-          error: "EDINETに書類が見つかりませんでした。書類IDを手動で入力してください。"
+          error: "EDINET縺ｫ譖ｸ鬘槭′隕九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆縲よ嶌鬘曵D繧呈焔蜍輔〒蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・
         }, { status: 404 });
       }
     }
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
         success: false,
         doc_id: docId,
         sections_found: [],
-        message: `書類ID（${docId}）は確認できましたが、本文テキストの抽出に失敗しました。`
+        message: `譖ｸ鬘曵D・・{docId}・峨・遒ｺ隱阪〒縺阪∪縺励◆縺後∵悽譁・ユ繧ｭ繧ｹ繝医・謚ｽ蜃ｺ縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲Ａ
       });
     }
 
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
       success: true,
       doc_id: docId,
       sections_found: Object.keys(sections),
-      message: `${sectionCount}セクション取得完了！分析ページを開いて再生成してください。`
+      message: `${sectionCount}繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ蜿門ｾ怜ｮ御ｺ・ｼ∝・譫舌・繝ｼ繧ｸ繧帝幕縺・※蜀咲函謌舌＠縺ｦ縺上□縺輔＞縲Ａ
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message }, { status: 500 });
