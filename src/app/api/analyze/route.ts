@@ -97,7 +97,7 @@ ${hasE ? `【目論見書データ（EDINET取得済み）】\n${eCtx}\n\n上記
 }`;
 
     const msg = await claude.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5",
       max_tokens: 3000,
       messages: [{ role: "user", content: prompt }]
     });
