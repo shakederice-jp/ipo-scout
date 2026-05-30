@@ -36,6 +36,10 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
 // テキストからセクションを抽出
 function extractSection(text: string, keywords: string[]): string {
   const plain = text
+    .replace(/[a-z_]+:[A-Za-z][A-Za-z0-9_]*\s+[A-Z][0-9A-Z-]+\s+[\d-]+\s*[\d-]*/g, " ")
+    .replace(/E\d{5}-\d{3}/g, " ")
+    .replace(/jpcrp_cor:[A-Za-z]+/g, " ")
+    .replace(/jppfs_cor:[A-Za-z]+/g, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&[a-zA-Z#0-9]+;/g, " ")
     .replace(/\s+/g, " ")
