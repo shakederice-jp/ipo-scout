@@ -56,7 +56,9 @@ export async function POST(req: NextRequest) {
 
     console.log(`analyze: ${n} hasEDINET:${hasE} edinetChars:${eCtx.length}`);
 
-    const prompt = `あなたは日本のIPO投資アナリストです。以下の企業のIPOを分析してください。
+    const prompt = `You must respond with ONLY raw JSON, no markdown, no code blocks, no backticks.
+
+あなたは日本のIPO投資アナリストです。以下の企業のIPOを分析してください。
 
 【企業基本情報】
 会社名: ${n}
