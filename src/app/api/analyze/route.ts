@@ -84,7 +84,7 @@ Output ONLY this JSON with real Japanese content:
 ]}`;
 
     const [axesMsg, metaMsg] = await Promise.all([
-      claude.messages.create({ model: "claude-haiku-4-5", max_tokens: 3000, messages: [{ role: "user", content: axesPrompt }] }),
+      claude.messages.create({ model: "claude-haiku-4-5", max_tokens: 6000, messages: [{ role: "user", content: axesPrompt }] }),
       claude.messages.create({ model: "claude-sonnet-4-6", max_tokens: 2000, messages: [{ role: "user", content: metaPrompt }] }),
     ]);
 
@@ -133,3 +133,4 @@ Output ONLY this JSON with real Japanese content:
     return NextResponse.json({ error: e?.message }, { status: 500 });
   }
 }
+
