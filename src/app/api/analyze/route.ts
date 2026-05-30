@@ -12,23 +12,24 @@ const JP: Record<string,string> = {
 };
 
 function extractJson(text: string): any {
-  const s = text.indexOf('{');
+  const clean = text.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+  const s = clean.indexOf('{');
   if (s === -1) return null;
   let d = 0, inS = false, esc = false;
-  for (let i = s; i < text.length; i++) {
-    const c = text[i];
+  for (let i = s; i < clean.length; i++) {
+    const c = clean[i];
     if (esc){esc=false;continue;}
     if (c==='\\'&&inS){esc=true;continue;}
     if (c==='"'){inS=!inS;continue;}
     if (inS) continue;
     if (c==='{') d++;
     if (c==='}'&&--d===0){
-      try{return JSON.parse(text.slice(s,i+1));}catch{return null;}
+      try{return JSON.parse(clean.slice(s,i+1));}catch{return null;}
     }
   }
   return null;
 }
-
+ 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
