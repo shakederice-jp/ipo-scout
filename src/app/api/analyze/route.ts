@@ -23,9 +23,23 @@ function extractJson(text: string): any {
   return null;
 }
 
-const AXES_PROMPT = (n: string, sec: string, ctx: string) => `あなたはIPO投資の専門アナリストです。以下の${ctx ? "有価証券届出書の実データ" : "企業情報"}を基に9軸分析をJSONのみで出力してください。前置き不要。${ctx ? `\n\n【有価証券届出書（抜粋）】\n${ctx.slice(0, 7000)}` : `\n企業名:${n} セクター:${sec}`}\n\n{"axes":[{"id":"float","label":"需給の軽さ","score":70,"summary":"根拠ある要点","detail":"実データに基づく詳細分析"},{"id":"lockup","label":"ロックアップ","score":65,"summary":"要点","detail":"詳細"},{"id":"timing","label":"上場タイミング","score":75,"summary":"要点","detail":"詳細"},{"id":"valuation","label":"バリュエーション","score":60,"summary":"要点","detail":"詳細"},{"id":"vc_sell","label":"VC売り圧力","score":55,"summary":"要点","detail":"詳細"},{"id":"growth","label":"成長性","score":80,"summary":"要点","detail":"詳細"},{"id":"management","label":"経営陣","score":70,"summary":"要点","detail":"詳細"},{"id":"unit_econ","label":"ユニットエコノミクス","score":65,"summary":"要点","detail":"詳細"},{"id":"competitor","label":"競合環境","score":60,"summary":"要点","detail":"詳細"}]}`;
+const AXES_PROMPT = (n: string, sec: string, ctx: string) => `あなたはIPO投資の専門アナリストです。${ctx ? "以下の有価証券届出書の実データを根拠に" : `${n}（${sec}）について`}9軸分析をJSONのみで出力してください。前置き不要。${ctx ? `\n\n【有価証券届出書（抜粋）】\n${ctx.slice(0, 7000)}\n\n` : ""}各軸のwhy_matters・description・verdict・doc_guideは具体的な内容を記載してください。
 
-const META_PROMPT = (n: string, sec: string, ctx: string) => `あなたはIPO投資の専門アナリストです。${ctx ? "以下の有価証券届出書の実データを根拠に" : `${n}（${sec}）について`}分析し、JSONのみで出力してください。前置き不要。${ctx ? `\n\n【有価証券届出書（抜粋）】\n${ctx.slice(0, 6000)}` : ""}\n\n{"summary":"${ctx ? "届出書に基づく" : ""}200字の分析サマリー","total_score":65,"grade":"B","insights":[{"title":"最重要注目ポイント","body":"根拠ある2〜3文の説明"},{"title":"第2の注目点","body":"説明"},{"title":"第3の注目点","body":"説明"}],"scenarios":[{"label":"強気","target":"公募価格の◯倍","condition":"実現条件"},{"label":"中立","target":"公募価格±◯%","condition":"条件"},{"label":"弱気","target":"公募価格の◯倍","condition":"条件"}]}`;
+{"axes":[
+{"id":"float","label":"需給の軽さ","score":70,"why_matters":"この軸がIPO投資で重要な理由を2文で","description":"実データに基づく詳細分析を3〜4文で","verdict":"総合的な評価を1〜2文で","doc_guide":"確認すべき書類・データ"},
+{"id":"lockup","label":"ロックアップ","score":65,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"timing","label":"上場タイミング","score":75,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"valuation","label":"バリュエーション","score":60,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"vc_sell","label":"VC売り圧力","score":55,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"growth","label":"成長性","score":80,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"management","label":"経営陣","score":70,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"unit_econ","label":"ユニットエコノミクス","score":65,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"},
+{"id":"competitor","label":"競合環境","score":60,"why_matters":"重要な理由","description":"詳細分析","verdict":"総評","doc_guide":"確認書類"}
+]}`;
+
+const META_PROMPT = (n: string, sec: string, ctx: string) => `あなたはIPO投資の専門アナリストです。${ctx ? "以下の有価証券届出書の実データを根拠に" : `${n}（${sec}）について`}分析し、JSONのみで出力してください。前置き不要。${ctx ? `\n\n【有価証券届出書（抜粋）】\n${ctx.slice(0, 6000)}\n\n` : ""}
+
+{"summary":"200字の分析サマリー","total_score":65,"grade":"B","insights":[{"title":"最重要注目ポイント","body":"根拠ある2〜3文"},{"title":"第2の注目点","body":"説明"},{"title":"第3の注目点","body":"説明"}],"scenarios":[{"label":"強気","target":"公募価格の◯倍","condition":"実現条件"},{"label":"中立","target":"公募価格±◯%","condition":"条件"},{"label":"弱気","target":"公募価格の◯倍","condition":"条件"}]}`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +58,6 @@ export async function POST(req: NextRequest) {
     const n   = company.name   ?? "不明";
     const sec = company.sector ?? "テクノロジー";
 
-    // EDINETデータがあれば実データ分析、なければ知識ベース
     const raw = company.raw_prospectus;
     const hasEdinet = raw && Object.keys(raw).length > 0;
     const ctx = hasEdinet
@@ -56,7 +69,7 @@ export async function POST(req: NextRequest) {
     const [axesMsg, metaMsg] = await Promise.all([
       claude.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 2500,
+        max_tokens: 3000,
         messages: [{ role: "user", content: AXES_PROMPT(n, sec, ctx) }]
       }),
       claude.messages.create({
