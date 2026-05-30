@@ -33,7 +33,14 @@ function extractJson(text: string): any {
     if (inS) continue;
     if (c==='{') d++;
     if (c==='}'&&--d===0){
-      try { return JSON.parse(clean.slice(s, i+1)); } catch { return null; }
+      try { 
+        const jsonStr = clean.slice(s, i+1);
+        console.log("json_attempt:", jsonStr.slice(0, 100));
+        return JSON.parse(jsonStr); 
+      } catch(e: any) { 
+        console.error("json_parse_error:", e?.message, clean.slice(s, s+200));
+        return null; 
+      }
     }
   }
   return null;
