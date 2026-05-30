@@ -12,9 +12,18 @@ const JP: Record<string,string> = {
 };
 
 function extractJson(text: string): any {
-  const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  // マークダウンのコードブロックを除去
+  let clean = text;
+  clean = clean.replace(/^```json\s*/m, "");
+  clean = clean.replace(/^```\s*/m, "");
+  clean = clean.replace(/\s*```$/m, "");
+  clean = clean.trim();
+  
+  // JSONの開始位置を探す
   const s = clean.indexOf('{');
   if (s === -1) return null;
+  
+  // JSONの終了位置を探す
   let d = 0, inS = false, esc = false;
   for (let i = s; i < clean.length; i++) {
     const c = clean[i];
@@ -24,7 +33,7 @@ function extractJson(text: string): any {
     if (inS) continue;
     if (c==='{') d++;
     if (c==='}'&&--d===0){
-      try{return JSON.parse(clean.slice(s,i+1));}catch{return null;}
+      try { return JSON.parse(clean.slice(s, i+1)); } catch { return null; }
     }
   }
   return null;
