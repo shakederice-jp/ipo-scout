@@ -37,30 +37,14 @@ function extractJson(text: string): any {
 
 async function fetchWebData(name: string, ticker: string): Promise<string> {
   if (!ticker) return "";
-  const urls = [
-    `https://minkabu.jp/stock/${ticker}`,
-    `https://minkabu.jp/stock/${ticker}/settlement`,
-  ];
-  for (const url of urls) {
+  for (const url of [`https://minkabu.jp/stock/${ticker}`, `https://minkabu.jp/stock/${ticker}/settlement`]) {
     try {
-      const r = await fetch(url, {
-        signal: AbortSignal.timeout(7000),
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
-      });
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "Mozilla/5.0" } });
       if (!r.ok) continue;
       const html = await r.text();
-      const text = html
-        .replace(/<script[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[\s\S]*?<\/style>/gi, "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 4000);
-      if (text.length > 300) {
-        console.log("web_ok:", url, "len:", text.length);
-        return text;
-      }
-    } catch (e) { console.log("web_fail:", url); }
+      const text = html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/<style[\s\S]*?<\/style>/gi,"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim().slice(0,3000);
+      if (text.length > 300) { console.log("web_ok len:" + text.length); return text; }
+    } catch {}
   }
   return "";
 }
@@ -81,21 +65,20 @@ export async function POST(req: NextRequest) {
     const hasE = raw && Object.keys(raw).length > 0;
     const eCtx = hasE
       ? Object.entries(raw as Record<string,string>)
-          .map(([k,v]) => `[${k}]\n${String(v).slice(0,1500)}`)
+          .map(([k,v]) => `[${k}]\n${String(v).slice(0,800)}`)
           .join('\n\n')
-          .slice(0, 7000)
+          .slice(0, 4000)
       : "";
 
     console.log(`mode:${hasE ? "EDINET" : "knowledge"} company:${n} ticker:${tk}`);
 
-    const axesPrompt = `You are a Japanese IPO investment analyst with deep expertise. Analyze the IPO of "${n}" (sector: ${sc}).${eCtx ? `\n\nProspectus data available:\n${eCtx}` : ""}
+    // axes (Haiku): EDINETなし・知識ベース → 高速
+    const axesPrompt = `You are a Japanese IPO analyst. Analyze the IPO of "${n}" (sector: ${sc}).
 
-IMPORTANT: Be specific and confident. Use your knowledge of the company, industry, and comparable IPOs to provide substantive analysis. Do NOT say "data is insufficient" - instead make intelligent estimates based on industry norms when specific data is unavailable.
-
-Return ONLY valid JSON (no markdown, no code blocks):
+Be specific and confident. Use industry knowledge - do NOT say data is insufficient. Return ONLY JSON:
 {"axes":[
-{"id":"float","score":65,"why_matters":"[2 Japanese sentences - why this matters for IPO investors]","description":"[3-4 Japanese sentences - specific analysis mentioning ${n} by name]","verdict":"[1-2 Japanese sentences - clear conclusion]","doc_guide":"[Japanese - specific documents/data to verify]"},
-{"id":"lockup","score":60,"why_matters":"[Japanese]","description":"[Japanese specific to ${n}]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
+{"id":"float","score":65,"why_matters":"[2 sentences Japanese]","description":"[3-4 sentences Japanese specific to ${n}]","verdict":"[1-2 sentences Japanese]","doc_guide":"[Japanese]"},
+{"id":"lockup","score":60,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
 {"id":"timing","score":70,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
 {"id":"valuation","score":55,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
 {"id":"vc_sell","score":50,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
@@ -105,61 +88,40 @@ Return ONLY valid JSON (no markdown, no code blocks):
 {"id":"competitor","score":55,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"}
 ]}`;
 
-    const [axesMsg, webData] = await Promise.all([
-      claude.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 6000,
-        messages: [{ role: "user", content: axesPrompt }]
-      }),
-      fetchWebData(n, tk)
+    // meta (Sonnet + EDINET + Web): web fetchと直列だが、axesと並列
+    const metaWithContext = async () => {
+      const webData = await fetchWebData(n, tk);
+      const ctx = [eCtx, webData ? "[Web]\n" + webData : ""].filter(Boolean).join('\n\n').slice(0, 5000);
+      console.log("ctx_len:" + ctx.length + " web:" + webData.length);
+      const prompt = `You are a Japanese IPO analyst. Analyze "${n}" (${sc}).${ctx ? `\n\n<data>\n${ctx}\n</data>\n\nUsing this data plus expertise,` : ""} provide specific confident analysis. Never say data is insufficient. Return ONLY JSON:
+{"summary":"[200 char Japanese specific actionable]","total_score":65,"grade":"B","insights":[{"title":"[Japanese]","body":"[2-3 sentences Japanese]"},{"title":"[Japanese]","body":"[Japanese]"},{"title":"[Japanese]","body":"[Japanese]"}],"scenarios":[{"id":"A","verdict":"\u5f37\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e1.5\u500d","prob":"[Japanese condition]"},{"id":"B","verdict":"\u4e2d\u7acb","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u00b110%","prob":"[Japanese]"},{"id":"C","verdict":"\u5f31\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e0.8\u500d","prob":"[Japanese]"}]}`;
+      return claude.messages.create({ model: "claude-sonnet-4-6", max_tokens: 2500, messages: [{ role: "user", content: prompt }] });
+    };
+
+    // Haiku(axes) と Sonnet(meta+web) を完全並列
+    const [axesMsg, metaMsg] = await Promise.all([
+      claude.messages.create({ model: "claude-haiku-4-5", max_tokens: 6000, messages: [{ role: "user", content: axesPrompt }] }),
+      metaWithContext()
     ]);
-
-    const fullCtx = [eCtx, webData ? "[Web\u30c7\u30fc\u30bf]\n" + webData : ""].filter(Boolean).join('\n\n').slice(0, 9000);
-
-    const metaPrompt = `You are a Japanese IPO investment analyst with deep expertise. Analyze "${n}" (${sc}).${fullCtx ? `\n\n<analysis_data>\n${fullCtx}\n</analysis_data>\n\nUsing ALL available data above plus your expertise,` : ""} provide specific and actionable investment analysis. Be confident and specific - never say data is insufficient. Use industry knowledge to fill any gaps.
-
-Return ONLY valid JSON (no markdown, no code blocks):
-{"summary":"[200 char Japanese - specific and actionable, mention key figures if known]",
-"total_score":65,
-"grade":"B",
-"insights":[
-{"title":"[Japanese specific insight title]","body":"[2-3 sentences Japanese - specific, actionable insight with numbers where possible]"},
-{"title":"[Japanese]","body":"[Japanese specific 2-3 sentences]"},
-{"title":"[Japanese]","body":"[Japanese specific 2-3 sentences]"}
-],
-"scenarios":[
-{"id":"A","verdict":"\u5f37\u6c17","name":"[Japanese scenario name]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e1.5\u500d","prob":"[specific Japanese condition]"},
-{"id":"B","verdict":"\u4e2d\u7acb","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u00b110%","prob":"[Japanese]"},
-{"id":"C","verdict":"\u5f31\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e0.8\u500d","prob":"[Japanese]"}
-]}`;
-
-    const metaMsg = await claude.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2500,
-      messages: [{ role: "user", content: metaPrompt }]
-    });
 
     const axR = (axesMsg.content[0] as any).text ?? "";
     const mtR = (metaMsg.content[0] as any).text ?? "";
-    console.log("axes_prev:", axR.slice(0, 120));
-    console.log("web_data_len:", webData.length);
+    console.log("axes_prev:", axR.slice(0,100));
 
     const axD = extractJson(axR);
     const mtD = extractJson(mtR);
 
-    const all = Array.isArray(axD?.axes)
-      ? axD.axes.map((x: any) => ({ ...x, label: JP[x.id] ?? x.id }))
-      : [];
-    const us = all.filter((x: any) => ["float","lockup","timing"].includes(x.id));
-    const sh = all.filter((x: any) => ["valuation","vc_sell","growth"].includes(x.id));
-    const lo = all.filter((x: any) => ["management","unit_econ","competitor"].includes(x.id));
+    const all = Array.isArray(axD?.axes) ? axD.axes.map((x:any) => ({...x, label: JP[x.id] ?? x.id})) : [];
+    const us = all.filter((x:any) => ["float","lockup","timing"].includes(x.id));
+    const sh = all.filter((x:any) => ["valuation","vc_sell","growth"].includes(x.id));
+    const lo = all.filter((x:any) => ["management","unit_econ","competitor"].includes(x.id));
 
     console.log(`axes:${all.length} us:${us.length} sh:${sh.length} lo:${lo.length} ins:${(mtD?.insights||[]).length} scen:${(mtD?.scenarios||[]).length}`);
 
     const analysis = {
-      summary:         mtD?.summary         ?? `${n}IPO\u5206\u6790`,
-      total_score:     mtD?.total_score      ?? 65,
-      grade:           mtD?.grade            ?? "B",
+      summary:         mtD?.summary ?? `${n}IPO\u5206\u6790`,
+      total_score:     mtD?.total_score ?? 65,
+      grade:           mtD?.grade ?? "B",
       insights:        Array.isArray(mtD?.insights)  ? mtD.insights.slice(0,3)  : [],
       scenarios_short: Array.isArray(mtD?.scenarios) ? mtD.scenarios.slice(0,3) : [],
       axes:            { ultra_short: us, short: sh, long: lo },
@@ -167,7 +129,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       sources: [
         { label: "\u6771\u8a3c\u65b0\u898f\u4e0a\u5834\u60c5\u5831",       url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
         { label: "EDINET\u30fb\u6709\u4fa1\u8a3c\u5238\u5c4a\u51fa\u66f8", url: "https://disclosure2.edinet-fsa.go.jp/" },
-        { label: "IPOkabu",                                                  url: "https://ipokabu.net/" },
+        { label: "IPOkabu", url: "https://ipokabu.net/" },
       ],
       generated_at: new Date().toISOString(),
     };
