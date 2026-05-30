@@ -12,7 +12,7 @@ const JP: Record<string,string> = {
 };
 
 function extractJson(text: string): any {
-  const clean = text.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+  const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
   const s = clean.indexOf('{');
   if (s === -1) return null;
   let d = 0, inS = false, esc = false;
