@@ -35,18 +35,31 @@ function extractJson(text: string): any {
   return null;
 }
 
-async function fetchWebData(name: string, ticker: string): Promise<string> {
-  if (!ticker) return "";
-  for (const url of [`https://minkabu.jp/stock/${ticker}`, `https://minkabu.jp/stock/${ticker}/settlement`]) {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!r.ok) continue;
-      const html = await r.text();
-      const text = html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/<style[\s\S]*?<\/style>/gi,"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim().slice(0,3000);
-      if (text.length > 300) { console.log("web_ok len:" + text.length); return text; }
-    } catch {}
+async function runWithWebSearch(messages: any[]): Promise<string> {
+  let msgs = [...messages];
+  for (let i = 0; i < 5; i++) {
+    const res = await (claude.messages.create as any)({
+      model: "claude-sonnet-4-6",
+      max_tokens: 3000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: msgs
+    });
+    const text = (res.content as any[]).filter(b => b.type === "text").map(b => b.text).join("\n");
+    if (res.stop_reason === "end_turn") return text;
+    if (res.stop_reason === "tool_use") {
+      msgs.push({ role: "assistant", content: res.content });
+      const results = (res.content as any[])
+        .filter(b => b.type === "tool_use")
+        .map(b => ({ type: "tool_result", tool_use_id: b.id, content: Array.isArray(b.content) ? b.content : (b.content ?? "") }));
+      msgs.push({ role: "user", content: results });
+    } else { return text; }
   }
   return "";
+}
+
+async function generateMetaFallback(messages: any[]): Promise<string> {
+  const res = await claude.messages.create({ model: "claude-sonnet-4-6", max_tokens: 2500, messages });
+  return (res.content as any[]).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
 
 export async function POST(req: NextRequest) {
@@ -58,26 +71,39 @@ export async function POST(req: NextRequest) {
     const { data: co } = await supabase.from("ipo_companies").select("*").eq("id", body.id).single();
     if (!co) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-    const n  = co.name   ?? "unknown";
-    const sc = co.sector ?? "tech";
-    const tk = co.ticker ?? "";
+    const n  = co.name         ?? "unknown";
+    const sc = co.sector       ?? "tech";
+    const tk = co.ticker       ?? "";
+    const ld = co.listing_date ?? "2026";
+    const ex = co.exchange     ?? "\u30b0\u30ed\u30fc\u30b9";
     const raw = co.raw_prospectus;
     const hasE = raw && Object.keys(raw).length > 0;
     const eCtx = hasE
       ? Object.entries(raw as Record<string,string>)
           .map(([k,v]) => `[${k}]\n${String(v).slice(0,800)}`)
-          .join('\n\n')
-          .slice(0, 4000)
+          .join('\n\n').slice(0, 4000)
       : "";
 
-    console.log(`mode:${hasE ? "EDINET" : "knowledge"} company:${n} ticker:${tk}`);
+    // ハルシネーション防止：正確な企業情報を注入
+    const facts = `[VERIFIED FACTS - MUST USE EXACTLY AS STATED]
+Company name: ${n}
+Ticker: ${tk || "TBD"}
+Market: ${ex}
+Sector: ${sc}
+IPO listing date: ${ld} (THIS IS A NEW IPO - no stock market history before ${ld})
+BB period start: ${co.bb_start_date || "TBD"}
+Application start: ${co.apply_start_date || "TBD"}
+CRITICAL: Do NOT fabricate historical listing data. This company has NOT been listed before.`;
 
-    // axes (Haiku): EDINETなし・知識ベース → 高速
-    const axesPrompt = `You are a Japanese IPO analyst. Analyze the IPO of "${n}" (sector: ${sc}).
+    console.log(`company:${n} ticker:${tk} date:${ld} hasE:${hasE}`);
 
-Be specific and confident. Use industry knowledge - do NOT say data is insufficient. Return ONLY JSON:
+    const axesPrompt = `You are a Japanese IPO investment analyst.
+
+${facts}
+
+Analyze the UPCOMING IPO of "${n}" (${sc} sector). Do NOT invent historical listing events. Return ONLY JSON:
 {"axes":[
-{"id":"float","score":65,"why_matters":"[2 sentences Japanese]","description":"[3-4 sentences Japanese specific to ${n}]","verdict":"[1-2 sentences Japanese]","doc_guide":"[Japanese]"},
+{"id":"float","score":65,"why_matters":"[2 sentences Japanese]","description":"[3-4 sentences Japanese - analysis specific to ${n} IPO]","verdict":"[1-2 sentences Japanese]","doc_guide":"[Japanese - specific prospectus sections to check]"},
 {"id":"lockup","score":60,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
 {"id":"timing","score":70,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
 {"id":"valuation","score":55,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"},
@@ -88,28 +114,32 @@ Be specific and confident. Use industry knowledge - do NOT say data is insuffici
 {"id":"competitor","score":55,"why_matters":"[Japanese]","description":"[Japanese]","verdict":"[Japanese]","doc_guide":"[Japanese]"}
 ]}`;
 
-    // meta (Sonnet + EDINET + Web): web fetchと直列だが、axesと並列
-    const metaWithContext = async () => {
-      const webData = await fetchWebData(n, tk);
-      const ctx = [eCtx, webData ? "[Web]\n" + webData : ""].filter(Boolean).join('\n\n').slice(0, 5000);
-      console.log("ctx_len:" + ctx.length + " web:" + webData.length);
-      const prompt = `You are a Japanese IPO analyst. Analyze "${n}" (${sc}).${ctx ? `\n\n<data>\n${ctx}\n</data>\n\nUsing this data plus expertise,` : ""} provide specific confident analysis. Never say data is insufficient. Return ONLY JSON:
-{"summary":"[200 char Japanese specific actionable]","total_score":65,"grade":"B","insights":[{"title":"[Japanese]","body":"[2-3 sentences Japanese]"},{"title":"[Japanese]","body":"[Japanese]"},{"title":"[Japanese]","body":"[Japanese]"}],"scenarios":[{"id":"A","verdict":"\u5f37\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e1.5\u500d","prob":"[Japanese condition]"},{"id":"B","verdict":"\u4e2d\u7acb","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u00b110%","prob":"[Japanese]"},{"id":"C","verdict":"\u5f31\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e0.8\u500d","prob":"[Japanese]"}]}`;
-      return claude.messages.create({ model: "claude-sonnet-4-6", max_tokens: 2500, messages: [{ role: "user", content: prompt }] });
-    };
+    const metaContent = `You are a Japanese IPO investment analyst.
 
-    // Haiku(axes) と Sonnet(meta+web) を完全並列
-    const [axesMsg, metaMsg] = await Promise.all([
+${facts}
+${eCtx ? `\nEDINET prospectus data:\n${eCtx}\n` : ""}
+
+TASK: Search the web for current information about "${n}" (ticker: ${tk}) IPO listing on ${ld}, then write investment analysis.
+
+Search for: business overview, revenue/profit data, major shareholders, competitors, management team, market size.
+
+After searching, return ONLY this JSON:
+{"summary":"[200 char Japanese - specific with real data]","total_score":65,"grade":"B","insights":[{"title":"[Japanese specific title based on research]","body":"[2-3 sentences Japanese with specific facts]"},{"title":"[Japanese]","body":"[Japanese]"},{"title":"[Japanese]","body":"[Japanese]"}],"scenarios":[{"id":"A","verdict":"\u5f37\u6c17","name":"[Japanese scenario name]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e1.5\u500d","prob":"[Japanese specific condition]"},{"id":"B","verdict":"\u4e2d\u7acb","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u00b110%","prob":"[Japanese]"},{"id":"C","verdict":"\u5f31\u6c17","name":"[Japanese]","vsIpo":"\u516c\u52df\u4fa1\u683c\u306e0.8\u500d","prob":"[Japanese]"}]}`;
+
+    const [axesMsg, metaText] = await Promise.all([
       claude.messages.create({ model: "claude-haiku-4-5", max_tokens: 6000, messages: [{ role: "user", content: axesPrompt }] }),
-      metaWithContext()
+      runWithWebSearch([{ role: "user", content: metaContent }]).catch(async (e) => {
+        console.log("web_search_failed, fallback:", e?.message);
+        return generateMetaFallback([{ role: "user", content: metaContent }]);
+      })
     ]);
 
     const axR = (axesMsg.content[0] as any).text ?? "";
-    const mtR = (metaMsg.content[0] as any).text ?? "";
     console.log("axes_prev:", axR.slice(0,100));
+    console.log("meta_prev:", metaText.slice(0,100));
 
     const axD = extractJson(axR);
-    const mtD = extractJson(mtR);
+    const mtD = extractJson(metaText);
 
     const all = Array.isArray(axD?.axes) ? axD.axes.map((x:any) => ({...x, label: JP[x.id] ?? x.id})) : [];
     const us = all.filter((x:any) => ["float","lockup","timing"].includes(x.id));
@@ -125,7 +155,7 @@ Be specific and confident. Use industry knowledge - do NOT say data is insuffici
       insights:        Array.isArray(mtD?.insights)  ? mtD.insights.slice(0,3)  : [],
       scenarios_short: Array.isArray(mtD?.scenarios) ? mtD.scenarios.slice(0,3) : [],
       axes:            { ultra_short: us, short: sh, long: lo },
-      data_source:     hasE ? "EDINET+Web" : "Web+AI",
+      data_source:     hasE ? "EDINET+WebSearch" : "WebSearch+AI",
       sources: [
         { label: "\u6771\u8a3c\u65b0\u898f\u4e0a\u5834\u60c5\u5831",       url: "https://www.jpx.co.jp/listing/stocks/new/index.html" },
         { label: "EDINET\u30fb\u6709\u4fa1\u8a3c\u5238\u5c4a\u51fa\u66f8", url: "https://disclosure2.edinet-fsa.go.jp/" },
