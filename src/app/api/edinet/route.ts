@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
 
+export const maxDuration = 60;
+
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -98,7 +100,6 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       if (text.length < 100) continue;
       console.log(`type=${docType}: got ${text.length} chars`);
 
-      // 主要経営指標（売上高・利益が含まれる最重要セクション）
       const s0 = extractSection(text, ["主要な経営指標等の推移", "経営指標等の推移", "主要経営指標"], 4000);
       if (s0) sections["主要経営指標"] = s0;
 
@@ -149,10 +150,10 @@ export async function POST(req: NextRequest) {
     const sectionCount = Object.keys(sections).length;
     console.log(`EDINET ${docId}: ${sectionCount}sections`, Object.keys(sections));
 
+    // テキスト取得のみ保存。analysis_detailはリセットしない（structureステップで行う）
     await supabase.from("ipo_companies").update({
       edinet_doc_id: docId,
       raw_prospectus: sectionCount > 0 ? sections : null,
-      analysis_detail: null
     }).eq("id", company_id);
 
     if (sectionCount === 0) {
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
       success: true,
       doc_id: docId,
       sections_found: Object.keys(sections),
-      message: `${sectionCount}セクション取得完了！分析ページを開いて再生成してください。`
+      message: `✅ ${sectionCount}セクション取得完了！次に「Geminiで構造化」を実行してください。`
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message }, { status: 500 });
