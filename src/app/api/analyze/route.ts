@@ -11,6 +11,31 @@ const JP: Record<string,string> = {
   management:"経営陣",unit_econ:"ユニットエコノミクス",competitor:"競合環境",
 };
 
+// 不完全なJSONを修復して返す
+function repairJson(text: string): any {
+  // まずそのままパース試みる
+  try { return JSON.parse(text); } catch {}
+
+  // 末尾から閉じ括弧を探して修復
+  let t = text.trimEnd();
+
+  // axesの最後の要素が途中で切れている場合、その要素を閉じる
+  // "}}]}" or "}]}" パターンまで削ぎ落とす
+  for (let i = t.length - 1; i > t.length - 500; i--) {
+    if (t[i] === '}') {
+      const candidate = t.slice(0, i + 1);
+      // axesを閉じる試み: "}}" → "}}]}"
+      for (const suffix of ['', '}', ']}', '}}', '}]}', '}}]}', '}}}']) {
+        try {
+          const result = JSON.parse(candidate + suffix);
+          if (result?.axes || result?.summary) return result;
+        } catch {}
+      }
+    }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -39,7 +64,6 @@ export async function POST(req: NextRequest) {
 
     if (hasStructured) {
       dataSource = "EDINET+Claude(3step)";
-      // 各フィールドを厳密に文字数制限して合計2000字以内に
       const d = structured;
       dataContext = [
         `事業:${(d.business_summary??"").slice(0,150)}`,
@@ -72,13 +96,12 @@ export async function POST(req: NextRequest) {
       ? `実データ（必ず数値を引用）:\n${dataContext}`
       : `実データ未取得。${n}(${sc})の一般情報で分析。`;
 
-    // axesのdescriptionを80字、verdictを40字に制限するよう指示
-    const prompt = `日本のIPOアナリストとして${n}(${sc},${ex},${ld})を分析。JSONのみ返答。
+    const prompt = `日本のIPOアナリストとして${n}(${sc},${ex},${ld})を分析。JSONのみ返答。マークダウン不要。
 
 ${dataNote}
 
-必ずこの形式で返答（description最大80字、verdict最大40字）:
-{"summary":"200字以内","total_score":65,"grade":"B","insights":[{"title":"20字以内","body":"80字以内"},{"title":"20字以内","body":"80字以内"},{"title":"20字以内","body":"80字以内"}],"scenarios":[{"id":"A","verdict":"強気","name":"強気シナリオ","vsIpo":"1.5倍","prob":"50字以内"},{"id":"B","verdict":"中立","name":"中立シナリオ","vsIpo":"±10%","prob":"50字以内"},{"id":"C","verdict":"弱気","name":"弱気シナリオ","vsIpo":"0.8倍","prob":"50字以内"}],"axes":[{"id":"float","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"lockup","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"timing","score":70,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"valuation","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"vc_sell","score":50,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"growth","score":75,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"management","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"unit_econ","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"competitor","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"}]}`;
+以下の形式で返答（各フィールドは必ず完結させること）:
+{"summary":"200字以内","total_score":65,"grade":"B","insights":[{"title":"20字","body":"80字"},{"title":"20字","body":"80字"},{"title":"20字","body":"80字"}],"scenarios":[{"id":"A","verdict":"強気","name":"強気シナリオ","vsIpo":"1.5倍","prob":"50字"},{"id":"B","verdict":"中立","name":"中立シナリオ","vsIpo":"±10%","prob":"50字"},{"id":"C","verdict":"弱気","name":"弱気シナリオ","vsIpo":"0.8倍","prob":"50字"}],"axes":[{"id":"float","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"lockup","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"timing","score":70,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"valuation","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"vc_sell","score":50,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"growth","score":75,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"management","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"unit_econ","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"competitor","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"}]}`;
 
     const msg = await claude.messages.create({
       model: "claude-haiku-4-5",
@@ -92,21 +115,9 @@ ${dataNote}
     const raw2 = (msg.content[0] as any).text ?? "";
     const text = '{"summary":"' + raw2;
     console.log("raw_preview:", text.slice(0, 200));
-    console.log("raw_end:", text.slice(-150));
+    console.log("raw_end:", text.slice(-200));
 
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      for (let i = text.length - 1; i > text.length - 300; i--) {
-        if (text[i] === '}') {
-          try {
-            parsed = JSON.parse(text.slice(0, i + 1));
-            if (parsed?.axes) break;
-          } catch { continue; }
-        }
-      }
-    }
+    const parsed = repairJson(text);
 
     if (!parsed) {
       console.error("parse failed:", text.slice(0, 400));
