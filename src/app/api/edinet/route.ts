@@ -58,12 +58,6 @@ function extractSection(text: string, keywords: string[], maxLen = 3000): string
   return "";
 }
 
-// キーワードなしで全テキストから均等に抽出するフォールバック
-function extractByPosition(text: string, start: number, length: number): string {
-  const plain = cleanText(text);
-  return plain.slice(start, start + length);
-}
-
 async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   try {
     const zip = await JSZip.loadAsync(buffer);
@@ -72,7 +66,6 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
     const htmlFiles = files.filter(f =>
       f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml")
     );
-    // ファイル名でソート（jpcrp, jpfsmが本文に多い）
     const sorted = htmlFiles.sort((a, b) => {
       const priority = (f: string) => {
         if (f.includes("jpcrp") || f.includes("0101")) return 0;
@@ -129,55 +122,80 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
 
       // ② 事業の概況
       const s1 = extractSection(text, [
-        "事業の概況", "事業概況", "ビジネスの内容", "事業の内容",
-        "当社の事業", "サービスの概要", "提供するサービス"
+        "事業の概況", "事業概況", "事業の内容",
+        "当社の事業", "サービスの概要"
       ], 2500);
       if (s1) sections["事業の概況"] = s1;
 
-      // ③ リスク要因（キーワード大幅追加）
+      // ③ リスク要因
       const s2 = extractSection(text, [
         "リスク要因", "事業等のリスク", "投資リスク",
         "リスクファクター", "事業上のリスク", "主なリスク",
-        "リスクに関する", "投資者が判断するうえで"
+        "投資者が判断するうえで"
       ], 3500);
       if (s2) sections["リスク要因"] = s2;
 
       // ④ 損益計算書
       const s3 = extractSection(text, [
         "損益計算書", "売上高", "営業利益", "経常利益",
-        "売上収益", "営業収益", "純利益"
+        "売上収益", "営業収益"
       ], 3000);
       if (s3) sections["損益計算書"] = s3;
 
-      // ⑤ 株主構成（キーワード大幅追加）
+      // ⑤ 株主構成・大株主（VC名・保有比率）
       const s4 = extractSection(text, [
-        "大株主", "株主の状況", "主要株主", "株主構成",
-        "発行済株式", "所有者別状況", "大株主の状況",
-        "株式の所有", "筆頭株主", "株主名簿"
-      ], 2500);
+        "大株主の状況", "大株主", "株主の状況", "主要株主",
+        "所有者別状況", "株主名簿", "筆頭株主"
+      ], 3000);
       if (s4) sections["株主構成"] = s4;
 
-      // ⑥ 資金使途（キーワード大幅追加）
+      // ⑥ 売出し情報・公開株式数（NEW）
       const s5 = extractSection(text, [
-        "調達資金の使途", "資金の使途", "調達する資金",
-        "手取金の使途", "資金調達", "調達資金"
-      ], 2000);
-      if (s5) sections["資金使途"] = s5;
+        "募集又は売出しの概要", "売出しの概要", "募集の概要",
+        "公募株式数", "売出株式数", "発行新株式数",
+        "オーバーアロットメント", "引受人の買取引受"
+      ], 3000);
+      if (s5) sections["売出し情報"] = s5;
 
-      // ⑦ 経営陣
+      // ⑦ ロックアップ・売却制限（NEW）
       const s6 = extractSection(text, [
-        "役員の状況", "経営者の概要", "取締役",
-        "役員一覧", "経営陣", "代表取締役"
-      ], 2000);
-      if (s6) sections["経営陣"] = s6;
+        "ロックアップ", "lock-up", "lockup",
+        "売却制限", "継続所有", "180日",
+        "売出しの条件", "売出人及び申込みの方法",
+        "大株主との間の取り決め"
+      ], 3000);
+      if (s6) sections["ロックアップ"] = s6;
 
-      // ⑧ 財務ハイライト（フォールバック：テキスト後半を均等取得）
+      // ⑧ 株式分布・流通比率（NEW）
+      const s7 = extractSection(text, [
+        "株式の分布状況", "所有者別株式分布",
+        "発行済株式総数", "流通株式", "上場時発行済株式数",
+        "株式の総数", "単元株式数"
+      ], 2500);
+      if (s7) sections["株式分布"] = s7;
+
+      // ⑨ 資金使途
+      const s8 = extractSection(text, [
+        "調達資金の使途", "資金の使途", "調達する資金",
+        "手取金の使途", "調達資金"
+      ], 2000);
+      if (s8) sections["資金使途"] = s8;
+
+      // ⑩ 経営陣
+      const s9 = extractSection(text, [
+        "役員の状況", "取締役", "経営者の概要",
+        "役員一覧", "代表取締役"
+      ], 2000);
+      if (s9) sections["経営陣"] = s9;
+
+      // フォールバック：セクションが少ない場合は均等取得
       if (Object.keys(sections).length < 3) {
         const plain = cleanText(text);
         const total = plain.length;
         if (total > 10000) {
-          sections["財務データ前半"] = plain.slice(Math.floor(total * 0.2), Math.floor(total * 0.2) + 3000);
-          sections["財務データ後半"] = plain.slice(Math.floor(total * 0.5), Math.floor(total * 0.5) + 3000);
+          sections["本文前半"] = plain.slice(Math.floor(total * 0.1), Math.floor(total * 0.1) + 3000);
+          sections["本文中盤"] = plain.slice(Math.floor(total * 0.4), Math.floor(total * 0.4) + 3000);
+          sections["本文後半"] = plain.slice(Math.floor(total * 0.7), Math.floor(total * 0.7) + 3000);
         }
       }
 
