@@ -58,17 +58,37 @@ function extractSection(text: string, keywords: string[], maxLen = 3000): string
   return "";
 }
 
+// キーワードなしで全テキストから均等に抽出するフォールバック
+function extractByPosition(text: string, start: number, length: number): string {
+  const plain = cleanText(text);
+  return plain.slice(start, start + length);
+}
+
 async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   try {
     const zip = await JSZip.loadAsync(buffer);
     let allText = "";
     const files = Object.keys(zip.files);
-    const htmlFiles = files.filter(f => f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml"));
-    const targetFiles = htmlFiles.length > 0 ? htmlFiles : files.filter(f => !zip.files[f].dir);
-    for (const filename of targetFiles.slice(0, 5)) {
+    const htmlFiles = files.filter(f =>
+      f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml")
+    );
+    // ファイル名でソート（jpcrp, jpfsmが本文に多い）
+    const sorted = htmlFiles.sort((a, b) => {
+      const priority = (f: string) => {
+        if (f.includes("jpcrp") || f.includes("0101")) return 0;
+        if (f.includes("jpfr") || f.includes("0201")) return 1;
+        return 2;
+      };
+      return priority(a) - priority(b);
+    });
+    const targetFiles = sorted.length > 0 ? sorted : files.filter(f => !zip.files[f].dir);
+    for (const filename of targetFiles.slice(0, 8)) {
       try {
         const content = await zip.files[filename].async("string");
-        if (content.length > 500) allText += content + "\n";
+        if (content.length > 500) {
+          allText += content + "\n";
+          console.log(`  file: ${filename} len=${content.length}`);
+        }
       } catch { continue; }
     }
     return allText;
@@ -100,26 +120,66 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       if (text.length < 100) continue;
       console.log(`type=${docType}: got ${text.length} chars`);
 
-      const s0 = extractSection(text, ["主要な経営指標等の推移", "経営指標等の推移", "主要経営指標"], 4000);
+      // ① 主要経営指標
+      const s0 = extractSection(text, [
+        "主要な経営指標等の推移", "経営指標等の推移", "主要経営指標",
+        "経営成績等の状況", "業績の推移"
+      ], 4000);
       if (s0) sections["主要経営指標"] = s0;
 
-      const s1 = extractSection(text, ["事業の概況", "事業概況", "ビジネスの内容"], 2000);
+      // ② 事業の概況
+      const s1 = extractSection(text, [
+        "事業の概況", "事業概況", "ビジネスの内容", "事業の内容",
+        "当社の事業", "サービスの概要", "提供するサービス"
+      ], 2500);
       if (s1) sections["事業の概況"] = s1;
 
-      const s2 = extractSection(text, ["リスク要因", "事業等のリスク", "投資リスク"], 3000);
+      // ③ リスク要因（キーワード大幅追加）
+      const s2 = extractSection(text, [
+        "リスク要因", "事業等のリスク", "投資リスク",
+        "リスクファクター", "事業上のリスク", "主なリスク",
+        "リスクに関する", "投資者が判断するうえで"
+      ], 3500);
       if (s2) sections["リスク要因"] = s2;
 
-      const s3 = extractSection(text, ["損益計算書", "売上高", "営業利益"], 3000);
+      // ④ 損益計算書
+      const s3 = extractSection(text, [
+        "損益計算書", "売上高", "営業利益", "経常利益",
+        "売上収益", "営業収益", "純利益"
+      ], 3000);
       if (s3) sections["損益計算書"] = s3;
 
-      const s4 = extractSection(text, ["大株主", "株主の状況", "主要株主"], 2000);
+      // ⑤ 株主構成（キーワード大幅追加）
+      const s4 = extractSection(text, [
+        "大株主", "株主の状況", "主要株主", "株主構成",
+        "発行済株式", "所有者別状況", "大株主の状況",
+        "株式の所有", "筆頭株主", "株主名簿"
+      ], 2500);
       if (s4) sections["株主構成"] = s4;
 
-      const s5 = extractSection(text, ["調達資金の使途", "資金の使途", "調達する資金"], 2000);
+      // ⑥ 資金使途（キーワード大幅追加）
+      const s5 = extractSection(text, [
+        "調達資金の使途", "資金の使途", "調達する資金",
+        "手取金の使途", "資金調達", "調達資金"
+      ], 2000);
       if (s5) sections["資金使途"] = s5;
 
-      const s6 = extractSection(text, ["役員の状況", "経営者の概要", "取締役"], 2000);
+      // ⑦ 経営陣
+      const s6 = extractSection(text, [
+        "役員の状況", "経営者の概要", "取締役",
+        "役員一覧", "経営陣", "代表取締役"
+      ], 2000);
       if (s6) sections["経営陣"] = s6;
+
+      // ⑧ 財務ハイライト（フォールバック：テキスト後半を均等取得）
+      if (Object.keys(sections).length < 3) {
+        const plain = cleanText(text);
+        const total = plain.length;
+        if (total > 10000) {
+          sections["財務データ前半"] = plain.slice(Math.floor(total * 0.2), Math.floor(total * 0.2) + 3000);
+          sections["財務データ後半"] = plain.slice(Math.floor(total * 0.5), Math.floor(total * 0.5) + 3000);
+        }
+      }
 
       if (Object.keys(sections).length > 0) break;
     } catch (e) {
@@ -150,7 +210,6 @@ export async function POST(req: NextRequest) {
     const sectionCount = Object.keys(sections).length;
     console.log(`EDINET ${docId}: ${sectionCount}sections`, Object.keys(sections));
 
-    // テキスト取得のみ保存。analysis_detailはリセットしない（structureステップで行う）
     await supabase.from("ipo_companies").update({
       edinet_doc_id: docId,
       raw_prospectus: sectionCount > 0 ? sections : null,
@@ -169,7 +228,7 @@ export async function POST(req: NextRequest) {
       success: true,
       doc_id: docId,
       sections_found: Object.keys(sections),
-      message: `✅ ${sectionCount}セクション取得完了！次に「Geminiで構造化」を実行してください。`
+      message: `✅ ${sectionCount}セクション取得完了！次に「②で構造化」を実行してください。`
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message }, { status: 500 });
