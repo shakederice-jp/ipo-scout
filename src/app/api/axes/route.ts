@@ -138,7 +138,7 @@ ${axesPrompt}
       signal: AbortSignal.timeout(50000)
     }
   );
-
+  console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
   if (!geminiRes.ok) {
     const err = await geminiRes.text();
     throw new Error(`Gemini API error: ${err.slice(0, 200)}`);
