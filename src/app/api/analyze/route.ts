@@ -5,35 +5,55 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const JP: Record<string,string> = {
-  float:"需給の軽さ",lockup:"ロックアップ",timing:"上場タイミング",
-  valuation:"バリュエーション",vc_sell:"VC売り圧力",growth:"成長性",
-  management:"経営陣",unit_econ:"ユニットエコノミクス",competitor:"競合環境",
-};
-
-// 不完全なJSONを修復して返す
 function repairJson(text: string): any {
-  // まずそのままパース試みる
   try { return JSON.parse(text); } catch {}
-
-  // 末尾から閉じ括弧を探して修復
-  let t = text.trimEnd();
-
-  // axesの最後の要素が途中で切れている場合、その要素を閉じる
-  // "}}]}" or "}]}" パターンまで削ぎ落とす
+  const t = text.trimEnd();
   for (let i = t.length - 1; i > t.length - 500; i--) {
     if (t[i] === '}') {
       const candidate = t.slice(0, i + 1);
-      // axesを閉じる試み: "}}" → "}}]}"
       for (const suffix of ['', '}', ']}', '}}', '}]}', '}}]}', '}}}']) {
         try {
           const result = JSON.parse(candidate + suffix);
-          if (result?.axes || result?.summary) return result;
+          if (result?.summary) return result;
         } catch {}
       }
     }
   }
   return null;
+}
+
+function buildDataContext(structured: any, raw: any): { ctx: string; source: string } {
+  if (structured && Object.keys(structured).length > 0) {
+    const d = structured;
+    const ctx = [
+      `事業:${(d.business_summary??"").slice(0,200)}`,
+      `売上推移:${d.financials?.revenue_trend??"不明"}`,
+      `利益推移:${d.financials?.profit_trend??"不明"}`,
+      `利益率:${d.financials?.profit_margin??"不明"}`,
+      `CF:${d.financials?.cash_flow??"不明"}`,
+      `発行済株式:${d.ipo_details?.total_shares??"不明"}`,
+      `公募売出株数:${d.ipo_details?.public_shares??"不明"}`,
+      `流通比率:${d.ipo_details?.float_ratio??"不明"}`,
+      `調達金額:${d.ipo_details?.fundraising_amount??"不明"}`,
+      `資金使途:${(d.ipo_details?.use_of_proceeds??"").slice(0,150)}`,
+      `ロックアップ期間:${d.ipo_details?.lockup_period??"不明"}`,
+      `ロックアップ対象:${(d.ipo_details?.lockup_targets??"").slice(0,150)}`,
+      `OA:${d.ipo_details?.overallotment??"不明"}`,
+      `主要株主:${JSON.stringify(d.shareholders??[]).slice(0,500)}`,
+      `主なリスク:${JSON.stringify((d.risks??[]).slice(0,6)).slice(0,500)}`,
+      `経営陣:${(d.management??"").slice(0,200)}`,
+      `成長要因:${(d.growth_drivers??"").slice(0,200)}`,
+      `懸念点:${(d.concerns??"").slice(0,200)}`,
+    ].join("\n");
+    return { ctx: ctx.slice(0, 2500), source: "EDINET+Claude(7step)" };
+  }
+  if (raw && Object.keys(raw).length > 0) {
+    const ctx = Object.entries(raw as Record<string,string>)
+      .map(([k,v]) => `[${k}]${String(v).slice(0,500)}`)
+      .join("\n");
+    return { ctx: ctx.slice(0, 2500), source: "EDINET+Claude" };
+  }
+  return { ctx: "", source: "AI" };
 }
 
 export async function POST(req: NextRequest) {
@@ -54,92 +74,92 @@ export async function POST(req: NextRequest) {
     const ld = co.listing_date ?? "2026";
     const ex = co.exchange ?? "グロース";
 
-    const structured = co.structured_data;
-    const raw = co.raw_prospectus;
-    const hasStructured = structured && Object.keys(structured).length > 0;
-    const hasRaw = raw && Object.keys(raw).length > 0;
-
-    let dataContext = "";
-    let dataSource = "AI";
-
-    if (hasStructured) {
-      dataSource = "EDINET+Claude(3step)";
-      const d = structured;
-      dataContext = [
-        `事業:${(d.business_summary??"").slice(0,150)}`,
-        `売上:${d.financials?.revenue_trend??"不明"}`,
-        `利益:${d.financials?.profit_trend??"不明"}`,
-        `利益率:${d.financials?.profit_margin??"不明"}`,
-        `発行済株:${d.ipo_details?.total_shares??"不明"}`,
-        `公募売出:${d.ipo_details?.public_shares??"不明"}`,
-        `流通比率:${d.ipo_details?.float_ratio??"不明"}`,
-        `調達額:${d.ipo_details?.fundraising_amount??"不明"}`,
-        `資金使途:${(d.ipo_details?.use_of_proceeds??"").slice(0,100)}`,
-        `ロックアップ:${d.ipo_details?.lockup_period??"不明"}`,
-        `ロックアップ対象:${(d.ipo_details?.lockup_targets??"").slice(0,100)}`,
-        `OA:${d.ipo_details?.overallotment??"不明"}`,
-        `株主:${JSON.stringify(d.shareholders??[]).slice(0,400)}`,
-        `リスク:${JSON.stringify((d.risks??[]).slice(0,5)).slice(0,400)}`,
-        `経営陣:${(d.management??"").slice(0,150)}`,
-        `成長:${(d.growth_drivers??"").slice(0,150)}`,
-        `懸念:${(d.concerns??"").slice(0,150)}`,
-      ].join("\n").slice(0, 2000);
-    } else if (hasRaw) {
-      dataSource = "EDINET+Claude";
-      dataContext = Object.entries(raw as Record<string,string>)
-        .map(([k,v]) => `[${k}]${String(v).slice(0,400)}`)
-        .join("\n")
-        .slice(0, 2000);
-    }
+    const { ctx: dataContext, source: dataSource } = buildDataContext(
+      co.structured_data, co.raw_prospectus
+    );
 
     const dataNote = dataContext
-      ? `実データ（必ず数値を引用）:\n${dataContext}`
+      ? `【実データ - 必ず具体的数値を引用すること】\n${dataContext}`
       : `実データ未取得。${n}(${sc})の一般情報で分析。`;
 
-    const prompt = `日本のIPOアナリストとして${n}(${sc},${ex},${ld})を分析。JSONのみ返答。マークダウン不要。
+    const prompt = `あなたは日本のIPO投資アナリストです。
+${n}（${sc}、${ex}市場、上場予定${ld}）のIPOを総合評価してください。
+JSONのみで返答してください。マークダウン・コードブロック・余分なテキスト一切不要。
 
 ${dataNote}
 
-以下の形式で返答（各フィールドは必ず完結させること）:
-{"summary":"200字以内","total_score":65,"grade":"B","insights":[{"title":"20字","body":"80字"},{"title":"20字","body":"80字"},{"title":"20字","body":"80字"}],"scenarios":[{"id":"A","verdict":"強気","name":"強気シナリオ","vsIpo":"1.5倍","prob":"50字"},{"id":"B","verdict":"中立","name":"中立シナリオ","vsIpo":"±10%","prob":"50字"},{"id":"C","verdict":"弱気","name":"弱気シナリオ","vsIpo":"0.8倍","prob":"50字"}],"axes":[{"id":"float","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"lockup","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"timing","score":70,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"valuation","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"vc_sell","score":50,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"growth","score":75,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"management","score":65,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"unit_econ","score":60,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"},{"id":"competitor","score":55,"why_matters":"30字","description":"80字","verdict":"40字","doc_guide":"30字"}]}`;
+【出力形式】必ず以下の構造で、全フィールドを完結させること:
+{
+  "summary": "300字以内の総合評価。具体的数値を必ず含める",
+  "total_score": 65,
+  "grade": "B",
+  "ultra_short_grade": "B",
+  "short_grade": "C",
+  "long_grade": "B",
+  "grade_reason": {
+    "ultra_short": "超短期（初値〜当日）の判定理由。100字以内",
+    "short": "短期（1〜3ヶ月）の判定理由。100字以内",
+    "long": "長期（数年〜）の判定理由。100字以内"
+  },
+  "insights": [
+    {"title": "インサイトタイトル1（20字以内）", "body": "内容（100字以内）"},
+    {"title": "インサイトタイトル2（20字以内）", "body": "内容（100字以内）"},
+    {"title": "インサイトタイトル3（20字以内）", "body": "内容（100字以内）"}
+  ],
+  "scenarios": [
+    {"id": "A", "verdict": "強気", "name": "強気シナリオ", "vsIpo": "公募価格の2倍", "prob": "実現条件を80字以内で"},
+    {"id": "B", "verdict": "中立", "name": "中立シナリオ", "vsIpo": "公募価格±10%", "prob": "実現条件を80字以内で"},
+    {"id": "C", "verdict": "弱気", "name": "弱気シナリオ", "vsIpo": "公募価格の0.8倍", "prob": "実現条件を80字以内で"}
+  ],
+  "axes_scores": {
+    "float": 65,
+    "lockup": 60,
+    "timing": 70,
+    "valuation": 55,
+    "vc_sell": 50,
+    "growth": 75,
+    "management": 65,
+    "unit_econ": 60,
+    "competitor": 55
+  },
+  "data_source": "${dataSource}"
+}
+
+グレードはA〜Eの5段階:
+A=強気（上位20%）, B=やや強気, C=中立, D=やや弱気, E=弱気（下位20%）`;
 
     const msg = await claude.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 4000,
+      model: "claude-sonnet-4-5",
+      max_tokens: 3000,
       messages: [
         { role: "user", content: prompt },
-        { role: "assistant", content: '{"summary":"' }
+        { role: "assistant", content: '{' }
       ]
     });
 
     const raw2 = (msg.content[0] as any).text ?? "";
-    const text = '{"summary":"' + raw2;
-    console.log("raw_preview:", text.slice(0, 200));
-    console.log("raw_end:", text.slice(-200));
+    const text = '{' + raw2;
+    console.log("③ raw_preview:", text.slice(0, 200));
+    console.log("③ raw_end:", text.slice(-150));
 
     const parsed = repairJson(text);
-
     if (!parsed) {
-      console.error("parse failed:", text.slice(0, 400));
+      console.error("③ parse failed:", text.slice(0, 400));
       return NextResponse.json({ error: "parse failed" }, { status: 500 });
     }
 
-    const all = Array.isArray(parsed.axes)
-      ? parsed.axes.map((x: any) => ({ ...x, label: JP[x.id] ?? x.id }))
-      : [];
-
-    const analysis = {
-      summary:         parsed.summary ?? `${n}IPO分析`,
-      total_score:     parsed.total_score ?? 65,
-      grade:           parsed.grade ?? "B",
-      insights:        Array.isArray(parsed.insights)  ? parsed.insights.slice(0,3)  : [],
-      scenarios_short: Array.isArray(parsed.scenarios) ? parsed.scenarios.slice(0,3) : [],
-      axes: {
-        ultra_short: all.filter((x:any) => ["float","lockup","timing"].includes(x.id)),
-        short:       all.filter((x:any) => ["valuation","vc_sell","growth"].includes(x.id)),
-        long:        all.filter((x:any) => ["management","unit_econ","competitor"].includes(x.id)),
-      },
-      data_source: dataSource,
+    const summary = {
+      summary:           parsed.summary ?? `${n}IPO分析`,
+      total_score:       parsed.total_score ?? 65,
+      grade:             parsed.grade ?? "C",
+      ultra_short_grade: parsed.ultra_short_grade ?? "C",
+      short_grade:       parsed.short_grade ?? "C",
+      long_grade:        parsed.long_grade ?? "C",
+      grade_reason:      parsed.grade_reason ?? {},
+      insights:          Array.isArray(parsed.insights) ? parsed.insights.slice(0,3) : [],
+      scenarios:         Array.isArray(parsed.scenarios) ? parsed.scenarios.slice(0,3) : [],
+      axes_scores:       parsed.axes_scores ?? {},
+      data_source:       dataSource,
       sources: [
         { label:"東証新規上場情報", url:"https://www.jpx.co.jp/listing/stocks/new/index.html" },
         { label:"EDINET・有価証券届出書", url:"https://disclosure2.edinet-fsa.go.jp/" },
@@ -148,10 +168,18 @@ ${dataNote}
       generated_at: new Date().toISOString(),
     };
 
-    await supabase.from("ipo_companies").update({ analysis_detail: analysis }).eq("id", co.id);
-    return NextResponse.json(analysis);
+    // analysis_summaryに保存。analysis_detailも互換性のため更新
+    await supabase.from("ipo_companies").update({
+      analysis_summary: summary,
+      analysis_detail: {
+        ...summary,
+        axes: { ultra_short: [], short: [], long: [] }, // 詳細は④⑤⑥で埋める
+      }
+    }).eq("id", co.id);
+
+    return NextResponse.json(summary);
   } catch (e: any) {
-    console.error("analyze error:", e?.message);
+    console.error("③ analyze error:", e?.message);
     return NextResponse.json({ error: e?.message }, { status: 500 });
   }
 }
