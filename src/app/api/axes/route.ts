@@ -125,7 +125,7 @@ ${axesPrompt}
 【出力形式】
 マークダウン形式でそのまま出力してください。
 各指標の区切りは「---」で行い、指標名から始めてください。`;
-
+console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
   const geminiRes = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
@@ -138,7 +138,7 @@ ${axesPrompt}
       signal: AbortSignal.timeout(50000)
     }
   );
-  console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
+  
   if (!geminiRes.ok) {
     const err = await geminiRes.text();
     throw new Error(`Gemini API error: ${err.slice(0, 200)}`);
