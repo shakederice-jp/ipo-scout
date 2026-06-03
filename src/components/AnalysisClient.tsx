@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
 
-interface AxisItem { id:string;title:string;score:number;index:string;why_matters:string;description:string;verdict:string;doc_guide:string;grade?:string;label?:string;}
+interface AxisItem { id:string;title:string;score:number;index:string;why_matters:string;description:string;verdict:string;doc_guide:string;grade?:string;label?:string; }
 interface Insight { title:string;desc:string;detail:string; }
 interface Scenario { id:string;name:string;verdict:string;prob:string;vsIpo:string;positives:string[];negatives:string[];conclusion:string; }
 interface Analysis {
@@ -15,7 +15,6 @@ interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sec
 
 const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
-/* ── ScoreRing ── */
 function ScoreRing({score,size=80}:{score:number;size?:number}) {
   const r=size*0.38,circ=2*Math.PI*r,dash=(Math.min(score,100)/100)*circ;
   const col=score>=80?PRIMARY:score>=60?"#f59e0b":"#ef4444";
@@ -34,7 +33,6 @@ function ScoreRing({score,size=80}:{score:number;size?:number}) {
   );
 }
 
-/* ── RadarSVG ── */
 function RadarSVG({data}:{data:{metric:string;value:number}[]}) {
   if(!data||!data.length) return null;
   const n=data.length,cx=100,cy=100;
@@ -57,7 +55,6 @@ function RadarSVG({data}:{data:{metric:string;value:number}[]}) {
   );
 }
 
-/* ── Card wrapper ── */
 function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProperties}) {
   return (
     <div style={{backgroundColor:"white",borderRadius:16,border:`1px solid ${BORDER}`,
@@ -67,7 +64,21 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
   );
 }
 
-/* ── InsightCard ── */
+function MarkdownReport({text}:{text:string}) {
+  return (
+    <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
+      {text.split('\n').map((line,i)=>{
+        if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"10px 0 4px"}}>{line.replace(/^#### /,'')}</div>;
+        if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"12px 0 6px"}}>{line.replace(/^### /,'')}</div>;
+        if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#082b2e",margin:"14px 0 8px"}}>{line.replace(/^## /,'')}</div>;
+        if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:3}}>{'• '}{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+        if(line.trim()==='') return <div key={i} style={{height:6}}/>;
+        return <div key={i} style={{marginBottom:3}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+      })}
+    </div>
+  );
+}
+
 const ICONS=[<Zap size={13} key="z"/>,<TrendingUp size={13} key="t"/>,<Users size={13} key="u"/>];
 function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   const [open,setOpen]=useState(false);
@@ -91,16 +102,14 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
     </div>
   );
 }
-/* ── DeepDiveCard ── */
+
 function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   const [open,setOpen]=useState(false);
   const sc=Math.max(0,Math.min(100,item.score||0));
   const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
   const r=22,circ=2*Math.PI*r,dash=(sc/100)*circ;
-
-  // 新形式（Geminiマークダウンレポート）か旧形式かを判定
-  const hasReport = !!(item as any).report;
-  const report = (item as any).report ?? "";
+  const hasReport=!!(item as any).report;
+  const report=(item as any).report??"";
 
   return (
     <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white",transition:"background 0.15s"}}>
@@ -128,15 +137,11 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
       </button>
       {open&&(
         <div style={{borderTop:`1px solid ${BORDER}`,padding:"12px 16px 16px"}}>
-          {hasReport ? (
-            // 新形式：Geminiのマークダウンレポートをそのまま表示
+          {hasReport?(
             <div style={{backgroundColor:"white",borderRadius:10,padding:"12px",border:`1px solid ${BORDER}`}}>
-              <pre style={{fontSize:12,color:"#334155",lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"'Noto Sans JP',sans-serif",margin:0}}>
-                {report}
-              </pre>
+              <MarkdownReport text={report}/>
             </div>
-          ) : (
-            // 旧形式：従来のフィールド表示
+          ):(
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <div style={{backgroundColor:LIGHT,borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
                 <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>💡 なぜ重要か</div>
@@ -164,7 +169,6 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   );
 }
 
-/* ── ScenarioCard ── */
 function ScenarioCard({s}:{s:Scenario}) {
   const [open,setOpen]=useState(false);
   const isUp=s.verdict==="強気",isDown=s.verdict==="弱気";
@@ -209,13 +213,11 @@ function ScenarioCard({s}:{s:Scenario}) {
   );
 }
 
-/* ══ MAIN ══════════════════════════════════════════════════════ */
 export default function AnalysisClient({company,initialAnalysis}:{company:IpoCompany;initialAnalysis:Analysis|null}) {
-  const [analysis,setAnalysis]=useState<Analysis|null>(initialAnalysis);
-  const [loading,setLoading]=useState(false);
+  const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
 
-    if(!analysis) return (
+  if(!analysis) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
       <div style={{textAlign:"center",padding:24}}>
         <AlertTriangle size={32} color="#f59e0b" style={{margin:"0 auto 12px"}}/>
@@ -250,8 +252,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
 
   return (
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
-
-      {/* ── ナビ ── */}
       <div style={{backgroundColor:DARK,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{backgroundColor:PRIMARY,borderRadius:6,padding:5,display:"flex"}}>
@@ -268,15 +268,12 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
       </div>
 
       <div style={{...wrap,paddingTop:12,paddingBottom:40,display:"flex",flexDirection:"column",gap:12}}>
-
-        {/* 企業ヘッダー */}
         <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${PRIMARY}`}}>
           <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                  {company.exchange&&<span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,
-                    backgroundColor:"rgba(255,255,255,0.25)",color:DARK}}>{company.exchange}</span>}
+                  {company.exchange&&<span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.25)",color:DARK}}>{company.exchange}</span>}
                   {company.ticker&&<span style={{fontWeight:700,fontSize:10,color:MID}}>{company.ticker}</span>}
                 </div>
                 <h1 style={{fontWeight:900,fontSize:24,color:DARK,lineHeight:1.2,margin:"0 0 4px"}}>{company.name}</h1>
@@ -296,8 +293,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
                   )}
                 </div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,
-                backgroundColor:"rgba(255,255,255,0.9)",borderRadius:12,padding:"10px 14px"}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,backgroundColor:"rgba(255,255,255,0.9)",borderRadius:12,padding:"10px 14px"}}>
                 <ScoreRing score={score} size={80}/>
                 <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginTop:4}}>AI総合評価</div>
                 <div style={{fontWeight:900,fontSize:12,color:PRIMARY}}>{grade}ランク</div>
@@ -306,7 +302,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
         </div>
 
-        {/* AI分析要約 */}
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
             <Zap size={14} color={PRIMARY}/>
@@ -315,7 +310,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
         </Card>
 
-        {/* まずここに注目！ */}
         {insights.length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -328,7 +322,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </Card>
         )}
 
-        {/* レーダー + VC分析 */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:12}}>
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -341,8 +334,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
                 <div key={metric} style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontSize:10,fontWeight:700,color:"#475569",width:72,flexShrink:0}}>{metric}</span>
                   <div style={{flex:1,height:6,borderRadius:3,backgroundColor:BORDER,overflow:"hidden"}}>
-                    <div style={{height:"100%",borderRadius:3,width:`${value}%`,
-                      backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
+                    <div style={{height:"100%",borderRadius:3,width:`${value}%`,backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
                   </div>
                   <span style={{fontSize:11,fontWeight:900,color:"#1e293b",width:24,textAlign:"right"}}>{value}</span>
                 </div>
@@ -367,8 +359,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
                   <div style={{fontSize:9,color:"#94a3b8"}}>{d.unlock}</div>
                 </div>
                 <div style={{flex:1,height:8,borderRadius:4,backgroundColor:BORDER,overflow:"hidden"}}>
-                  <div style={{height:"100%",borderRadius:4,width:`${d.pct}%`,
-                    backgroundColor:d.risk==="high"?"#f87171":d.risk==="medium"?"#fbbf24":d.risk==="low"?PRIMARY:"#34d399"}}/>
+                  <div style={{height:"100%",borderRadius:4,width:`${d.pct}%`,backgroundColor:d.risk==="high"?"#f87171":d.risk==="medium"?"#fbbf24":d.risk==="low"?PRIMARY:"#34d399"}}/>
                 </div>
                 <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:28,textAlign:"right"}}>{d.pct}%</span>
               </div>
@@ -384,7 +375,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </Card>
         </div>
 
-        {/* 株価シナリオ分析 */}
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
             <BarChart2 size={14} color={PRIMARY}/>
@@ -392,9 +382,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
           <div style={{display:"flex",gap:6,marginBottom:10}}>
             {(["short","long"] as const).map(tab=>(
-              <button key={tab} onClick={()=>setScenTab(tab)} style={{display:"flex",alignItems:"center",
-                gap:4,padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:900,cursor:"pointer",border:"none",
-                backgroundColor:scenTab===tab?DARK:"#f1f5f9",color:scenTab===tab?"white":"#64748b"}}>
+              <button key={tab} onClick={()=>setScenTab(tab)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:900,cursor:"pointer",border:"none",backgroundColor:scenTab===tab?DARK:"#f1f5f9",color:scenTab===tab?"white":"#64748b"}}>
                 {tab==="short"?<><Clock size={10}/>短期（〜6ヶ月）</>:<><Calendar size={10}/>長期（5〜10年）</>}
               </button>
             ))}
@@ -412,13 +400,11 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
         </Card>
 
-        {/* 詳細分析 深掘りレポート */}
         <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
           <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:12}}>
               <div>
-                <span style={{fontWeight:900,fontSize:9,letterSpacing:"0.1em",padding:"2px 8px",borderRadius:4,
-                  backgroundColor:DARK,color:"white",display:"inline-block",marginBottom:6}}>DEEP ANALYSIS</span>
+                <span style={{fontWeight:900,fontSize:9,letterSpacing:"0.1em",padding:"2px 8px",borderRadius:4,backgroundColor:DARK,color:"white",display:"inline-block",marginBottom:6}}>DEEP ANALYSIS</span>
                 <h2 style={{fontWeight:900,fontSize:18,color:DARK,margin:"0 0 2px"}}>詳細分析 深掘りレポート</h2>
                 <p style={{fontSize:10,color:MID,margin:0}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
               </div>
@@ -442,21 +428,19 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
               })}
             </div>
           </div>
-
           <div style={{backgroundColor:"white"}}>
             {GROUPS.map(g=>{
               const items=axes[g.key]||[];
               if(!items.length) return null;
               const avg=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
               return (
-                <div key={g.key} style={{borderBottom:`1px solid #f1f5f9`}}>
+                <div key={g.key} style={{borderBottom:"1px solid #f1f5f9"}}>
                   <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.border}`,padding:"12px 16px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <span style={{fontSize:20,lineHeight:1}}>{g.icon}</span>
                       <div style={{flex:1}}>
                         <span style={{fontWeight:900,fontSize:16,color:DARK}}>{g.label}</span>
-                        <span style={{fontWeight:700,fontSize:10,padding:"2px 8px",borderRadius:20,
-                          backgroundColor:g.color,color:"white",marginLeft:8}}>{g.sub}</span>
+                        <span style={{fontWeight:700,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:g.color,color:"white",marginLeft:8}}>{g.sub}</span>
                       </div>
                       <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>
                         {avg}<span style={{fontSize:10,color:TTEXT}}>/100</span>
@@ -465,7 +449,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
                   </div>
                   <div>
                     {items.map((item:AxisItem)=>(
-                      <div key={item.id} style={{borderBottom:`1px solid #f8fafc`}}>
+                      <div key={item.id} style={{borderBottom:"1px solid #f8fafc"}}>
                         <DeepDiveCard item={item} accentColor={g.color}/>
                       </div>
                     ))}
@@ -476,7 +460,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
         </div>
 
-        {/* 参考文献 */}
         {(analysis.sources||[]).length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
@@ -497,7 +480,6 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </Card>
         )}
 
-        {/* フッター */}
         <div style={{textAlign:"center",fontSize:10,color:"#94a3b8",paddingTop:8}}>
           <div style={{fontWeight:900,fontSize:11,color:"#64748b",marginBottom:4}}>⚠ 免責事項</div>
           <p style={{lineHeight:1.7,maxWidth:560,margin:"0 auto 8px"}}>
