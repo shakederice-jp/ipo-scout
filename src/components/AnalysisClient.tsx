@@ -92,7 +92,6 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   );
 }
 
-【修正箇所】AnalysisClient.tsx の DeepDiveCard 関数を以下に置き換える
 
 /* ── DeepDiveCard ── */
 function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
