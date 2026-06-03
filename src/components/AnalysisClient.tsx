@@ -92,12 +92,19 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   );
 }
 
+【修正箇所】AnalysisClient.tsx の DeepDiveCard 関数を以下に置き換える
+
 /* ── DeepDiveCard ── */
 function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   const [open,setOpen]=useState(false);
   const sc=Math.max(0,Math.min(100,item.score||0));
-  const lbl=sc>=80?"A":sc>=70?"B+":sc>=60?"B":sc>=50?"C+":"C";
+  const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
   const r=22,circ=2*Math.PI*r,dash=(sc/100)*circ;
+
+  // 新形式（Geminiマークダウンレポート）か旧形式かを判定
+  const hasReport = !!(item as any).report;
+  const report = (item as any).report ?? "";
+
   return (
     <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white",transition:"background 0.15s"}}>
       <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",
@@ -111,39 +118,49 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
           </svg>
           <div style={{position:"absolute",inset:0,borderRadius:"50%",display:"flex",flexDirection:"column",
             alignItems:"center",justifyContent:"center",backgroundColor:open?accentColor:"transparent"}}>
-            <span style={{fontWeight:900,fontSize:14,color:open?"white":accentColor,lineHeight:1}}>{lbl}</span>
+            <span style={{fontWeight:900,fontSize:14,color:open?"white":accentColor,lineHeight:1}}>{grade}</span>
             <span style={{fontSize:8,fontWeight:700,color:open?"rgba(255,255,255,0.8)":TTEXT}}>{sc}</span>
           </div>
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:900,fontSize:10,color:accentColor,letterSpacing:"0.05em"}}>{item.index||item.id}</div>
-          <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{item.title}</div>
+          <div style={{fontWeight:900,fontSize:10,color:accentColor,letterSpacing:"0.05em"}}>{item.id}</div>
+          <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{item.label||item.title||item.id}</div>
         </div>
         <span style={{color:accentColor,fontSize:12,flexShrink:0,display:"inline-block",
           transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
       </button>
       {open&&(
         <div style={{borderTop:`1px solid ${BORDER}`,padding:"12px 16px 16px"}}>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{backgroundColor:LIGHT,borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
-              <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>💡 なぜ重要か</div>
-              <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.why_matters}</p>
+          {hasReport ? (
+            // 新形式：Geminiのマークダウンレポートをそのまま表示
+            <div style={{backgroundColor:"white",borderRadius:10,padding:"12px",border:`1px solid ${BORDER}`}}>
+              <pre style={{fontSize:12,color:"#334155",lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"'Noto Sans JP',sans-serif",margin:0}}>
+                {report}
+              </pre>
             </div>
-            <div style={{backgroundColor:"white",borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
-              <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>📋 詳細分析</div>
-              <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.description}</p>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <div style={{backgroundColor:"#f0fdf4",borderRadius:10,padding:"8px 10px",border:"1px solid #bbf7d0"}}>
-                <div style={{fontWeight:900,fontSize:9,color:"#15803d",marginBottom:3}}>✅ 総評</div>
-                <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.verdict}</p>
+          ) : (
+            // 旧形式：従来のフィールド表示
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{backgroundColor:LIGHT,borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+                <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>💡 なぜ重要か</div>
+                <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.why_matters}</p>
               </div>
-              <div style={{backgroundColor:"#fffbeb",borderRadius:10,padding:"8px 10px",border:"1px solid #fde68a"}}>
-                <div style={{fontWeight:900,fontSize:9,color:"#92400e",marginBottom:3}}>📄 確認書類</div>
-                <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.doc_guide}</p>
+              <div style={{backgroundColor:"white",borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+                <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginBottom:4}}>📋 詳細分析</div>
+                <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.description}</p>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{backgroundColor:"#f0fdf4",borderRadius:10,padding:"8px 10px",border:"1px solid #bbf7d0"}}>
+                  <div style={{fontWeight:900,fontSize:9,color:"#15803d",marginBottom:3}}>✅ 総評</div>
+                  <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.verdict}</p>
+                </div>
+                <div style={{backgroundColor:"#fffbeb",borderRadius:10,padding:"8px 10px",border:"1px solid #fde68a"}}>
+                  <div style={{fontWeight:900,fontSize:9,color:"#92400e",marginBottom:3}}>📄 確認書類</div>
+                  <p style={{fontSize:11,color:"#0d3d40",lineHeight:1.6}}>{item.doc_guide}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
