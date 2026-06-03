@@ -18,4 +18,12 @@ export interface IpoCompany {
   ai_summary: string | null;
   created_at?: string;
   updated_at?: string;
+  analysis_detail?: any;
+  analysis_summary?: any;
+  analysis_axes_short?: any;
+  analysis_axes_mid?: any;
+  analysis_axes_long?: any;
+  analysis_market?: any;
+  structured_data?: any;
+  raw_prospectus?: any;
 }
