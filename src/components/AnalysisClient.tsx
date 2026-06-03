@@ -91,8 +91,6 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
     </div>
   );
 }
-
-
 /* ── DeepDiveCard ── */
 function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   const [open,setOpen]=useState(false);
