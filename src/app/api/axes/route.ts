@@ -155,7 +155,8 @@ console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
     const name = AXIS_NAMES[id] ?? id;
     const score = axesScores[id] ?? 60;
     const text = sections[idx] ?? fullText.slice(idx * 1000, (idx + 1) * 1000);
-
+    console.log("Gemini fullText length:", fullText.length);
+    console.log("Gemini fullText preview:", fullText.slice(0, 300));
     // A〜E判定
     let grade = "C";
     if (score >= 80) grade = "A";
