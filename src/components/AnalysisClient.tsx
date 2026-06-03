@@ -131,10 +131,16 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
           {hasReport ? (
             // 新形式：Geminiのマークダウンレポートをそのまま表示
             <div style={{backgroundColor:"white",borderRadius:10,padding:"12px",border:`1px solid ${BORDER}`}}>
-              <pre style={{fontSize:12,color:"#334155",lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"'Noto Sans JP',sans-serif",margin:0}}>
-                {report}
-              </pre>
-            </div>
+             <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
+  {report.split('\n').map((line:string,i:number)=>{
+    if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"10px 0 4px"}}>{line.replace(/^#### /,'')}</div>;
+    if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"12px 0 6px"}}>{line.replace(/^### /,'')}</div>;
+    if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:3}}>{line.replace(/^- /,'• ').replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+    if(line.trim()==='') return <div key={i} style={{height:6}}/>;
+    return <div key={i} style={{marginBottom:3}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+  })}
+</div>
+
           ) : (
             // 旧形式：従来のフィールド表示
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
