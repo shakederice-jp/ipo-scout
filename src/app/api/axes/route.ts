@@ -135,7 +135,7 @@ ${axesPrompt}
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-5",
-      max_tokens: 3000,
+      max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
     }),
     signal: AbortSignal.timeout(55000),
