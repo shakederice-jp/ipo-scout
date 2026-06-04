@@ -172,7 +172,7 @@ ${axesPrompt}
 
 export async function POST(req: NextRequest) {
   try {
-    const { company_id, period } = await req.json();
+    const { company_id, period, single_axis } = await req.json();
 
     if (!period || !AXIS_CONFIG[period as keyof typeof AXIS_CONFIG]) {
       return NextResponse.json(

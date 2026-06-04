@@ -104,22 +104,42 @@ export default function AdminPage() {
     } catch { setStep("3", false, "❌ エラーが発生しました"); }
   };
 
-  // STEP4〜6: Gemini詳細分析
   const handleAxes = async (period: string, stepNum: string, label: string) => {
     if (!edinetCompanyId) { alert("銘柄IDを入力してください"); return; }
-    setStep(stepNum, true, `📊 ${label}の詳細分析中...`);
-    try {
-      const res = await fetch("/api/axes", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: edinetCompanyId, period }),
-      });
-      const data = await res.json();
-      if (data.error) setStep(stepNum, false, `❌ ${data.error}`);
-      else {
-        const preview = data.preview?.map((a: any) => `${a.id}:${a.grade}(${a.score}) ${a.chars}字`).join(" / ");
-        setStep(stepNum, false, `${data.message}\n${preview}`);
+    
+    const axisMap: Record<string, string[]> = {
+      ultra_short: ["float", "lockup", "timing"],
+      short: ["valuation", "vc_sell", "growth"],
+      long: ["management", "unit_econ", "competitor"],
+    };
+    const axes = axisMap[period];
+    
+    setStep(stepNum, true, `📊 ${label}（1/3）分析中...`);
+    
+    let allResults: any[] = [];
+    
+    for (let i = 0; i < axes.length; i++) {
+      const axisId = axes[i];
+      setStepResult(prev => ({...prev, [stepNum]: `📊 ${label}（${i+1}/3）${axisId}を分析中...`}));
+      try {
+        const res = await fetch("/api/axes", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ company_id: edinetCompanyId, period, single_axis: axisId }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          setStep(stepNum, false, `❌ ${axisId}でエラー: ${data.error}`);
+          return;
+        }
+        allResults = [...allResults, ...(data.preview ?? [])];
+      } catch {
+        setStep(stepNum, false, `❌ ${axisId}でエラーが発生しました`);
+        return;
       }
-    } catch { setStep(stepNum, false, "❌ エラーが発生しました"); }
+    }
+    
+    const preview = allResults.map((a: any) => `${a.id}:${a.grade}(${a.score}) ${a.chars}字`).join(" / ");
+    setStep(stepNum, false, `✅ ${label}の詳細分析完了！\n${preview}`);
   };
 
   if (!authed) return (
