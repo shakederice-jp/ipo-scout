@@ -63,7 +63,7 @@ function buildDataContext(structured: any, raw: any): string {
     ].join("\n").slice(0, 4000);
   }
   if (raw && Object.keys(raw).length > 0) {
-    return Object.entries(raw as Record<string,string>)
+    return Object.entries(raw as Record<string,string>)S
       .map(([k,v]) => `[${k}]\n${String(v).slice(0,600)}`)
       .join("\n\n")
       .slice(0, 4000);
@@ -71,7 +71,7 @@ function buildDataContext(structured: any, raw: any): string {
   return "";
 }
 
-async function analyzeAxesWithGemini(
+async function analyzeAxesWithSonnet(
   companyName: string,
   sector: string,
   listingDate: string,
@@ -125,29 +125,30 @@ ${axesPrompt}
 【出力形式】
 マークダウン形式でそのまま出力してください。
 各指標の区切りは「---」で行い、指標名から始めてください。`;
-console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4000 }
-      }),
-      signal: AbortSignal.timeout(50000)
-    }
-  );
-  
-  if (!geminiRes.ok) {
-    const err = await geminiRes.text();
-    throw new Error(`Gemini API error: ${err.slice(0, 200)}`);
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    }),
+    signal: AbortSignal.timeout(55000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude API error: ${err.slice(0, 200)}`);
   }
 
-  const geminiData = await geminiRes.json();
-  const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const data = await res.json();
+  const fullText = data?.content?.[0]?.text ?? "";
 
-  // 各軸のテキストを分割して保存
   const result: Record<string, any> = {};
   const sections = fullText.split(/\n---\n/);
 
@@ -155,9 +156,7 @@ console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
     const name = AXIS_NAMES[id] ?? id;
     const score = axesScores[id] ?? 60;
     const text = sections[idx] ?? fullText.slice(idx * 1000, (idx + 1) * 1000);
-    console.log("Gemini fullText length:", fullText.length);
-    console.log("Gemini fullText preview:", fullText.slice(0, 300));
-    // A〜E判定
+
     let grade = "C";
     if (score >= 80) grade = "A";
     else if (score >= 65) grade = "B";
@@ -165,13 +164,7 @@ console.log("GEMINI_KEY_PREFIX:", process.env.GEMINI_API_KEY?.slice(0, 10));
     else if (score >= 35) grade = "D";
     else grade = "E";
 
-    result[id] = {
-      id,
-      label: name,
-      score,
-      grade,
-      report: text.trim(),
-    };
+    result[id] = { id, label: name, score, grade, report: text.trim() };
   });
 
   return result;
@@ -211,7 +204,7 @@ export async function POST(req: NextRequest) {
     const axesScores = co.analysis_summary?.axes_scores ?? {};
     const dataContext = buildDataContext(co.structured_data, co.raw_prospectus);
 
-    const axesResult = await analyzeAxesWithGemini(
+    const axesResult = await analyzeAxesWithSonnet(
       co.name ?? "不明",
       co.sector ?? "tech",
       co.listing_date ?? "2026",
