@@ -63,7 +63,7 @@ function buildDataContext(structured: any, raw: any): string {
     ].join("\n").slice(0, 4000);
   }
   if (raw && Object.keys(raw).length > 0) {
-    return Object.entries(raw as Record<string,string>)S
+    return Object.entries(raw as Record<string,string>)
       .map(([k,v]) => `[${k}]\n${String(v).slice(0,600)}`)
       .join("\n\n")
       .slice(0, 4000);
