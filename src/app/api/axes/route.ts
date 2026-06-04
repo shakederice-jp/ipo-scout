@@ -134,8 +134,8 @@ ${axesPrompt}
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
-      max_tokens: 2000,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     }),
     signal: AbortSignal.timeout(55000),
@@ -215,15 +215,25 @@ export async function POST(req: NextRequest) {
       axesScores
     );
 
+    // 既存データを取得してマージ
+    const existingColumn = co[config.dbColumn] ?? {};
+    const mergedResult = { ...existingColumn, ...axesResult };
+
     await supabase.from("ipo_companies")
-      .update({ [config.dbColumn]: axesResult })
+      .update({ [config.dbColumn]: mergedResult })
       .eq("id", company_id);
 
     // analysis_detailのaxesも更新
     const current = co.analysis_detail ?? {};
     const currentAxes = current.axes ?? { ultra_short: [], short: [], long: [] };
     const periodKey = period === "ultra_short" ? "ultra_short" : period === "short" ? "short" : "long";
-    currentAxes[periodKey] = Object.values(axesResult);
+    const existingItems = currentAxes[periodKey] ?? [];
+    const newItems = Object.values(axesResult);
+    const mergedItems = [
+      ...existingItems.filter((x: any) => !newItems.find((n: any) => n.id === x.id)),
+      ...newItems
+    ];
+    currentAxes[periodKey] = mergedItems;
 
     await supabase.from("ipo_companies")
       .update({ analysis_detail: { ...current, axes: currentAxes } })
