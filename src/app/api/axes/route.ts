@@ -216,7 +216,8 @@ export async function POST(req: NextRequest) {
     );
 
     // 既存データを取得してマージ
-    const existingColumn = co[config.dbColumn] ?? {};
+    const { data: freshCo } = await supabase.from("ipo_companies").select("*").eq("id", company_id).single();
+    const existingColumn = (freshCo as any)?.[config.dbColumn] ?? {};
     const mergedResult = { ...existingColumn, ...axesResult };
 
     await supabase.from("ipo_companies")
