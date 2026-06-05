@@ -89,7 +89,7 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
         <span style={{color:PRIMARY,marginTop:2,flexShrink:0}}>{ICONS[idx]||<Star size={13}/>}</span>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:900,fontSize:12,color:DARK,lineHeight:1.3}}>{ins.title}</div>
-          <div style={{fontSize:10,color:"#64748b",marginTop:2,lineHeight:1.5}}>{ins.desc}</div>
+          <div style={{fontSize:10,color:"#64748b",marginTop:2,lineHeight:1.5}}>{ins.desc||ins.body||""}</div>
         </div>
         <span style={{color:PRIMARY,fontSize:10,flexShrink:0,transition:"transform 0.2s",
           display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
@@ -232,7 +232,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
   const grade=analysis.grade||"B";
   const axes=analysis.axes||{ultra_short:[],short:[],long:[]};
   const insights=analysis.insights||[];
-  const scenarios=analysis.scenarios_short||[];
+  const scenarios=(analysis as any).scenarios_short||(analysis as any).scenarios||[];
 
   const radarData=[
     {metric:"成長性",   value:axes.long?.find(x=>x.id==="competitor")?.score||65},
