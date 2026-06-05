@@ -389,13 +389,13 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {scenTab==="short"?(
-              scenarios.length>0?scenarios.map(s=><ScenarioCard key={s.id} s={s}/>)
+              scenarios.length>0?scenarios.map((s:any)=><ScenarioCard key={s.id} s={s}/>)
                 :<div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:13}}>シナリオ生成中...</div>
             ):(
               [{id:"α",name:"成長実現シナリオ",verdict:"強気",prob:"25%",vsIpo:"+200〜500%",positives:["商業化成功","大型契約"],negatives:["長期間必要"],conclusion:"長期成長シナリオ実現なら大きなリターン可能性"},
                {id:"β",name:"安定成長シナリオ",verdict:"中立",prob:"45%",vsIpo:"+50〜150%",positives:["着実な成長","市場での地位確立"],negatives:["急成長は見込みにくい"],conclusion:"最も現実的なシナリオ"},
                {id:"γ",name:"停滞シナリオ",verdict:"弱気",prob:"30%",vsIpo:"▲20〜50%",positives:["事業消滅リスク低い"],negatives:["競合台頭","成長鈍化"],conclusion:"長期的な株価低迷に注意"}
-              ].map(s=><ScenarioCard key={s.id} s={s}/>)
+              ].map((s:any)=><ScenarioCard key={s.id} s={s}/>)
             )}
           </div>
         </Card>
