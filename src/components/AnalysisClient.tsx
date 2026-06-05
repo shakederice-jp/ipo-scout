@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
 
 interface AxisItem { id:string;title:string;score:number;index:string;why_matters:string;description:string;verdict:string;doc_guide:string;grade?:string;label?:string; }
-interface Insight { title:string;desc:string;detail:string; }
+interface Insight { title:string;desc?:string;detail?:string;body?:string; }
 interface Scenario { id:string;name:string;verdict:string;prob:string;vsIpo:string;positives:string[];negatives:string[];conclusion:string; }
 interface Analysis {
   summary:string;total_score:number;grade:string;
