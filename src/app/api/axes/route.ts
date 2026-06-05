@@ -71,23 +71,28 @@ function buildDataContext(structured: any, raw: any): string {
   return "";
 }
 
-async function analyzeAxesWithSonnet(
+async function analyzeOneAxis(
   companyName: string,
   sector: string,
   listingDate: string,
   exchange: string,
-  axisIds: string[],
+  axisId: string,
   periodLabel: string,
   dataContext: string,
-  axesScores: Record<string, number>
-): Promise<Record<string, any>> {
-  const axesPrompt = axisIds.map(id => {
-    const score = axesScores[id] ?? 60;
-    const name = AXIS_NAMES[id] ?? id;
-    return `
-## ${name}（スコア: ${score}/100）
+  score: number
+): Promise<any> {
+  const name = AXIS_NAMES[axisId] ?? axisId;
 
-以下の構成で詳細分析を行ってください（各セクション200字以上）：
+  const prompt = `あなたは日本のIPO投資の専門アナリストです。
+${companyName}（${sector}、${exchange}市場、上場予定${listingDate}）の${periodLabel}投資判断における「${name}」指標を徹底的に分析してください。
+
+【企業データ】
+${dataContext || "データ未取得のため一般的な分析を行ってください"}
+
+【分析指示】
+スコア: ${score}/100
+
+以下の構成で詳細なレポートを作成してください。各セクション200字以上記述してください。
 
 ### なぜ重要か
 この指標が${periodLabel}のIPO投資判断に与える影響を詳しく説明してください。
@@ -106,25 +111,8 @@ async function analyzeAxesWithSonnet(
 
 ### 確認すべき書類・情報
 目論見書のどのページ・どの項目・どの開示資料を確認すべきか具体的に記述してください。
-`;
-  }).join("\n---\n");
 
-  const prompt = `あなたは日本のIPO投資の専門アナリストです。
-${companyName}（${sector}、${exchange}市場、上場予定${listingDate}）の${periodLabel}投資判断に関わる以下の指標を徹底的に分析してください。
-
-【企業データ】
-${dataContext || "データ未取得のため一般的な分析を行ってください"}
-
-【分析指示】
-以下の各指標について、指定された構成で詳細なレポートを作成してください。
-分析は具体的・定量的に行い、抽象的な表現は避けてください。
-各セクションは必ず200字以上記述してください。
-
-${axesPrompt}
-
-【出力形式】
-マークダウン形式でそのまま出力してください。
-各指標の区切りは「---」で行い、指標名から始めてください。`;
+マークダウン形式で出力してください。`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -149,30 +137,19 @@ ${axesPrompt}
   const data = await res.json();
   const fullText = data?.content?.[0]?.text ?? "";
 
-  const result: Record<string, any> = {};
-  const sections = fullText.split(/\n---\n/);
+  let grade = "C";
+  if (score >= 80) grade = "A";
+  else if (score >= 65) grade = "B";
+  else if (score >= 50) grade = "C";
+  else if (score >= 35) grade = "D";
+  else grade = "E";
 
-  axisIds.forEach((id, idx) => {
-    const name = AXIS_NAMES[id] ?? id;
-    const score = axesScores[id] ?? 60;
-    const text = sections[idx] ?? fullText.slice(idx * 1000, (idx + 1) * 1000);
-
-    let grade = "C";
-    if (score >= 80) grade = "A";
-    else if (score >= 65) grade = "B";
-    else if (score >= 50) grade = "C";
-    else if (score >= 35) grade = "D";
-    else grade = "E";
-
-    result[id] = { id, label: name, score, grade, report: text.trim() };
-  });
-
-  return result;
+  return { id: axisId, label: name, score, grade, report: fullText.trim() };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { company_id, period, single_axis } = await req.json();
+    const { company_id, period, single_axis, save_results } = await req.json();
 
     if (!period || !AXIS_CONFIG[period as keyof typeof AXIS_CONFIG]) {
       return NextResponse.json(
@@ -184,6 +161,31 @@ export async function POST(req: NextRequest) {
     const config = AXIS_CONFIG[period as keyof typeof AXIS_CONFIG];
     const supabase = getSupabase();
 
+    // 保存モード：フロントから3軸分まとめて受け取って保存
+    if (save_results) {
+      const { data: co } = await supabase.from("ipo_companies").select("*").eq("id", company_id).single();
+      if (!co) return NextResponse.json({ error: "銘柄が見つかりません" }, { status: 404 });
+
+      const axesResult: Record<string, any> = {};
+      save_results.forEach((item: any) => { axesResult[item.id] = item; });
+
+      await supabase.from("ipo_companies")
+        .update({ [config.dbColumn]: axesResult })
+        .eq("id", company_id);
+
+      const current = co.analysis_detail ?? {};
+      const currentAxes = current.axes ?? { ultra_short: [], short: [], long: [] };
+      const periodKey = period === "ultra_short" ? "ultra_short" : period === "short" ? "short" : "long";
+      currentAxes[periodKey] = Object.values(axesResult);
+
+      await supabase.from("ipo_companies")
+        .update({ analysis_detail: { ...current, axes: currentAxes } })
+        .eq("id", company_id);
+
+      return NextResponse.json({ success: true, message: `✅ ${config.label}の保存完了！` });
+    }
+
+    // 分析モード：1軸分析して結果を返すのみ（保存しない）
     const { data: co, error } = await supabase
       .from("ipo_companies")
       .select("*")
@@ -203,54 +205,24 @@ export async function POST(req: NextRequest) {
 
     const axesScores = co.analysis_summary?.axes_scores ?? {};
     const dataContext = buildDataContext(co.structured_data, co.raw_prospectus);
+    const axisId = single_axis ?? config.axes[0];
+    const score = axesScores[axisId] ?? 60;
 
-    const axesResult = await analyzeAxesWithSonnet(
+    const axisResult = await analyzeOneAxis(
       co.name ?? "不明",
       co.sector ?? "tech",
       co.listing_date ?? "2026",
       co.exchange ?? "グロース",
-      single_axis ? [single_axis] : config.axes,
+      axisId,
       config.label,
       dataContext,
-      axesScores
+      score
     );
-
-    // 既存データを取得してマージ
-    const { data: freshCo } = await supabase.from("ipo_companies").select("*").eq("id", company_id).single();
-    const existingColumn = (freshCo as any)?.[config.dbColumn] ?? {};
-    const mergedResult = { ...existingColumn, ...axesResult };
-
-    await supabase.from("ipo_companies")
-      .update({ [config.dbColumn]: mergedResult })
-      .eq("id", company_id);
-
-    // analysis_detailのaxesも更新
-    const current = co.analysis_detail ?? {};
-    const currentAxes = current.axes ?? { ultra_short: [], short: [], long: [] };
-    const periodKey = period === "ultra_short" ? "ultra_short" : period === "short" ? "short" : "long";
-    const existingItems = currentAxes[periodKey] ?? [];
-    const newItems = Object.values(axesResult);
-    const mergedItems = [
-      ...existingItems.filter((x: any) => !newItems.find((n: any) => n.id === x.id)),
-      ...newItems
-    ];
-    currentAxes[periodKey] = mergedItems;
-
-    await supabase.from("ipo_companies")
-      .update({ analysis_detail: { ...current, axes: currentAxes } })
-      .eq("id", company_id);
 
     return NextResponse.json({
       success: true,
-      period,
-      axes_analyzed: config.axes,
-      message: `✅ ${config.label}の詳細分析完了！`,
-      preview: Object.entries(axesResult).map(([id, v]: [string, any]) => ({
-        id,
-        score: v.score,
-        grade: v.grade,
-        chars: v.report?.length ?? 0,
-      }))
+      axis_result: axisResult,
+      preview: { id: axisId, score: axisResult.score, grade: axisResult.grade, chars: axisResult.report?.length ?? 0 }
     });
 
   } catch (e: any) {

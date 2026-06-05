@@ -106,18 +106,14 @@ export default function AdminPage() {
 
   const handleAxes = async (period: string, stepNum: string, label: string) => {
     if (!edinetCompanyId) { alert("銘柄IDを入力してください"); return; }
-    
     const axisMap: Record<string, string[]> = {
       ultra_short: ["float", "lockup", "timing"],
       short: ["valuation", "vc_sell", "growth"],
       long: ["management", "unit_econ", "competitor"],
     };
     const axes = axisMap[period];
-    
     setStep(stepNum, true, `📊 ${label}（1/3）分析中...`);
-    
-    let allResults: any[] = [];
-    
+    const allResults: any[] = [];
     for (let i = 0; i < axes.length; i++) {
       const axisId = axes[i];
       setStepResult(prev => ({...prev, [stepNum]: `📊 ${label}（${i+1}/3）${axisId}を分析中...`}));
@@ -127,18 +123,20 @@ export default function AdminPage() {
           body: JSON.stringify({ company_id: edinetCompanyId, period, single_axis: axisId }),
         });
         const data = await res.json();
-        if (data.error) {
-          setStep(stepNum, false, `❌ ${axisId}でエラー: ${data.error}`);
-          return;
-        }
-        allResults = [...allResults, ...(data.preview ?? [])];
-      } catch {
-        setStep(stepNum, false, `❌ ${axisId}でエラーが発生しました`);
-        return;
-      }
+        if (data.error) { setStep(stepNum, false, `❌ ${axisId}でエラー: ${data.error}`); return; }
+        allResults.push(data.axis_result);
+      } catch { setStep(stepNum, false, `❌ ${axisId}でエラーが発生しました`); return; }
     }
-    
-    const preview = allResults.map((a: any) => `${a.id}:${a.grade}(${a.score}) ${a.chars}字`).join(" / ");
+    setStepResult(prev => ({...prev, [stepNum]: `💾 ${label} 保存中...`}));
+    try {
+      const saveRes = await fetch("/api/axes", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ company_id: edinetCompanyId, period, save_results: allResults }),
+      });
+      const saveData = await saveRes.json();
+      if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return; }
+    } catch { setStep(stepNum, false, "❌ 保存でエラーが発生しました"); return; }
+    const preview = allResults.map((a: any) => `${a.id}:${a.grade}(${a.score}) ${a.report?.length ?? 0}字`).join(" / ");
     setStep(stepNum, false, `✅ ${label}の詳細分析完了！\n${preview}`);
   };
 
