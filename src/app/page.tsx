@@ -161,6 +161,9 @@ export default async function Home({
   searchParams: Promise<{ checkout?: string }>;
 }) {
   const params = await searchParams;
+  const supabase = createSupabaseServerClient();
+const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+const userId = session?.user?.id ?? null;
   const { data: companies, error } = await fetchIpoCompanies();
   const list = companies ?? [];
 
@@ -315,7 +318,7 @@ export default async function Home({
               ))}
             </div>
           </div>
-          <RefferalSection userId="guest" />
+          {userId && <RefferalSection userId={userId} />}
         </aside>
       </main>
 
