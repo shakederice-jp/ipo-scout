@@ -178,7 +178,7 @@ function ScenarioCard({s}:{s:Scenario}) {
     <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${vs.border}`}}>
       <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"8px 12px",backgroundColor:vs.bg,textAlign:"left",cursor:"pointer",border:"none"}}>
         <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{s.verdict}</span>
-        <div style={{flex:1,minWidth:0}}>
+        <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",gap:4,fontWeight:900,fontSize:11,color:vs.text}}>
             {icon}{s.name||s.verdict}
           </div>
