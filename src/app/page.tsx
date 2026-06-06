@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-
+import ReferralSection from "@/components/ReferralSection";
 export const metadata: Metadata = {
   title: "IPO企業情報AI分析レポート｜大手町調査室九課",
   description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。大手町調査室九課が運営。",
@@ -315,6 +315,7 @@ export default async function Home({
               ))}
             </div>
           </div>
+          <ReferralSection userId="guest" />
         </aside>
       </main>
 
