@@ -14,7 +14,7 @@ const EDINET_KEY = process.env.EDINET_API_KEY!;
 async function searchEdinetDoc(companyName: string): Promise<string | null> {
   try {
     const today = new Date();
-    const name4 = companyName.slice(0, 4);
+    const name4 = companyName.slice(0, 3);
     for (let i = 0; i < 180; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
@@ -25,7 +25,7 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
       const json = await res.json();
       const docs = json?.results || [];
       for (const doc of docs) {
-        if (doc.formCode === "030000" && doc.filerName?.includes(name4)) {
+        if (doc.formCode === "030000" && (doc.filerName?.includes(name4) || doc.filerName?.includes(companyName))) {
           return doc.docID;
         }
       }
