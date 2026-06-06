@@ -395,6 +395,13 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
               ].map((s:any)=><ScenarioCard key={s.id} s={s}/>)
             )}
           </div>
+          <div style={{marginTop:16,padding:"10px 14px",borderRadius:10,backgroundColor:"#f0f9ff",border:"1px solid #bae6fd",display:"flex",alignItems:"flex-start",gap:8}}>
+  <span style={{fontSize:16,flexShrink:0}}>💡</span>
+  <p style={{fontSize:11,color:"#0369a1",margin:0,lineHeight:1.7}}>
+    各シナリオの背景にある財務データ・需給構造・市場環境の詳細は、<br/>
+    <strong>下部の「詳細分析 深掘りレポート」</strong>に9軸で体系的に整理しています。
+  </p>
+</div>
         </Card>
 
         <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
