@@ -1,21 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Gift, Copy, Check } from "lucide-react";
 
 export default function ReferralSection({ userId }: { userId: string }) {
-  const [referralCode, setReferralCode] = useState<string>("");
-  const [referralCount, setReferralCount] = useState(0);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/referral?user_id=${userId}`)
-      .then(r => r.json())
-      .then(d => {
-        setReferralCode(d.referral_code ?? "");
-        setReferralCount(d.referral_count ?? 0);
-      });
-  }, [userId]);
-
+  
+  const referralCode = "A375D106";
   const referralUrl = `https://ipo-scout-six.vercel.app?ref=${referralCode}`;
 
   const handleCopy = () => {
@@ -27,8 +17,6 @@ export default function ReferralSection({ userId }: { userId: string }) {
   const tweetText = encodeURIComponent(
     `📊 IPOのAI深度分析を無料体験！\nこのリンクから登録するとプレミアムプランが2ヶ月無料（今だけ・期間限定）👇\n${referralUrl}\n#大手町調査室九課 #IPO投資`
   );
-
-  if (!referralCode) return null;
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: "2px solid #b3e8ea" }}>
