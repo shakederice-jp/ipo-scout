@@ -176,18 +176,15 @@ function ScenarioCard({s}:{s:Scenario}) {
   const icon=isUp?<ArrowUpRight size={11}/>:isDown?<ArrowDownRight size={11}/>:<Minus size={11}/>;
   return (
     <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${vs.border}`}}>
-      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",
-        gap:6,padding:"8px 12px",backgroundColor:vs.bg,textAlign:"left",cursor:"pointer",border:"none"}}>
-        <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,
-          backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,flexShrink:0}}>{s.id}</span>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"8px 12px",backgroundColor:vs.bg,textAlign:"left",cursor:"pointer",border:"none"}}>
+        <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,flexShrink:0,whiteSpace:"nowrap"}}>{s.verdict}</span>
         <div style={{flex:1,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:4,fontWeight:900,fontSize:11,color:vs.text}}>
             {icon}{s.name||s.verdict}
           </div>
         </div>
         <span style={{fontWeight:900,fontSize:12,color:vs.text,flexShrink:0}}>{s.vsIpo}</span>
-        <span style={{fontWeight:900,fontSize:10,padding:"2px 6px",borderRadius:20,
-          backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,marginLeft:4,flexShrink:0}}>{s.prob}</span>
+        <span style={{fontWeight:900,fontSize:10,padding:"2px 6px",borderRadius:20,backgroundColor:"white",color:vs.text,border:`1px solid ${vs.border}`,marginLeft:4,flexShrink:0}}>{s.prob}</span>
         <span style={{color:vs.text,fontSize:10,flexShrink:0,display:"inline-block",transform:open?"rotate(90deg)":"none"}}>▶</span>
       </button>
       {open&&(
