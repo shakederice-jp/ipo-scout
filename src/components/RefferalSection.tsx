@@ -26,12 +26,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
           <span className="font-black text-sm" style={{ color: "#082b2e" }}>
             友達招待プログラム
           </span>
-          {referralCount > 0 && (
-            <span className="font-bold rounded-full px-2 py-0.5 ml-auto"
-              style={{ fontSize: "10px", backgroundColor: "#082b2e", color: "#66c3c6" }}>
-              {referralCount}人招待済み
-            </span>
-          )}
+          
         </div>
         <p style={{ fontSize: "10px", marginTop: "2px", color: "#0d4f52" }}>
           🎁 今だけ・期間限定（予告なく終了）
