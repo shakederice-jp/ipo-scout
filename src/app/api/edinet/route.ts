@@ -15,7 +15,7 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
   try {
     const today = new Date();
     const name4 = companyName.slice(0, 4);
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 180; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split("T")[0];
