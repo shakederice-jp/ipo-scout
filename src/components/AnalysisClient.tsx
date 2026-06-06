@@ -229,7 +229,8 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
   const grade=analysis.grade||"B";
   const axes=analysis.axes||{ultra_short:[],short:[],long:[]};
   const insights=analysis.insights||[];
-  const scenarios=(analysis as any).scenarios_short||(analysis as any).scenarios||[];
+  const scenarios_short=(analysis as any).scenarios_short||(analysis as any).scenarios||[];
+  const scenarios_long=(analysis as any).scenarios_long||[];
 
   const radarData=[
     {metric:"成長性",   value:axes.long?.find(x=>x.id==="competitor")?.score||65},
@@ -385,10 +386,15 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
             ))}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {scenarios.length>0
-      ?scenarios.map((s:any)=><ScenarioCard key={s.id} s={s}/>)
-      :<div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:13}}>シナリオ生成中...</div>
-    }
+          {scenTab==="short"?(
+  scenarios_short.length>0
+    ?scenarios_short.map((s:any)=><ScenarioCard key={s.id} s={s}/>)
+    :<div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:13}}>シナリオ生成中...</div>
+):(
+  scenarios_long.length>0
+    ?scenarios_long.map((s:any)=><ScenarioCard key={s.id} s={s}/>)
+    :<div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:13}}>シナリオ生成中...</div>
+)}
           </div>
           <div style={{marginTop:16,padding:"10px 14px",borderRadius:10,backgroundColor:"#f0f9ff",border:"1px solid #bae6fd",display:"flex",alignItems:"flex-start",gap:8}}>
   <span style={{fontSize:16,flexShrink:0}}>💡</span>
