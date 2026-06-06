@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { fetchIpoCompanies } from "@/lib/supabase/server";
+import { fetchIpoCompanies, createSupabaseServerClient } from "@/lib/supabase/server";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import {
   BarChart2, Calendar, Star, Lock, TrendingUp,
