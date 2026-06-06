@@ -1,14 +1,41 @@
 import { fetchIpoCompanyById, fetchIpoCompanies } from "@/lib/supabase/server";
 import AnalysisClient from "@/components/AnalysisClient";
 import { notFound } from "next/navigation";
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data } = await fetchIpoCompanyById(id);
+  if (!data) return { title: "銘柄分析レポート" };
+  const co = data as any;
+  const summary = co.analysis_summary?.summary ?? `${data.name}のIPO分析レポート。スコア・シナリオ・詳細分析を掲載。`;
+  const score = co.analysis_summary?.total_score ?? "";
+  const grade = co.analysis_summary?.grade ?? "";
+  const description = score
+    ? `総合スコア${score}/100（${grade}評価）。${summary.slice(0, 120)}`
+    : summary.slice(0, 150);
+  const title = `${data.name} IPO分析レポート｜大手町調査室九課`;
+  const url = `https://ipo-scout-six.vercel.app/analysis/${id}`;
   return {
-    title: data ? `${data.name} 分析レポート` : "銘柄分析レポート",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "大手町調査室九課",
+      locale: "ja_JP",
+      type: "article",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: url,
+    },
   };
 }
+
 
 export default async function AnalysisPage({
   params,
