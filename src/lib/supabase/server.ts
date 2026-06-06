@@ -35,7 +35,20 @@ export async function fetchIpoCompanies(): Promise<{
     return { data: null, error: error.message };
   }
 
-  return { data: data as IpoCompany[], error: null };
+  // 月ごとに日付順で最初の3銘柄を無料にする
+  const monthCount: Record<string, number> = {};
+  const result = (data as IpoCompany[]).map((company) => {
+    const monthKey = company.listing_date
+      ? company.listing_date.slice(0, 7) // "2026-06"
+      : "unknown";
+    monthCount[monthKey] = (monthCount[monthKey] ?? 0) + 1;
+    return {
+      ...company,
+      is_free: monthCount[monthKey] <= 3,
+    };
+  });
+
+  return { data: result, error: null };
 }
 
 // カレンダーページ用（全フィールド取得）

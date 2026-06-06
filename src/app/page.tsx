@@ -1,3 +1,26 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "IPO企業情報AI分析レポート｜大手町調査室九課",
+  description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。大手町調査室九課が運営。",
+  openGraph: {
+    title: "IPO企業情報AI分析レポート｜大手町調査室九課",
+    description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
+    url: "https://ipo-scout-six.vercel.app",
+    siteName: "大手町調査室九課",
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "IPO企業情報AI分析レポート｜大手町調査室九課",
+    description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
+  },
+  alternates: {
+    canonical: "https://ipo-scout-six.vercel.app",
+  },
+};
+
 import { fetchIpoCompanies } from "@/lib/supabase/server";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import {
@@ -50,7 +73,7 @@ function IpoCard({
   order: number;
 })
 {
-  const isFree = order <= FREE_LIMIT;
+  const isFree = (company as any).is_free === true;
   const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩",
                    "⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳"];
   const circled = CIRCLED[order - 1] ?? `(${order})`;
