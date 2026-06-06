@@ -96,7 +96,7 @@ ${dataNote}
   "ultra_short_grade": "B",
   "short_grade": "C",
   "long_grade": "B",
-  "grade_reason": {
+  "grade_reason": {S
     "ultra_short": "超短期（初値〜当日）の判定理由。100字以内",
     "short": "短期（1〜3ヶ月）の判定理由。100字以内",
     "long": "長期（数年〜）の判定理由。100字以内"
@@ -107,9 +107,9 @@ ${dataNote}
     {"title": "インサイトタイトル3（20字以内）", "body": "内容（100字以内）"}
   ],
   "scenarios": [
-    {"id": "A", "verdict": "強気", "name": "強気シナリオ", "vsIpo": "公募価格の2倍", "prob": "実現条件を80字以内で"},
-    {"id": "B", "verdict": "中立", "name": "中立シナリオ", "vsIpo": "公募価格±10%", "prob": "実現条件を80字以内で"},
-    {"id": "C", "verdict": "弱気", "name": "弱気シナリオ", "vsIpo": "公募価格の0.8倍", "prob": "実現条件を80字以内で"}
+    {"id": "A", "verdict": "強気", "name": "強気シナリオ名", "vsIpo": "公募価格の2倍", "prob": "25%", "positives": ["好材料1", "好材料2"], "negatives": ["リスク1"], "conclusion": "要点を50字以内で"},
+{"id": "B", "verdict": "中立", "name": "中立シナリオ名", "vsIpo": "公募価格±10%", "prob": "45%", "positives": ["好材料1"], "negatives": ["リスク1", "リスク2"], "conclusion": "要点を50字以内で"},
+{"id": "C", "verdict": "弱気", "name": "弱気シナリオ名", "vsIpo": "公募価格の0.8倍", "prob": "30%", "positives": ["好材料1"], "negatives": ["リスク1", "リスク2"], "conclusion": "要点を50字以内で"}
   ],
   "axes_scores": {
     "float": 65,
