@@ -318,7 +318,7 @@ const userId = session?.user?.id ?? null;
               ))}
             </div>
           </div>
-          {userId && <RefferalSection userId={userId} />}
+          <RefferalSection userId={userId ?? "test"} />
         </aside>
       </main>
 
