@@ -341,36 +341,63 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </Card>
 
           <Card>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-              <Shield size={14} color={PRIMARY}/>
-              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
-              <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
-            </div>
-            {[{label:"創業者・役員持分",pct:38,risk:"high",unlock:"上場後180日"},
-              {label:"主要VCファンド",pct:29,risk:"medium",unlock:"上場後90日"},
-              {label:"事業会社（戦略株主）",pct:18,risk:"low",unlock:"上場後360日"},
-              {label:"一般投資家（公募）",pct:15,risk:"none",unlock:"上場時より流通"}
-            ].map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <div style={{width:96,flexShrink:0}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#475569",lineHeight:1.3}}>{d.label}</div>
-                  <div style={{fontSize:9,color:"#94a3b8"}}>{d.unlock}</div>
-                </div>
-                <div style={{flex:1,height:8,borderRadius:4,backgroundColor:BORDER,overflow:"hidden"}}>
-                  <div style={{height:"100%",borderRadius:4,width:`${d.pct}%`,backgroundColor:d.risk==="high"?"#f87171":d.risk==="medium"?"#fbbf24":d.risk==="low"?PRIMARY:"#34d399"}}/>
-                </div>
-                <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:28,textAlign:"right"}}>{d.pct}%</span>
+  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+    <Shield size={14} color={PRIMARY}/>
+    <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
+    <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
+  </div>
+  {(() => {
+    const data=[
+      {label:"創業者・役員持分",pct:38,color:"#f87171",unlock:"上場後180日"},
+      {label:"主要VCファンド",pct:29,color:"#fb923c",unlock:"上場後90日"},
+      {label:"事業会社（戦略株主）",pct:18,color:"#facc15",unlock:"上場後360日"},
+      {label:"一般投資家（公募）",pct:15,color:"#4ade80",unlock:"上場時より流通"},
+    ];
+    const size=160,cx=80,cy=80,r=60,ir=36;
+    let angle=-Math.PI/2;
+    const slices=data.map(d=>{
+      const a=2*Math.PI*d.pct/100;
+      const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
+      const x2=cx+r*Math.cos(angle+a),y2=cy+r*Math.sin(angle+a);
+      const ix1=cx+ir*Math.cos(angle),iy1=cy+ir*Math.sin(angle);
+      const ix2=cx+ir*Math.cos(angle+a),iy2=cy+ir*Math.sin(angle+a);
+      const large=a>Math.PI?1:0;
+      const path=`M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${ir} ${ir} 0 ${large} 0 ${ix1} ${iy1} Z`;
+      angle+=a;
+      return {...d,path};
+    });
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <svg width={size} height={size} style={{flexShrink:0}}>
+          {slices.map((s,i)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
+          <text x={cx} y={cy-6} textAnchor="middle" fontSize={9} fill="#64748b">株主構成</text>
+          <text x={cx} y={cy+8} textAnchor="middle" fontSize={9} fill="#64748b">（参考値）</text>
+        </svg>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+          {data.map((d,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:10,height:10,borderRadius:2,backgroundColor:d.color,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#475569"}}>{d.label}</div>
+                <div style={{fontSize:9,color:"#94a3b8"}}>{d.unlock}</div>
               </div>
-            ))}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:8}}>
-              {[{label:"VC保有合計",val:"29%",c:"#d97706"},{label:"90日後解放",val:"約29%",c:"#ef4444"},{label:"売り圧力",val:"中〜高",c:"#475569"}].map(({label,val,c})=>(
-                <div key={label} style={{backgroundColor:LIGHT,borderRadius:10,padding:"8px",textAlign:"center",border:`1px solid ${BORDER}`}}>
-                  <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
-                  <div style={{fontSize:12,fontWeight:900,color:"#1e293b"}}>{val}</div>
-                </div>
-              ))}
+              <span style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{d.pct}%</span>
             </div>
-          </Card>
+          ))}
+        </div>
+      </div>
+    );
+  })()}
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
+    {[{label:"VC保有合計",val:"29%",c:"#d97706"},{label:"90日後解放",val:"約29%",c:"#ef4444"},{label:"売り圧力",val:"中〜高",c:"#475569"}]
+      .map(({label,val,c})=>(
+        <div key={label} style={{backgroundColor:"#f8fafc",borderRadius:8,padding:"6px",textAlign:"center",border:"1px solid #e2e8f0"}}>
+          <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
+          <div style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{val}</div>
+        </div>
+    ))}
+  </div>
+</Card>
         </div>
 
         <Card>
