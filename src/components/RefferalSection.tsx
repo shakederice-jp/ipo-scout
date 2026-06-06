@@ -70,6 +70,12 @@ export default function ReferralSection({ userId }: { userId: string }) {
           style={{ fontSize: "12px", backgroundColor: "#000", color: "white", textDecoration: "none" }}>
           𝕏 でシェアする
         </a>
+        <a href={`https://line.me/R/msg/text/?${encodeURIComponent(tweetText)}`}
+  target="_blank" rel="noopener noreferrer"
+  className="flex items-center justify-center gap-2 rounded-xl py-2 font-black w-full"
+  style={{ fontSize: "12px", backgroundColor: "#06C755", color: "white", textDecoration: "none" }}>
+  LINE でシェアする
+</a>
         <div className="rounded-xl p-3" style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a" }}>
           <p style={{ fontSize: "10px", color: "#92400e", lineHeight: "1.6" }}>
             ⚠️ 本特典は期間限定・予告なく打ち切る場合があります。
