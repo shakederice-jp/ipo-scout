@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Gift, Copy, Check, Users } from "lucide-react";
+import { Gift, Copy, Check } from "lucide-react";
 
 export default function ReferralSection({ userId }: { userId: string }) {
   const [referralCode, setReferralCode] = useState<string>("");
@@ -68,7 +68,6 @@ export default function ReferralSection({ userId }: { userId: string }) {
             <div style={{ fontSize: "9px", color: "#1d4ed8", marginTop: "2px" }}>※登録月含む</div>
           </div>
         </div>
-
         <div className="rounded-xl p-3" style={{ backgroundColor: "#f4fbfc", border: "1px solid #dff3f4" }}>
           <div className="font-bold mb-1" style={{ fontSize: "10px", color: "#2a7a7e" }}>あなたの招待リンク</div>
           <div className="flex items-center gap-2">
@@ -82,14 +81,12 @@ export default function ReferralSection({ userId }: { userId: string }) {
             </button>
           </div>
         </div>
-
         <a href={`https://twitter.com/intent/tweet?text=${tweetText}`}
           target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 rounded-xl py-2 font-black w-full"
           style={{ fontSize: "12px", backgroundColor: "#000", color: "white", textDecoration: "none" }}>
           𝕏 でシェアする
         </a>
-
         <div className="rounded-xl p-3" style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a" }}>
           <p style={{ fontSize: "10px", color: "#92400e", lineHeight: "1.6" }}>
             ⚠️ 本特典は期間限定・予告なく打ち切る場合があります。
