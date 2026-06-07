@@ -137,8 +137,8 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
 
       // ④ 損益計算書
       const s3 = extractSection(text, [
-        "損益計算書", "売上高", "営業利益", "経常利益",
-        "売上収益", "営業収益"
+        "大株主の状況", "所有者別状況", "株主名簿",
+  　　  "氏名又は名称", "所有株式数", "発行済株式"
       ], 3000);
       if (s3) sections["損益計算書"] = s3;
 
