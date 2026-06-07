@@ -142,12 +142,13 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       ], 3000);
       if (s3) sections["損益計算書"] = s3;
 
-      // ⑤ 株主構成・大株主（VC名・保有比率）
-      const s4 = extractSection(text, [
-        "大株主の状況", "大株主", "株主の状況", "主要株主",
-        "所有者別状況", "株主名簿", "筆頭株主"
-      ], 3000);
-      if (s4) sections["株主構成"] = s4;
+      // ⑤ 株主構成・大株主（保有比率テーブル）
+    const s4 = extractSection(text, [
+      "氏名又は名称", "所有株式数", "持株比率",
+      "発行済株式総数に対する", "上場前の売出し",
+      "特別利害関係者等の株式", "大株主の状況"
+    ], 4000);
+    if (s4) sections["株主構成"] = s4;
 
       // ⑥ 売出し情報・公開株式数（NEW）
       const s5 = extractSection(text, [
