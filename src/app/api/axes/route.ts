@@ -204,7 +204,10 @@ export async function POST(req: NextRequest) {
     }
 
     const axesScores = co.analysis_summary?.axes_scores ?? {};
-    const dataContext = buildDataContext(co.structured_data, co.raw_prospectus);
+    const marketInfo = co.analysis_market
+      ? `\n【市場・競合情報】主幹事:${co.analysis_market.lead_underwriter ?? ""}・競合:${(co.analysis_market.competitors ?? []).map((c: any) => c.name).join("、")}・業界PER:${co.analysis_market.industry_per ?? ""}・市場動向:${co.analysis_market.market_trend ?? ""}`
+      : "";
+    const dataContext = buildDataContext(co.structured_data, co.raw_prospectus) + marketInfo;
     const axisId = single_axis ?? config.axes[0];
     const score = axesScores[axisId] ?? 60;
 
