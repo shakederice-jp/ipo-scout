@@ -62,11 +62,7 @@ export async function POST(req: NextRequest) {
     const supabase = createSupabaseServerClient();
     if (!supabase) return NextResponse.json({ error: "db" }, { status: 500 });
 
-    const { data: co } = await supabase
-      .from("ipo_companies")
-      .select("*")
-      .eq("id", body.id)
-      .single();
+    
     if (!co) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     const n  = co.name ?? "unknown";
@@ -77,10 +73,12 @@ export async function POST(req: NextRequest) {
     const { ctx: dataContext, source: dataSource } = buildDataContext(
       co.structured_data, co.raw_prospectus
     );
-
+    const marketInfo = co.analysis_market
+    ? `\n【市場・競合情報】主幹事:${co.analysis_market.lead_underwriter ?? ""}・競合:${(co.analysis_market.competitors ?? []).map((c: any) => c.name).join("、")}・業界PER:${co.analysis_market.industry_per ?? ""}・市場動向:${co.analysis_market.market_trend ?? ""}`
+    : "";
     const dataNote = dataContext
-      ? `【実データ - 必ず具体的数値を引用すること】\n${dataContext}`
-      : `実データ未取得。${n}(${sc})の一般情報で分析。`;
+      ? `【実データ - 必ず具体的数値を引用すること】\n${dataContext}${marketInfo}`
+      : `実データ未取得。${n}(${sc})の一般情報で分析。${marketInfo}`;
 
     const prompt = `あなたは日本のIPO投資アナリストです。
 ${n}（${sc}、${ex}市場、上場予定${ld}）のIPOを総合評価してください。
