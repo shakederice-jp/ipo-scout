@@ -259,11 +259,19 @@ const userId = session?.user?.id ?? null;
             </div>
           ) : (
             <div className="space-y-3">
-              {list.map((company, index) => (
-                <a key={company.id} href={`/analysis/${company.id}`} style={{textDecoration:"none"}}>
-                <IpoCard company={company as any} order={index + 1}/>
-              </a>
-              ))}
+              {(() => {
+                const monthOrderMap: Record<string, number> = {};
+                return list.map((company) => {
+                  const monthKey = (company.listing_date ?? "unknown").slice(0, 7);
+                  monthOrderMap[monthKey] = (monthOrderMap[monthKey] ?? 0) + 1;
+                  const order = monthOrderMap[monthKey];
+                  return (
+                    <a key={company.id} href={`/analysis/${company.id}`} style={{textDecoration:"none"}}>
+                      <IpoCard company={company as any} order={order}/>
+                    </a>
+                  );
+                });
+              })()}
             </div>
           )}
         </section>
