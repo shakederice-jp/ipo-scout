@@ -23,35 +23,72 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error || !company) {
-      return NextResponse.json({ error: "銘柄が見つかりません" }, { status: 404 });
+      return NextResponse.json({ error: "企業が見つかりません" }, { status: 404 });
     }
 
     if (!company.raw_prospectus) {
-      return NextResponse.json({ error: "EDINETデータがありません。先に①取得を実行してください。" }, { status: 400 });
+      return NextResponse.json({ error: "EDINETデータがありません。先に①を実行してください。" }, { status: 400 });
     }
 
     const rawText = JSON.stringify(company.raw_prospectus).slice(0, 25000);
 
-    const msg = await claude.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 2500,
-      messages: [
-        {
-          role: "user",
-          content: `以下は日本のIPO企業「${company.name}」の目論見書テキストです。
-重要な財務・事業データを抽出し、JSONのみで返してください。前置き・後置き・マークダウン記号は一切不要です。
-数値は必ず具体的な数字で記載してください。不明な場合は"不明"と記載してください。
+    const prompt = `以下は日本のIPO企業「${company.name}」の目論見書テキストです。
+必要な財務・株主データを抽出してJSONのみで返してください。前置き・後置き・マークダウン記法は一切不要です。
+数値は必ず具体的な数字で表現してください。不明な場合は"不明"と表現してください。
 
 【目論見書テキスト】
 ${rawText}
 
 【抽出するJSON形式】
-{"company_name":"企業名","business_summary":"事業内容の要約（200字以内）","financials":{"revenue_trend":"売上高の推移（例：2022年3月期19.3億円→2023年3月期29.1億円）","profit_trend":"営業利益の推移","profit_margin":"直近の営業利益率（例：9.8%）","cash_flow":"営業キャッシュフローの状況"},"ipo_details":{"total_shares":"発行済株式総数（例：9,000,000株）","public_shares":"公募・売出株式数（例：公募500,000株・売出1,200,000株）","float_ratio":"流通比率の推計（例：推定20%程度）","fundraising_amount":"調達金額（例：7,013,850千円）","use_of_proceeds":"資金使途の要約","lockup_period":"ロックアップ期間（例：上場後180日間）","lockup_targets":"ロックアップ対象者（例：創業者・役員・主要株主）","overallotment":"オーバーアロットメントの有無と規模"},"shareholders":[{"name":"株主名","ratio":"保有比率（例：39.5%）","shares":"保有株数","type":"創業者/VC/事業会社/個人","lockup":"ロックアップ有無"}],"risks":[{"title":"リスクタイトル","severity":"高/中/低","description":"内容（50字以内）"}],"management":"経営陣の主な情報","growth_drivers":"成長要因（3点）","concerns":"懸念点（3点）"}`
-        },
-        {
-          role: "assistant",
-          content: '{"company_name":"'
-        }
+{
+  "company_name": "企業名",
+  "business_summary": "事業内容の要約（200字以内）",
+  "financials": {
+    "revenue_trend": "売上高の推移（例：2022年3月期19.3億円→2023年3月期29.1億円→...）",
+    "profit_trend": "営業利益の推移",
+    "profit_margin": "直近の営業利益率（例：10.5%）",
+    "cash_flow": "営業キャッシュフローの状況"
+  },
+  "ipo_details": {
+    "total_shares": "発行済株式総数（例：9,000,000株）",
+    "public_shares": "公募・売出株式数（例：公募100,000株・売出1,200,000株）",
+    "float_ratio": "流通株式比率の推定（例：推定20%程度）",
+    "fundraising_amount": "調達資金総額（例：1,013,850千円）",
+    "use_of_proceeds": "資金使途の要約",
+    "lockup_period": "ロックアップ期間（例：上場後180日間）",
+    "lockup_targets": "ロックアップ対象者（例：創業者・主要役員）",
+    "overallotment": "オーバーアロットメントの有無と規模"
+  },
+  "shareholders": [
+    {
+      "name": "株主名（個人名または法人名）",
+      "ratio": "保有比率（例：43.9%）※必ず%付きの数値で",
+      "shares": "保有株式数（例：3,950,000株）",
+      "type": "属性（創業者/VC/事業会社/役員/その他）",
+      "lockup": "ロックアップ（有/無/不明）"
+    }
+  ],
+  "risks": [
+    {
+      "title": "リスクタイトル",
+      "severity": "高/中/低",
+      "description": "内容（50字以内）"
+    }
+  ],
+  "management": "代表取締役の主な情報",
+  "growth_drivers": "成長ドライバー（主な2〜3点）",
+  "concerns": "懸念点（主な2〜3点）"
+}
+
+特に「大株主の状況」テーブルから各株主の氏名・保有株式数・持株比率を正確に抽出してください。
+持株比率は必ず「XX.X%」形式の数値で返してください。`;
+
+    const msg = await claude.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 3000,
+      messages: [
+        { role: "user", content: prompt },
+        { role: "assistant", content: '{"company_name":"' }
       ]
     });
 
@@ -83,7 +120,7 @@ ${rawText}
 
     return NextResponse.json({
       success: true,
-      message: `✅ 構造化完了！次に「③Claudeで分析」を実行してください。`,
+      message: "✅ 構造化完了！次に「③Claudeで分析」を実行してください。",
       preview: {
         business: structured.business_summary?.slice(0, 80),
         financials: structured.financials?.revenue_trend,
@@ -94,7 +131,6 @@ ${rawText}
         shareholders_count: structured.shareholders?.length ?? 0,
       }
     });
-
   } catch (e: any) {
     console.error("structure error:", e?.message);
     return NextResponse.json({ error: e?.message }, { status: 500 });
