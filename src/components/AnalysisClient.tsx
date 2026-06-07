@@ -347,16 +347,37 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
   </div>
   {(() => {
-    const data=[
-      {label:"創業者・役員持分",pct:38,color:"#f87171",unlock:"上場後180日"},
-      {label:"主要VCファンド",pct:29,color:"#fb923c",unlock:"上場後90日"},
-      {label:"事業会社（戦略株主）",pct:18,color:"#facc15",unlock:"上場後360日"},
-      {label:"一般投資家（公募）",pct:15,color:"#4ade80",unlock:"上場時より流通"},
-    ];
+    const sd=(company as any).structured_data;
+    const shareholders:any[]=sd?.shareholders||[];
+    const lockup=sd?.lockup_days??180;
+    const publicShares=sd?.public_shares??0;
+    const totalShares=sd?.total_shares??0;
+    const floatPct=totalShares>0?Math.round(publicShares/totalShares*100):15;
+
+    const colors=["#f87171","#fb923c","#facc15","#4ade80","#60a5fa"];
+    const data=shareholders.length>0
+      ? shareholders.slice(0,4).map((s:any,i:number)=>({
+          label:s.name||s.category||`株主${i+1}`,
+          pct:s.pct??s.ratio??0,
+          color:colors[i]||"#94a3b8",
+          unlock:s.lockup?`上場後${s.lockup}日`:"上場時より流通",
+        }))
+      : [
+          {label:"創業者・役員持分",pct:38,color:"#f87171",unlock:`上場後${lockup}日`},
+          {label:"主要VCファンド",pct:29,color:"#fb923c",unlock:"上場後90日"},
+          {label:"事業会社（戦略株主）",pct:18,color:"#facc15",unlock:"上場後360日"},
+          {label:"一般投資家（公募）",pct:floatPct,color:"#4ade80",unlock:"上場時より流通"},
+        ];
+
+    const vcPct=shareholders.length>0
+      ? shareholders.filter((s:any)=>s.is_vc||s.category?.includes("VC")||s.category?.includes("ファンド")).reduce((a:number,s:any)=>a+(s.pct??s.ratio??0),0)
+      : 29;
+    const sellPressure=floatPct<=20?"低":"高";
+
     const size=160,cx=80,cy=80,r=60,ir=36;
     let angle=-Math.PI/2;
-    const slices=data.map(d=>{
-      const a=2*Math.PI*d.pct/100;
+    const slices=data.map((d:any)=>{
+      const a=2*Math.PI*(d.pct/100);
       const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
       const x2=cx+r*Math.cos(angle+a),y2=cy+r*Math.sin(angle+a);
       const ix1=cx+ir*Math.cos(angle),iy1=cy+ir*Math.sin(angle);
@@ -369,12 +390,12 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     return (
       <div style={{display:"flex",alignItems:"center",gap:16}}>
         <svg width={size} height={size} style={{flexShrink:0}}>
-          {slices.map((s,i)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
+          {slices.map((s:any,i:number)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
           <text x={cx} y={cy-6} textAnchor="middle" fontSize={9} fill="#64748b">株主構成</text>
           <text x={cx} y={cy+8} textAnchor="middle" fontSize={9} fill="#64748b">（参考値）</text>
         </svg>
         <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
-          {data.map((d,i)=>(
+          {data.map((d:any,i:number)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
               <div style={{width:10,height:10,borderRadius:2,backgroundColor:d.color,flexShrink:0}}/>
               <div style={{flex:1}}>
@@ -389,12 +410,15 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     );
   })()}
   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
-    {[{label:"VC保有合計",val:"29%",c:"#d97706"},{label:"90日後解放",val:"約29%",c:"#ef4444"},{label:"売り圧力",val:"中〜高",c:"#475569"}]
-      .map(({label,val,c})=>(
-        <div key={label} style={{backgroundColor:"#f8fafc",borderRadius:8,padding:"6px",textAlign:"center",border:"1px solid #e2e8f0"}}>
-          <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
-          <div style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{val}</div>
-        </div>
+    {[
+      {label:"流通比率",val:`${((company as any).structured_data?.public_shares&&(company as any).structured_data?.total_shares)?Math.round((company as any).structured_data.public_shares/(company as any).structured_data.total_shares*100)+"%" : "参考値"}`,c:"#d97706"},
+      {label:"ロックアップ",val:`${(company as any).structured_data?.lockup_days??180}日`,c:"#ef4444"},
+      {label:"売り圧力",val:(()=>{const f=(company as any).structured_data?.public_shares&&(company as any).structured_data?.total_shares?Math.round((company as any).structured_data.public_shares/(company as any).structured_data.total_shares*100):15;return f<=20?"低":f<=35?"中":"高";})(),c:"#475569"},
+    ].map(({label,val,c})=>(
+      <div key={label} style={{backgroundColor:"#f8fafc",borderRadius:8,padding:"6px",textAlign:"center",border:"1px solid #e2e8f0"}}>
+        <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
+        <div style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{val}</div>
+      </div>
     ))}
   </div>
 </Card>
