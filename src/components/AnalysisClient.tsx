@@ -358,9 +358,9 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     const data=shareholders.length>0
       ? shareholders.slice(0,4).map((s:any,i:number)=>({
           label:s.name||s.category||`株主${i+1}`,
-          pct:s.pct??s.ratio??0,
+          pct:s.pct??parseFloat(String(s.ratio??0).replace('%',''))||0,
           color:colors[i]||"#94a3b8",
-          unlock:s.lockup?`上場後${s.lockup}日`:"上場時より流通",
+          unlock:s.lockup&&s.lockup!=="無"?`ロックアップ${s.lockup}`:"上場時より流通",
         }))
       : [
           {label:"創業者・役員持分",pct:38,color:"#f87171",unlock:`上場後${lockup}日`},
