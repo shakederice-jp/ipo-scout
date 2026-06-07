@@ -377,7 +377,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
             ))}
             {valid.length===0&&shareholders.length>0&&(
               <div style={{fontSize:9,color:"#94a3b8",padding:"4px 6px",backgroundColor:"#f8fafc",borderRadius:6}}>
-                主要株主：{shareholders.slice(0,3).map((s:any)=>s.name).filter(Boolean).join("、")}
+              主要株主：{(Array.isArray(shareholders)?shareholders:[]).slice(0,3).map((s:any)=>s.name).filter(Boolean).join('、')}
               </div>
             )}
           </div>
