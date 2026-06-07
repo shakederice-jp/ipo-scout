@@ -50,8 +50,19 @@ export default function CalendarClient() {
   const sorted = [...companies].sort(
     (a, b) => new Date(a.listing_date).getTime() - new Date(b.listing_date).getTime()
   );
-  const indexMap: { [id: string]: number } = {};
-  sorted.forEach((c, i) => { indexMap[c.id] = i; });
+
+  // 月ごとの番号マップ（カレンダー表示用）
+  const monthIndexMap: { [id: string]: number } = {};
+  const monthCounter: { [monthKey: string]: number } = {};
+  sorted.forEach(c => {
+    const mk = c.listing_date?.slice(0, 7) ?? "unknown";
+    monthCounter[mk] = (monthCounter[mk] ?? 0) + 1;
+    monthIndexMap[c.id] = monthCounter[mk] - 1;
+  });
+
+  // 現在表示中の月の銘柄のみ
+  const currentMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const monthSorted = sorted.filter(c => c.listing_date?.startsWith(currentMonthKey));
 
   const byDay: { [day: number]: Company[] } = {};
   sorted.forEach(c => {
@@ -126,7 +137,7 @@ export default function CalendarClient() {
                         style={{ background:"none", border:"none", cursor:"pointer", padding:0, lineHeight:1, fontSize:16, color:C.teal, transition:"transform .1s" }}
                         onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.25)")}
                         onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")}>
-                        {CIRCLE[indexMap[c.id]] ?? `(${indexMap[c.id]+1})`}
+                        {CIRCLE[monthIndexMap[c.id]] ?? `(${monthIndexMap[c.id]+1})`}
                       </button>
                     ))}
                   </div>
@@ -142,7 +153,7 @@ export default function CalendarClient() {
 
         <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>📋 IPO予定企業一覧</h2>
-          <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${sorted.length}社）`}</span>
+          <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${monthSorted.length}社）`}</span>
         </div>
 
         <div style={{ backgroundColor:C.tealLt, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#2a7a7e" }}>
@@ -151,7 +162,7 @@ export default function CalendarClient() {
 
         {loading && <div style={{ textAlign:"center", padding:"40px 0", color:C.muted, fontSize:13 }}>データを読み込み中...</div>}
 
-        {!loading && sorted.map((company, i) => {
+        {!loading && monthSorted.map((company, i) => {
           const d = new Date(company.listing_date);
           const weekStr = "日月火水木金土"[d.getDay()];
           const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${weekStr}）`;
@@ -162,7 +173,7 @@ export default function CalendarClient() {
               style={{ backgroundColor:C.white, borderRadius:14, border: isHL ? `2px solid ${C.teal}` : `1px solid ${C.border}`, marginBottom:12, overflow:"hidden", transition:"border .3s, box-shadow .3s", boxShadow: isHL ? `0 0 0 4px ${C.tealLt}` : "none" }}>
               <div style={{ padding:"12px 16px", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:22, color:C.teal, lineHeight:1 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
+                <span style={{ fontSize:22, color:C.teal, lineHeight:1 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
                   <div>
                     <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
                       <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e" }}>{isFree ? "無料" : "有料"}</span>
