@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const supabase = createSupabaseServerClient();
     if (!supabase) return NextResponse.json({ error: "db" }, { status: 500 });
-
+    const { data: co } = await supabase
+    .from("ipo_companies")
+    .select("*")
+    .eq("id", body.id)
+    .single();
     
     if (!co) return NextResponse.json({ error: "not found" }, { status: 404 });
 
