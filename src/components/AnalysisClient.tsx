@@ -351,7 +351,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
     const lockupPeriod=sd?.ipo_details?.lockup_period||"上場後180日";
     const floatRatio=sd?.ipo_details?.float_ratio||"参考値";
     const shareholders:any[]=sd?.shareholders||[];
-    const valid=shareholders.filter((s:any)=>parseFloat(String(s.ratio||'0').replace('%',''))>0);
+    const valid=(Array.isArray(shareholders)?shareholders:[]).filter((s:any)=>parseFloat(String(s.ratio||'0').replace('%',''))>0);
     const colors=["#f87171","#fb923c","#facc15","#4ade80","#60a5fa"];
     const chart=valid.length>0
       ?valid.slice(0,4).map((s:any,i:number)=>({label:s.name||`株主${i+1}`,pct:parseFloat(String(s.ratio||'0').replace('%','')),color:colors[i],lockup:s.lockup==="有"?"ロックアップあり":"上場時より流通"}))
