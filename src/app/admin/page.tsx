@@ -113,6 +113,20 @@ export default function AdminPage() {
     setStep(stepNum, false, `✅ ${label} 完了・${preview}`);
   };
 
+  const handleStep7 = async () => {
+    if (!selectedCompany) return;
+    setStep("7", true, undefined);
+    try {
+      const res = await fetch("/api/market", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ companyId: selectedCompany.id }),
+      });
+      const data = await res.json();
+      if (data.error) setStep("7", false, `❌ ${data.error}`);
+      else setStep("7", false, `✅ 完了・主幹事:${data.data?.lead_underwriter ?? "不明"}・競合${data.data?.competitors?.length ?? 0}社`);
+    } catch { setStep("7", false, "❌ 通信エラー"); }
+  };
+
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
     try {
@@ -203,15 +217,13 @@ export default function AdminPage() {
                   placeholder="例：S100XLWF" style={inputStyle}/>
               </div>
               {stepBox("1","#3b82f6","EDINETからテキスト取得","目論見書のテキストをDBに保存します（約10〜20秒）","① テキストを取得する", handleStep1)}
+              {stepBox("7","#0369a1","市場・競合情報収集（Claude Haiku + Web検索）","主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）","⑦ 市場・競合情報を収集する", handleStep7)}
               {stepBox("2","#16a34a","財務データを構造化（Claude Haiku）","テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）","② 財務データを構造化する", handleStep2)}
               {stepBox("3","#0e7490","スコア・シナリオ生成（Claude Sonnet）","総合スコア・A〜E判定・株価シナリオを生成します（約30〜40秒）","③ スコア・シナリオを生成する", handleStep3)}
               {stepBox("4","#7c3aed","超短期3軸 詳細分析（Gemini Flash）","需給・ロックアップ・タイミングの詳細レポートを生成します（約30〜45秒）","④ 超短期3軸を詳細分析する", () => handleAxes("ultra_short","4","超短期3軸"))}
               {stepBox("5","#b45309","短期3軸 詳細分析（Gemini Flash）","バリュエーション・VC売圧・成長性の詳細レポートを生成します（約30〜45秒）","⑤ 短期3軸を詳細分析する", () => handleAxes("short","5","短期3軸"))}
               {stepBox("6","#065f46","長期3軸 詳細分析（Gemini Flash）","経営陣・ユニットエコノミクス・競合環境の詳細レポートを生成します（約30〜45秒）","⑥ 長期3軸を詳細分析する", () => handleAxes("long","6","長期3軸"))}
-              <div style={{ background:"#f1f5f9", borderRadius:"10px", padding:"14px", border:"1px solid #cbd5e1", opacity:0.6 }}>
-                <div style={{ fontSize:"12px", fontWeight:"900", color:"#475569", marginBottom:"4px" }}>⑦ 市場・競合情報収集（Claude Sonnet + Web検索）</div>
-                <p style={{ fontSize:"11px", color:"#94a3b8", margin:"0" }}>主幹事証券・同業PER比較・VC実績・直近同セクターIPO比較（近日実装予定）</p>
-              </div>
+              
             </>
           )}
         </div>
