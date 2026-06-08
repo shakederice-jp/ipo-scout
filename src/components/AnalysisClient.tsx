@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
 
 interface AxisItem { id:string;title:string;score:number;index:string;why_matters:string;description:string;verdict:string;doc_guide:string;grade?:string;label?:string; }
@@ -210,14 +211,15 @@ function ScenarioCard({s}:{s:Scenario}) {
   );
 }
 
-function NotifyModal({company,onClose}:{company:IpoCompany;onClose:()=>void}) {
+function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|null;onClose:()=>void}) {
   const [settings,setSettings]=useState({notify_listing:true,notify_bb:true,notify_lockup_90:false,notify_lockup_180:false,method_email:true});
   const [status,setStatus]=useState<"idle"|"saving"|"done"|"error"|"needsPlan">("idle");
   const toggle=(k:keyof typeof settings)=>setSettings(p=>({...p,[k]:!p[k]}));
   const save=async()=>{
     setStatus("saving");
     const res=await fetch("/api/notification",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({user_id:"guest",company_id:company.id,...settings})});
+      body:JSON.stringify({user_id:userId??"guest",company_id:company.id,...settings})});
+    if(!userId){setStatus("needsPlan");return;}
     const data=await res.json();
     if(data.needsPlan){setStatus("needsPlan");return;}
     if(data.success){setStatus("done");}else{setStatus("error");}
@@ -232,8 +234,10 @@ function NotifyModal({company,onClose}:{company:IpoCompany;onClose:()=>void}) {
         <div style={{fontSize:13,fontWeight:700,color:DARK,marginBottom:4}}>{company.name}</div>
         {status==="needsPlan"&&(
           <div style={{backgroundColor:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#92400e"}}>
-            通知機能は<strong>通知プラン（¥890/月）</strong>以上でご利用いただけます。
-            <a href="/#pricing" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a>
+            {!userId
+              ? <>通知機能を使うには<strong>ログイン</strong>が必要です。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>ログイン・新規登録 →</a></>
+              : <>通知機能は<strong>通知プラン（¥890/月）</strong>以上でご利用いただけます。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
+            }
           </div>
         )}
         {status==="done"&&(
@@ -266,6 +270,14 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
+  const [userId,setUserId]=useState<string|null>(null);
+
+  useEffect(()=>{
+    const supabase=createSupabaseBrowserClient();
+    supabase.auth.getSession().then(({data})=>{
+      setUserId(data.session?.user?.id??null);
+    });
+  },[]);
 
   if(!analysis) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
@@ -321,7 +333,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
             <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>カレンダーへ
           </a>
         </div>
-        {showNotify&&<NotifyModal company={company} onClose={()=>setShowNotify(false)}/>}
+        {showNotify&&<NotifyModal company={company} userId={userId} onClose={()=>setShowNotify(false)}/>}
       </div>
 
       <div style={{...wrap,paddingTop:12,paddingBottom:40,display:"flex",flexDirection:"column",gap:12}}>
