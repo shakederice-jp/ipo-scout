@@ -183,8 +183,29 @@ export default function CalendarClient() {
                   </div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
-                  <div style={{ fontSize:10, color:C.muted }}>上場想定日</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</div>
+                  {(() => {
+                    const today2 = new Date(); today2.setHours(0,0,0,0);
+                    const ld = new Date(company.listing_date); ld.setHours(0,0,0,0);
+                    const diff = ld.getTime() - today2.getTime();
+                    if (diff < 0) return (
+                      <>
+                        <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>上場済み</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#64748b" }}>{dateStr}</div>
+                      </>
+                    );
+                    if (diff === 0) return (
+                      <>
+                        <div style={{ fontSize:10, fontWeight:700, color:"#b91c1c", backgroundColor:"#fef2f2", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>本日上場🎉</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#b91c1c" }}>{dateStr}</div>
+                      </>
+                    );
+                    return (
+                      <>
+                        <div style={{ fontSize:10, color:C.muted }}>上場予定日</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               {company.summary && <div style={{ padding:"0 16px 12px", fontSize:12, color:"#4a5568", lineHeight:1.8 }}>{company.summary}</div>}
