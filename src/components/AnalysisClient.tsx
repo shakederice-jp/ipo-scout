@@ -210,9 +210,62 @@ function ScenarioCard({s}:{s:Scenario}) {
   );
 }
 
+function NotifyModal({company,onClose}:{company:IpoCompany;onClose:()=>void}) {
+  const [settings,setSettings]=useState({notify_listing:true,notify_bb:true,notify_lockup_90:false,notify_lockup_180:false,method_email:true});
+  const [status,setStatus]=useState<"idle"|"saving"|"done"|"error"|"needsPlan">("idle");
+  const toggle=(k:keyof typeof settings)=>setSettings(p=>({...p,[k]:!p[k]}));
+  const save=async()=>{
+    setStatus("saving");
+    const res=await fetch("/api/notification",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({user_id:"guest",company_id:company.id,...settings})});
+    const data=await res.json();
+    if(data.needsPlan){setStatus("needsPlan");return;}
+    if(data.success){setStatus("done");}else{setStatus("error");}
+  };
+  return (
+    <div style={{position:"fixed",inset:0,backgroundColor:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{backgroundColor:"white",borderRadius:16,padding:24,maxWidth:360,width:"100%",border:`2px solid ${PRIMARY}`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontWeight:900,fontSize:16,color:DARK}}>🔔 通知設定</div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#94a3b8"}}>✕</button>
+        </div>
+        <div style={{fontSize:13,fontWeight:700,color:DARK,marginBottom:4}}>{company.name}</div>
+        {status==="needsPlan"&&(
+          <div style={{backgroundColor:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#92400e"}}>
+            通知機能は<strong>通知プラン（¥890/月）</strong>以上でご利用いただけます。
+            <a href="/#pricing" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a>
+          </div>
+        )}
+        {status==="done"&&(
+          <div style={{backgroundColor:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#15803d"}}>
+            ✅ 通知設定を保存しました！毎週金曜18時にお知らせします。
+          </div>
+        )}
+        {status!=="needsPlan"&&status!=="done"&&(
+          <>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:12}}>通知を受け取るイベントを選択してください（前週金曜18時送信）</div>
+            {([["notify_listing","🔴 上場日"],["notify_bb","🟦 BB開始日"],["notify_lockup_90","🔓 ロックアップ90日解除"],["notify_lockup_180","🔓 ロックアップ180日解除"]] as [keyof typeof settings,string][]).map(([k,label])=>(
+              <div key={k} onClick={()=>toggle(k)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}>
+                <span style={{fontSize:12,color:DARK}}>{label}</span>
+                <div style={{width:36,height:20,borderRadius:10,backgroundColor:settings[k]?PRIMARY:"#e2e8f0",position:"relative",transition:"background 0.2s"}}>
+                  <div style={{position:"absolute",top:2,left:settings[k]?18:2,width:16,height:16,borderRadius:"50%",backgroundColor:"white",transition:"left 0.2s"}}/>
+                </div>
+              </div>
+            ))}
+            <button onClick={save} disabled={status==="saving"} style={{width:"100%",marginTop:16,padding:"12px",backgroundColor:PRIMARY,color:"white",border:"none",borderRadius:10,fontWeight:900,fontSize:14,cursor:"pointer"}}>
+              {status==="saving"?"保存中...":"通知を設定する"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AnalysisClient({company,initialAnalysis}:{company:IpoCompany;initialAnalysis:Analysis|null}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
+  const [showNotify,setShowNotify]=useState(false);
 
   if(!analysis) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"#eef9f9"}}>
@@ -260,9 +313,15 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
             <div style={{color:PRIMARY,fontWeight:600,fontSize:9}}>担当：大手町調査室九課</div>
           </div>
         </div>
-        <a href="/calendar" style={{color:"#94a3b8",fontSize:12,display:"flex",alignItems:"center",gap:4,textDecoration:"none"}}>
-          <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>カレンダーへ
-        </a>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.15)",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>
+            🔔 通知
+          </button>
+          <a href="/calendar" style={{color:"#94a3b8",fontSize:12,display:"flex",alignItems:"center",gap:4,textDecoration:"none"}}>
+            <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>カレンダーへ
+          </a>
+        </div>
+        {showNotify&&<NotifyModal company={company} onClose={()=>setShowNotify(false)}/>}
       </div>
 
       <div style={{...wrap,paddingTop:12,paddingBottom:40,display:"flex",flexDirection:"column",gap:12}}>
