@@ -172,30 +172,7 @@ const userId = session?.user?.id ?? null;
       fontFamily:"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif" }}>
 
       {/* ナビゲーションバー */}
-      <nav className="sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between border-b"
-        style={{ backgroundColor:"#082b2e", borderColor:"#134f53" }}>
-        <div className="flex items-center gap-2.5">
-          <div className="rounded p-1.5" style={{ backgroundColor:"#66c3c6" }}>
-            <BarChart2 size={14} className="text-white"/>
-          </div>
-          <div>
-            <div className="hidden sm:block font-black text-sm leading-tight" style={{ color:"white" }}>
-              IPO企業情報AI分析レポート
-            </div>
-            <div className="block sm:hidden font-black leading-tight"
-              style={{ fontSize:"11px", color:"white" }}>
-              IPO企業情報AI分析レポート
-            </div>
-            <div className="font-semibold" style={{ fontSize:"9px", color:"#4aafb3" }}>
-              担当：大手町調査室九課
-            </div>
-          </div>
-        </div>
-        <span className="hidden sm:flex items-center gap-1 font-bold rounded-full px-3 py-1"
-          style={{ fontSize:"10px", backgroundColor:"#134f53", color:"#66c3c6" }}>
-          <Calendar size={11}/>{list.length}社掲載中
-        </span>
-      </nav>
+      
 
       {/* 決済結果バナー */}
       {params.checkout === "success" && (

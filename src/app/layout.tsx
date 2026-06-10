@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Script from "next/script";
+import AppHeader from "@/components/AppHeader";
 
 export const metadata: Metadata = {
   title: {
-    default: "IPO企業情報AI分析レポート｜大手町調査室九課",
-    template: "%s｜大手町調査室九課",
+    default: "IPO Scout | AI駆動のIPO分析・投資判断支援サービス",
+    template: "%s | IPO Scout",
   },
-  description: "AIが目論見書を解析。超短期・短期・長期の投資時間軸で整理した深掘り分析レポートで、IPO投資の勝率を高めます。",
-  keywords: ["IPO", "新規上場", "株", "投資分析", "初値", "目論見書"],
+  description: "AI分析で日本のIPO投資判断をサポート。初値予測・スコアリング・需給分析・財務分析を提供します。",
+  keywords: ["IPO", "新規上場", "投資", "分析", "初値予測", "日本株"],
 };
 
 const GA_ID = "G-27Z6CDZXB1";
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           gtag('config', '${GA_ID}');
         `}</Script>
       </head>
-      <body>{children}</body>
+      <body>
+        <AppHeader />
+        {children}
+      </body>
     </html>
   );
 }
