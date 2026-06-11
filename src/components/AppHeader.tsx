@@ -59,7 +59,7 @@ export default function AppHeader() {
   return (
     <header style={{ backgroundColor: C.nav, position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
       {/* メインナビ */}
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 0 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 44 }}>
         {/* ロゴ */}
         <Link href="/" style={{ textDecoration: "none" }}>
   <span style={{ fontSize: 15, fontWeight: 900, color: C.teal, letterSpacing: "-0.5px" }}>IPO Scout</span>
