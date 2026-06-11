@@ -61,10 +61,10 @@ export default function AppHeader() {
       {/* メインナビ */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 52 }}>
         {/* ロゴ */}
-        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: C.teal, letterSpacing: "-0.5px" }}>IPO Scout</span>
-          <span style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>β</span>
-        </Link>
+        <Link href="/" style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 1 }}>
+  <span style={{ fontSize: 13, fontWeight: 900, color: C.teal, letterSpacing: "0.5px", lineHeight: 1.2 }}>IPO企業情報AI分析レポート</span>
+  <span style={{ fontSize: 10, fontWeight: 500, color: "#a0d4d6", letterSpacing: "0.3px", lineHeight: 1.2 }}>担当：大手町調査室九課</span>
+</Link>
 
         {/* ナビリンク */}
         <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
