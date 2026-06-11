@@ -104,7 +104,8 @@ export default function CalendarClient() {
         </div>
       </nav>
 
-      <div style={{ maxWidth:720, margin:"0 auto", padding:"16px 12px" }}>
+      <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", display:"flex", gap:24, alignItems:"flex-start" }}>
+      <div style={{ flex:"0 0 480px", position:"sticky", top:60 }}>
         <div style={{ backgroundColor:C.white, borderRadius:16, border:`1px solid ${C.border}`, marginBottom:20, overflow:"hidden" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
             <button onClick={prevMonth} style={{ background:"none", border:"none", cursor:"pointer", padding:6, color:C.nav, borderRadius:8, display:"flex", alignItems:"center" }}>
@@ -150,7 +151,8 @@ export default function CalendarClient() {
             カレンダーの番号をタップ → 下の銘柄へジャンプ
           </div>
         </div>
-
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
         <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>📋 IPO予定企業一覧</h2>
           <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${monthSorted.length}社）`}</span>
