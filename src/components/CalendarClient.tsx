@@ -225,6 +225,6 @@ export default function CalendarClient() {
           <div style={{ textAlign:"center", padding:"40px 0", fontSize:13, color:C.muted }}>現在登録されている銘柄はありません</div>
         )}
       </div>
-    </div>
+      </div>
   );
 }
