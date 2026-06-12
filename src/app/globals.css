@@ -32,3 +32,19 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
+.calendar-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+@media (min-width: 900px) {
+  .calendar-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .calendar-left {
+    position: sticky;
+    top: 60px;
+    flex: 0 0 480px;
+  }
+}

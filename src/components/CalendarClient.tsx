@@ -98,8 +98,8 @@ export default function CalendarClient() {
     <div style={{ minHeight:"100vh", backgroundColor:C.bg, fontFamily:"'Noto Sans JP',sans-serif" }}>
      
 
-     <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", display:"flex", flexDirection:"column", gap:24, alignItems:"flex-start" }} className="calendar-layout">
-      <div style={{ flex:"0 0 480px", position:"sticky", top:60 }}>
+     <div className="calendar-layout" style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", gap:24 }}>
+     <div className="calendar-left">
         <div style={{ backgroundColor:C.white, borderRadius:16, border:`1px solid ${C.border}`, marginBottom:20, overflow:"hidden" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
             <button onClick={prevMonth} style={{ background:"none", border:"none", cursor:"pointer", padding:6, color:C.nav, borderRadius:8, display:"flex", alignItems:"center" }}>
