@@ -69,21 +69,6 @@ export default function AppHeader() {
   </div>
 </Link>
 
-        {/* ナビリンク */}
-        <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {(["/", "/calendar"] as const).map((href) => {
-            const label = href === "/" ? navLabels.top : navLabels.calendar;
-            const active = pathname === href;
-            return (
-              <Link key={href} href={href} style={{
-                textDecoration: "none", fontSize: 12, fontWeight: active ? 700 : 500,
-                color: active ? C.teal : "#a0d4d6",
-                padding: "6px 10px", borderRadius: 6,
-                backgroundColor: active ? "rgba(102,195,198,0.15)" : "transparent",
-              }}>{label}</Link>
-            );
-          })}
-        </nav>
 
         {/* 右側コントロール */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
