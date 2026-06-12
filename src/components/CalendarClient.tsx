@@ -96,15 +96,9 @@ export default function CalendarClient() {
 
   return (
     <div style={{ minHeight:"100vh", backgroundColor:C.bg, fontFamily:"'Noto Sans JP',sans-serif" }}>
-      <nav style={{ backgroundColor:C.nav, padding:"12px 16px", display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ fontSize:18 }}>📊</span>
-        <div>
-          <div style={{ color:"white", fontWeight:900, fontSize:13 }}>IPO企業情報AI分析レポート</div>
-          <div style={{ color:C.teal, fontSize:10 }}>担当：大手町調査室九課</div>
-        </div>
-      </nav>
+     
 
-      <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", display:"flex", gap:24, alignItems:"flex-start" }}>
+     <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", display:"flex", flexDirection:"column", gap:24, alignItems:"flex-start" }} className="calendar-layout">
       <div style={{ flex:"0 0 480px", position:"sticky", top:60 }}>
         <div style={{ backgroundColor:C.white, borderRadius:16, border:`1px solid ${C.border}`, marginBottom:20, overflow:"hidden" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
