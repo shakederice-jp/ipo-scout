@@ -316,15 +316,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
   return (
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
       <div style={{backgroundColor:DARK,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{backgroundColor:PRIMARY,borderRadius:6,padding:5,display:"flex"}}>
-            <BarChart2 size={14} color="white"/>
-          </div>
-          <div>
-            <div style={{color:"white",fontWeight:900,fontSize:13,lineHeight:1.2}}>IPO企業情報AI分析レポート</div>
-            <div style={{color:PRIMARY,fontWeight:600,fontSize:9}}>担当：大手町調査室九課</div>
-          </div>
-        </div>
+       
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.15)",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>
             🔔 通知
