@@ -315,16 +315,9 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
 
   return (
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
-      <div style={{backgroundColor:DARK,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-       
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.15)",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>
-            🔔 通知
-          </button>
-          <a href="/calendar" style={{color:"#94a3b8",fontSize:12,display:"flex",alignItems:"center",gap:4,textDecoration:"none"}}>
-            <ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>カレンダーへ
-          </a>
-        </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 16px",backgroundColor:"#e8f4f5",borderBottom:"1px solid #d0e8ea"}}>
+        <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:6,backgroundColor:"#0d4f52",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>🔔 通知</button>
+        <a href="/calendar" style={{color:"#0d4f52",fontSize:11,display:"flex",alignItems:"center",gap:3,textDecoration:"none",fontWeight:600}}>‹ カレンダーへ</a>
         {showNotify&&<NotifyModal company={company} userId={userId} onClose={()=>setShowNotify(false)}/>}
       </div>
 
