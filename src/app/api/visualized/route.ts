@@ -20,53 +20,39 @@ export async function POST(req: NextRequest) {
   if (error || !co) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const sd = co.structured_data as any;
-  const prompt = `
-以下はIPO企業「${co.name}」の構造化データです。
-このデータから視覚化用のJSONを生成してください。
+  const prompt = `You are a financial data extractor. Extract visualization data from this IPO company structured data and return ONLY valid JSON with no explanation or markdown.
 
-【構造化データ】
-${JSON.stringify(sd, null, 2)}
+Company: ${(co as any).name}
+Data: ${JSON.stringify(sd, null, 2)}
 
-【指示】
-以下の3種類の視覚化データをJSON形式で返してください。
-データが不明・不足の場合はnullを返してください。
-
-必ずJSONのみを返し、説明文や```は不要です。
-
+Return this exact JSON structure (use null for unavailable data):
 {
   "revenue_chart": {
-    "available": true/false,
+    "available": true,
     "title": "売上・利益推移",
-    "data": [
-      {"year": "2022年8月期", "revenue": 数値(百万円), "profit": 数値(百万円)},
-      ...
-    ],
-    "citation": "目論見書・財務情報によると〜"
+    "data": [{"year": "2022年8月期", "revenue": 23210, "profit": 780}],
+    "citation": "citation text here"
   },
   "shareholders_chart": {
-    "available": true/false,
+    "available": true,
     "title": "株主構成",
-    "data": [
-      {"name": "株主名", "ratio": 数値(%), "type": "創業者/VC/機関投資家/その他", "lockup": true/false},
-      ...
-    ],
-    "lockup_info": "ロックアップ条件の説明",
-    "citation": "目論見書・株主構成によると〜"
+    "data": [{"name": "name", "ratio": 50, "type": "創業者", "lockup": true}],
+    "lockup_info": "lockup description",
+    "citation": "citation text here"
   },
   "valuation_table": {
-    "available": true/false,
+    "available": true,
     "title": "バリュエーション指標",
-    "ipo_price": 数値,
-    "market_cap": 数値(百万円),
-    "per": 数値,
-    "pbr": 数値,
-    "float_ratio": 数値(%),
-    "fundraising": 数値(百万円),
-    "comment": "割安・割高の判定コメント",
-    "citation": "目論見書・IPO詳細によると〜"
+    "ipo_price": 1000,
+    "market_cap": 50000,
+    "per": 15.5,
+    "pbr": 2.1,
+    "float_ratio": 17.5,
+    "fundraising": 318,
+    "comment": "comment here",
+    "citation": "citation text here"
   }
-}
-`;
+}`;
 
   try {
     const message = await anthropic.messages.create({
