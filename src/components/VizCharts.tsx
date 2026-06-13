@@ -50,7 +50,7 @@ export default function VizCharts({ vizData }: { vizData: any }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
             <ResponsiveContainer width={200} height={200}>
               <PieChart>
-                <Pie data={shareholders_chart.data} dataKey="ratio" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, ratio }) => `${ratio}%`} labelLine={false}>
+              <Pie data={shareholders_chart.data} dataKey="ratio" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ value }) => `${value}%`} labelLine={false}>
                   {shareholders_chart.data.map((_: any, i: number) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
