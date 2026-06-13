@@ -58,7 +58,7 @@ export default async function AnalysisPage({
   const axesMid = co.analysis_axes_mid ?? null;
   const axesLong = co.analysis_axes_long ?? null;
   const analysisMarket = co.analysis_market ?? null;
-
+  const visualizationData = co.visualization_data ?? null;
   // 旧形式との互換性を保ちつつ新形式データを統合
   let initialAnalysis: any = null;
 
@@ -86,6 +86,7 @@ export default async function AnalysisPage({
     <AnalysisClient
       company={company as any}
       initialAnalysis={initialAnalysis}
+      visualizationData={visualizationData}
     />
   );
 }

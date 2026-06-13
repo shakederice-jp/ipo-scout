@@ -1,4 +1,5 @@
 "use client";
+import VizCharts from "@/components/VizCharts";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
@@ -266,7 +267,7 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis}:{company:IpoCompany;initialAnalysis:Analysis|null}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -363,7 +364,7 @@ export default function AnalysisClient({company,initialAnalysis}:{company:IpoCom
           </div>
           <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
         </Card>
-
+        {visualizationData && <VizCharts vizData={visualizationData} />}
         {insights.length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
