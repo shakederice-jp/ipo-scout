@@ -14,7 +14,8 @@ export default function AdminPage() {
   const [edinetDocId, setEdinetDocId] = useState("");
   const [stepLoading, setStepLoading] = useState<Record<string,boolean>>({});
   const [stepResult, setStepResult] = useState<Record<string,string|null>>({});
-
+  const [vizLoading, setVizLoading] = useState(false);
+  const [vizResult, setVizResult] = useState<string | null>(null);
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
@@ -227,7 +228,35 @@ export default function AdminPage() {
             </>
           )}
         </div>
-
+      {/* 4. 視覚化データ生成 */}
+      <div style={sectionStyle}>
+              <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📊 視覚化データ生成</h2>
+              <button
+                onClick={async () => {
+                  if (!selectedCompany) return;
+                  setVizLoading(true);
+                  setVizResult(null);
+                  try {
+                    const res = await fetch("/api/visualize", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ companyId: selectedCompany.id }),
+                    });
+                    const data = await res.json();
+                    setVizResult(data.success ? "✅ 視覚化データ生成完了" : `❌ エラー: ${data.error}`);
+                  } catch (e) {
+                    setVizResult("❌ 通信エラー");
+                  } finally {
+                    setVizLoading(false);
+                  }
+                }}
+                disabled={vizLoading || !selectedCompany}
+                style={{ padding:"10px 20px", backgroundColor:"#0d4f52", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:13 }}
+              >
+                {vizLoading ? "⏳ 生成中..." : "📊 視覚化データを生成"}
+              </button>
+              {vizResult && <p style={{ marginTop:8, fontSize:12, color:"#0d4f52" }}>{vizResult}</p>}
+            </div>
         {/* 3. 初値・騰落率入力 */}
         <div style={sectionStyle}>
           <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📝 初値・騰落率入力</h2>
