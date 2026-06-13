@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const { companyId } = await req.json();
   if (!companyId) return NextResponse.json({ error: "companyId required" }, { status: 400 });
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = (await createSupabaseServerClient())!;
   const { data: co, error } = await supabase
     .from("ipo_companies")
     .select("structured_data, raw_prospectus, name")
