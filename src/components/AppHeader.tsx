@@ -12,11 +12,6 @@ const C = {
 type FontSize = "sm" | "md" | "lg";
 const FONT_SIZE_MAP: Record<FontSize, number> = { sm: 13, md: 15, lg: 17 };
 
-const BREADCRUMB_MAP: Record<string, Record<string, string>> = {
-  ja: { "/": "トップ", "/calendar": "カレンダー", "/analysis": "銘柄分析" },
-  en: { "/": "Top", "/calendar": "Calendar", "/analysis": "Analysis" },
-};
-
 interface AppHeaderProps {
   slot?: React.ReactNode;
 }
@@ -33,16 +28,23 @@ export default function AppHeader({ slot }: AppHeaderProps = {}) {
     );
   }, [fontSize]);
 
-  const segments = pathname.split("/").filter(Boolean);
-  const crumbs: { label: string; href: string }[] = [
-    { label: BREADCRUMB_MAP[lang]["/"], href: "/" },
-  ];
-  let acc = "";
-  for (const seg of segments) {
-    acc += "/" + seg;
-    const key = acc.startsWith("/analysis/") ? "/analysis" : acc;
-    const label = BREADCRUMB_MAP[lang][key] ?? seg;
-    crumbs.push({ label, href: acc });
+  const isAnalysis = pathname.startsWith("/analysis/");
+  const isCalendar = pathname === "/calendar";
+
+  type Crumb = { label: string; href: string; link: boolean };
+  let crumbs: Crumb[] = [];
+
+  if (isCalendar) {
+    crumbs = [
+      { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
+      { label: lang === "ja" ? "カレンダー" : "Calendar", href: "/calendar", link: false },
+    ];
+  } else if (isAnalysis) {
+    crumbs = [
+      { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
+      { label: lang === "ja" ? "カレンダー" : "Calendar", href: "/calendar", link: true },
+      { label: lang === "ja" ? "銘柄分析" : "Analysis", href: pathname, link: false },
+    ];
   }
 
   return (
@@ -74,14 +76,14 @@ export default function AppHeader({ slot }: AppHeaderProps = {}) {
           }}>{lang === "ja" ? "EN" : "JA"}</button>
         </div>
       </div>
-      {crumbs.length > 1 && (
+      {crumbs.length > 0 && (
         <div style={{ backgroundColor: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(102,195,198,0.15)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", padding: "4px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               {crumbs.map((c, i) => (
                 <span key={c.href} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {i > 0 && <span style={{ color: "#a0d4d6", fontSize: 10 }}>›</span>}
-                  {i < crumbs.length - 1
+                  {c.link
                     ? <Link href={c.href} style={{ fontSize: 11, color: "#a0d4d6", textDecoration: "none" }}>{c.label}</Link>
                     : <span style={{ fontSize: 11, color: C.teal, fontWeight: 600 }}>{c.label}</span>
                   }
