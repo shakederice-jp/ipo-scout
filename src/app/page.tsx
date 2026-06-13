@@ -212,11 +212,11 @@ const userId = session?.user?.id ?? null;
         </div>
       </div>
 
-      {/* メインコンテンツ */}
-      <main className="max-w-6xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 items-start">
-        <a href="/calendar" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 24px", backgroundColor:"#66c3c6", color:"white", textDecoration:"none", borderRadius:10, fontWeight:700, fontSize:15 }}><span style={{ fontSize:18 }}>📅</span> IPOカレンダーを見る →</a>
+      <a href="/calendar" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 24px", margin:"0 16px 12px", backgroundColor:"#66c3c6", color:"white", textDecoration:"none", borderRadius:10, fontWeight:700, fontSize:15 }}><span style={{ fontSize:18 }}>📅</span> IPOカレンダーを見る →</a>
 
-        {/* 左：銘柄一覧 */}
+<main className="max-w-6xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 items-start">
+
+  {/* 左：銘柄一覧 */}
         <section className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-4">
             <Building2 size={18} style={{ color:"#66c3c6" }}/>
@@ -253,8 +253,7 @@ const userId = session?.user?.id ?? null;
             </div>
           )}
         </section>
-        <a href="/calendar" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 24px", backgroundColor:"#66c3c6", color:"white", textDecoration:"none", borderRadius:10, fontWeight:700, fontSize:15 }}><span style={{ fontSize:18 }}>📅</span> IPOカレンダーを見る →</a>
-          <a href="/calendar" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 24px", backgroundColor:"#0d4f52", color:"white", textDecoration:"none", borderRadius:10, fontWeight:700, fontSize:15, marginTop:16 }}><span style={{ fontSize:18 }}>📅</span> IPOカレンダーを見る →</a>
+        
 
         {/* 右：サイドバー */}
         <aside className="w-full lg:w-80 lg:sticky lg:top-20 space-y-4 shrink-0">
@@ -309,7 +308,7 @@ const userId = session?.user?.id ?? null;
           <RefferalSection userId={userId ?? "test"} />
         </aside>
       </main>
-
+      <a href="/calendar" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 24px", margin:"12px 16px 0", backgroundColor:"#66c3c6", color:"white", textDecoration:"none", borderRadius:10, fontWeight:700, fontSize:15 }}><span style={{ fontSize:18 }}>📅</span> IPOカレンダーを見る →</a>
       {/* フッター */}
       <footer className="border-t mt-8 px-4 py-6 text-center"
         style={{ borderColor:"#b3e8ea", backgroundColor:"white" }}>
