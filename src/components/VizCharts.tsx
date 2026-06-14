@@ -6,15 +6,9 @@ const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
 const COLORS = ["#66c3c6","#0d4f52","#f59e0b","#6366f1","#10b981","#f43f5e","#8b5cf6","#ec4899"];
 
 export default function VizCharts({ vizData }: { vizData: any }) {
-  if (!vizData) {
-    return (
-      <div style={{ fontSize: 11, color: "#94a3b8", padding: 12, backgroundColor: "#f8fafc", borderRadius: 8 }}>
-        [デバッグ] visualizationDataがnull/undefinedです（VizCharts自体は呼ばれていません）
-      </div>
-    );
-  }
+  if (!vizData) return null;
 
-  const { revenue_chart, shareholders_chart, valuation_table } = vizData;
+  const { revenue_chart, shareholders_chart, valuation_table, share_structure_chart, recent_ipo_chart } = vizData;
 
   const shareholderData: any[] = shareholders_chart?.data ?? [];
   const hasShareholders = shareholderData.length > 0;
@@ -34,19 +28,17 @@ export default function VizCharts({ vizData }: { vizData: any }) {
   const fmt = (v: any, suffix: string = "") => (v === null || v === undefined ? "未定" : `${v}${suffix}`);
 
   const revenueVisible = revenue_chart?.available && revenue_chart.data?.length > 0;
-  const anyVisible = revenueVisible || hasShareholders || valHasContent;
+  const structureData: any[] = share_structure_chart?.data ?? [];
+  const structureVisible = share_structure_chart?.available && structureData.length > 0;
+  const recentIpoData: any[] = recent_ipo_chart?.data ?? [];
+  const recentIpoVisible = recent_ipo_chart?.available && recentIpoData.length > 0
+    && recentIpoData.some((d) => typeof d.performance === "number");
+  const maxAbsPerf = recentIpoVisible
+    ? Math.max(10, ...recentIpoData.map((d) => Math.abs(d.performance ?? 0)))
+    : 10;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
-
-      {!anyVisible && (
-        <div style={{ fontSize: 10, color: "#92400e", padding: 12, backgroundColor: "#fffbeb", borderRadius: 8, whiteSpace: "pre-wrap", fontFamily: "monospace", lineHeight: 1.6 }}>
-          [デバッグ] vizDataは存在しますが、表示条件を満たす項目がありません。{"\n"}
-          revenue_chart.available: {String(revenue_chart?.available)} / data件数: {revenue_chart?.data?.length ?? "なし"}{"\n"}
-          shareholders_chart.data件数: {shareholderData.length}{"\n"}
-          valuation_table: {JSON.stringify(valuation_table)}
-        </div>
-      )}
 
       {/* ① 業績グラフ */}
       {revenueVisible && (
@@ -168,6 +160,70 @@ export default function VizCharts({ vizData }: { vizData: any }) {
               💡 {valuation_table.comment}
             </p>
           )}
+        </div>
+      )}
+
+      {/* ④ 株式構成（上場時） */}
+      {structureVisible && (
+        <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16 }}>📦</span>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: C.nav, margin: 0 }}>{share_structure_chart.title ?? "株式構成（上場時）"}</h3>
+          </div>
+          {share_structure_chart.citation && (
+            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {share_structure_chart.citation}</p>
+          )}
+          <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", marginBottom: 12 }}>
+            {structureData.map((d: any, i: number) => (
+              <div key={i} style={{ width: `${d.ratio ?? 0}%`, backgroundColor: COLORS[i % COLORS.length] }} title={d.label} />
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {structureData.map((d: any, i: number) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: "#082b2e", flex: 1 }}>{d.label}</span>
+                {typeof d.shares === "number" && (
+                  <span style={{ fontSize: 10, color: "#94a3b8" }}>{d.shares.toLocaleString()}株</span>
+                )}
+                <span style={{ fontSize: 11, color: C.teal, fontWeight: 700, width: 48, textAlign: "right" }}>
+                  {typeof d.ratio === "number" ? `${d.ratio}%` : "不明"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ⑤ 直近の同業種IPO 初値パフォーマンス */}
+      {recentIpoVisible && (
+        <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16 }}>🚀</span>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: C.nav, margin: 0 }}>{recent_ipo_chart.title ?? "直近の同業種IPO 初値パフォーマンス"}</h3>
+          </div>
+          {recent_ipo_chart.citation && (
+            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {recent_ipo_chart.citation}</p>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {recentIpoData.filter((d: any) => typeof d.performance === "number").map((d: any, i: number) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#082b2e", width: 110, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+                <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: C.bg, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: "#cbd5e1", left: "50%" }} />
+                  <div style={{
+                    position: "absolute", top: 0, height: "100%", borderRadius: 4,
+                    ...(d.performance >= 0 ? { left: "50%" } : { right: "50%" }),
+                    width: `${Math.min(50, (Math.abs(d.performance) / maxAbsPerf) * 50)}%`,
+                    backgroundColor: d.performance >= 0 ? "#22c55e" : "#f87171",
+                  }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: d.performance >= 0 ? "#15803d" : "#b91c1c", width: 48, textAlign: "right" }}>
+                  {d.performance >= 0 ? "+" : ""}{d.performance}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

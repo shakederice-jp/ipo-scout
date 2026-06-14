@@ -146,6 +146,7 @@ export default function AdminPage() {
       { type: "revenue_chart", label: "売上・利益チャート" },
       { type: "shareholders_chart", label: "株主構成チャート" },
       { type: "valuation_table", label: "IPO概要テーブル" },
+      { type: "market_structure_chart", label: "株式構成・市場比較チャート" },
     ];
     const merged: Record<string, any> = {};
     for (let i = 0; i < chartTypes.length; i++) {
