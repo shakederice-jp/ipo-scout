@@ -9,6 +9,12 @@ export const maxDuration = 60;
 const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
+const MAX_TOKENS: Record<ChartType, number> = {
+  revenue_chart: 2000,
+  shareholders_chart: 4000,
+  valuation_table: 2000,
+};
+
 function buildPrompt(chartType: ChartType, name: string, sd: any): string {
   const header = `You are a financial data extractor. Extract visualization data from this IPO company structured data and return ONLY valid JSON with no explanation or markdown.
 
@@ -37,6 +43,7 @@ Return this exact JSON structure:
     return `${header}
 - "citation" fields MUST be natural Japanese sentences, like "目論見書の財務情報によると、売上は23.0%増加した" — NEVER output raw key:value dumps like "field_name: value".
 - Include ALL entries from the input "shareholders" array, even if ratio is unknown (use null for ratio in that case). Do not drop any shareholder.
+- Keep each shareholder's "type" field to a short word (e.g. "創業者", "VC", "金融機関", "個人").
 - Use null for any numeric value that is genuinely unknown. Do not invent numbers.
 
 Return this exact JSON structure:
@@ -111,7 +118,7 @@ export async function POST(req: NextRequest) {
     const message = await anthropic.messages.create(
       {
         model: "claude-haiku-4-5",
-        max_tokens: 2000,
+        max_tokens: MAX_TOKENS[chart_type as ChartType] ?? 2000,
         messages: [{ role: "user", content: prompt }],
       },
       { timeout: 55000 }
