@@ -109,7 +109,7 @@ function parseAxisReport(text:string):{sections:Record<string,string>;positives:
     .filter(Boolean);
   const positives=extractBullets("ポジティブ要因");
   const negatives=extractBullets("ネガティブ要因・リスク");
-  const sugg=(sections["投資家への示唆"]||sections["なぜ重要か"]||"").replace(/\*\*([^*]+)\*\*/g,"$1").trim();
+  const sugg=(sections["まとめ"]||sections["投資家への示唆"]||sections["なぜ重要か"]||"").replace(/\*\*([^*]+)\*\*/g,"$1").trim();
   const summary=sugg.split("\n").map(l=>l.trim()).filter(Boolean).join(" ").slice(0,110);
   return {sections,positives,negatives,summary};
 }
