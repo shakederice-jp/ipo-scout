@@ -128,6 +128,45 @@ export default function AdminPage() {
     } catch { setStep("7", false, "❌ 通信エラー"); }
   };
 
+  const handleVisualize = async () => {
+    if (!selectedCompany) return;
+    setVizLoading(true);
+    const chartTypes: { type: string; label: string }[] = [
+      { type: "revenue_chart", label: "売上・利益チャート" },
+      { type: "shareholders_chart", label: "株主構成チャート" },
+      { type: "valuation_table", label: "IPO概要テーブル" },
+    ];
+    const merged: Record<string, any> = {};
+    for (let i = 0; i < chartTypes.length; i++) {
+      const { type, label } = chartTypes[i];
+      setVizResult(`⏳ ${label} 生成中 (${i+1}/3)...`);
+      try {
+        const res = await fetch("/api/visualize", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ companyId: selectedCompany.id, chart_type: type }),
+        });
+        const data = await res.json();
+        if (data.error) { setVizResult(`❌ ${label}: ${data.error}`); setVizLoading(false); return; }
+        Object.assign(merged, data.data);
+      } catch {
+        setVizResult(`❌ ${label} 通信エラー`); setVizLoading(false); return;
+      }
+    }
+    setVizResult("⏳ 保存中...");
+    try {
+      const saveRes = await fetch("/api/visualize", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ companyId: selectedCompany.id, save_results: merged }),
+      });
+      const saveData = await saveRes.json();
+      setVizResult(saveData.success ? "✅ 視覚化データ生成完了" : `❌ 保存エラー: ${saveData.error}`);
+    } catch {
+      setVizResult("❌ 保存通信エラー");
+    } finally {
+      setVizLoading(false);
+    }
+  };
+
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
     try {
@@ -232,24 +271,7 @@ export default function AdminPage() {
       <div style={sectionStyle}>
               <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📊 視覚化データ生成</h2>
               <button
-                onClick={async () => {
-                  if (!selectedCompany) return;
-                  setVizLoading(true);
-                  setVizResult(null);
-                  try {
-                    const res = await fetch("/api/visualize", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ companyId: selectedCompany.id }),
-                    });
-                    const data = await res.json();
-                    setVizResult(data.success ? "✅ 視覚化データ生成完了" : `❌ エラー: ${data.error}`);
-                  } catch (e) {
-                    setVizResult("❌ 通信エラー");
-                  } finally {
-                    setVizLoading(false);
-                  }
-                }}
+                onClick={handleVisualize}
                 disabled={vizLoading || !selectedCompany}
                 style={{ padding:"10px 20px", backgroundColor:"#0d4f52", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:13 }}
               >
