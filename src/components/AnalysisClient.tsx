@@ -81,6 +81,72 @@ function MarkdownReport({text}:{text:string}) {
   );
 }
 
+const ALL_AXIS_ORDER=["float","lockup","timing","valuation","vc_sell","growth","management","unit_econ","competitor"];
+const ALL_AXIS_LABELS:Record<string,string>={
+  float:"需給の軽さ",lockup:"ロックアップ",timing:"上場タイミング",
+  valuation:"バリュエーション",vc_sell:"VC売圧",growth:"成長性",
+  management:"経営陣",unit_econ:"ユニットエコノミクス",competitor:"競合環境",
+};
+const ALL_AXIS_SHORT:Record<string,string>={
+  float:"需給",lockup:"ロックアップ",timing:"タイミング",
+  valuation:"バリュエ",vc_sell:"VC売圧",growth:"成長性",
+  management:"経営陣",unit_econ:"収益性",competitor:"競合",
+};
+
+function parseAxisReport(text:string):{sections:Record<string,string>;positives:string[];negatives:string[];summary:string} {
+  const sections:Record<string,string>={};
+  let current="";
+  (text||"").split("\n").forEach(line=>{
+    const m=line.match(/^###\s+(.+)/);
+    if(m){current=m[1].trim();sections[current]="";}
+    else if(current){sections[current]+=line+"\n";}
+  });
+  const extractBullets=(key:string)=>(sections[key]||"")
+    .split("\n")
+    .map(l=>l.trim())
+    .filter(l=>l.startsWith("- "))
+    .map(l=>l.replace(/^- /,"").replace(/\*\*([^*]+)\*\*/g,"$1").trim())
+    .filter(Boolean);
+  const positives=extractBullets("ポジティブ要因");
+  const negatives=extractBullets("ネガティブ要因・リスク");
+  const sugg=(sections["投資家への示唆"]||sections["なぜ重要か"]||"").replace(/\*\*([^*]+)\*\*/g,"$1").trim();
+  const summary=sugg.split("\n").map(l=>l.trim()).filter(Boolean).join(" ").slice(0,110);
+  return {sections,positives,negatives,summary};
+}
+
+function AxisFactorsRow({item,accentColor}:{item:AxisItem;accentColor:string}) {
+  const report=(item as any).report??"";
+  if(!report) return null;
+  const {positives,negatives}=parseAxisReport(report);
+  if(positives.length===0&&negatives.length===0) return null;
+  const sc=Math.max(0,Math.min(100,item.score||0));
+  const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
+  return (
+    <div style={{padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:accentColor,color:"white"}}>{grade}</span>
+        <span style={{fontWeight:900,fontSize:12,color:DARK}}>{item.label||item.title||item.id}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div>
+          {positives.slice(0,3).map((p,i)=>(
+            <div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2,lineHeight:1.5}}>
+              <span style={{color:"#22c55e",flexShrink:0}}>✓</span>{p}
+            </div>
+          ))}
+        </div>
+        <div>
+          {negatives.slice(0,3).map((n,i)=>(
+            <div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2,lineHeight:1.5}}>
+              <span style={{color:"#f87171",flexShrink:0}}>✕</span>{n}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ICONS=[<Zap size={13} key="z"/>,<TrendingUp size={13} key="t"/>,<Users size={13} key="u"/>];
 function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   const [open,setOpen]=useState(false);
@@ -112,10 +178,11 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
   const r=22,circ=2*Math.PI*r,dash=(sc/100)*circ;
   const hasReport=!!(item as any).report;
   const report=(item as any).report??"";
+  const parsed=hasReport?parseAxisReport(report):null;
 
   return (
     <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white",transition:"background 0.15s"}}>
-      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"center",
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",alignItems:"flex-start",
         gap:12,padding:"12px 16px",textAlign:"left",cursor:"pointer",border:"none",
         backgroundColor:open?"#f4fbfc":"white"}}>
         <div style={{position:"relative",width:52,height:52,flexShrink:0}}>
@@ -133,9 +200,15 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:900,fontSize:10,color:accentColor,letterSpacing:"0.05em"}}>{item.id}</div>
           <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{item.label||item.title||item.id}</div>
+          {!open&&parsed?.summary&&(
+            <p style={{fontSize:11,color:"#64748b",lineHeight:1.6,margin:"4px 0 0",
+              display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+              {parsed.summary}
+            </p>
+          )}
         </div>
         <span style={{color:accentColor,fontSize:12,flexShrink:0,display:"inline-block",
-          transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+          transform:open?"rotate(180deg)":"none",transition:"transform 0.2s",marginTop:6}}>▼</span>
       </button>
       {open&&(
         <div style={{borderTop:`1px solid ${BORDER}`,padding:"12px 16px 16px"}}>
@@ -298,13 +371,18 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   const scenarios_short=(analysis as any).scenarios_short||(analysis as any).scenarios||[];
   const scenarios_long=(analysis as any).scenarios_long||[];
 
-  const radarData=[
-    {metric:"成長性",   value:axes.long?.find(x=>x.id==="competitor")?.score||65},
-    {metric:"収益性",   value:axes.long?.find(x=>x.id==="unit_econ")?.score||60},
-    {metric:"需給の軽さ",value:axes.ultra_short?.find(x=>x.id==="float")?.score||65},
-    {metric:"経営陣",   value:axes.long?.find(x=>x.id==="management")?.score||70},
-    {metric:"競合優位性",value:axes.long?.find(x=>x.id==="competitor")?.score||65},
-  ];
+  const allAxesFlat=[...(axes.ultra_short||[]),...(axes.short||[]),...(axes.long||[])];
+  const radarData=ALL_AXIS_ORDER.map(id=>{
+    const found=allAxesFlat.find(x=>x.id===id);
+    const sc=Math.max(0,Math.min(100,found?.score??0));
+    return {
+      id,
+      metric:ALL_AXIS_SHORT[id]||id,
+      fullLabel:ALL_AXIS_LABELS[id]||id,
+      value:sc,
+      grade:found?.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E"),
+    };
+  });
 
   const GROUPS=[
     {key:"ultra_short" as const,label:"超短期",sub:"初値売り・当日トレード",icon:"⚡",color:"#ef4444",bg:"#fef2f2",border:"#fecaca"},
@@ -381,17 +459,18 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
               <BarChart2 size={14} color={PRIMARY}/>
-              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>パフォーマンス・レーダー</span>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>パフォーマンス・レーダー（9軸）</span>
             </div>
-            <div style={{height:180}}><RadarSVG data={radarData}/></div>
+            <div style={{height:200}}><RadarSVG data={radarData}/></div>
             <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
-              {radarData.map(({metric,value})=>(
-                <div key={metric} style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:10,fontWeight:700,color:"#475569",width:72,flexShrink:0}}>{metric}</span>
+              {radarData.map(({id,fullLabel,value,grade})=>(
+                <div key={id} style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#475569",width:92,flexShrink:0}}>{fullLabel}</span>
                   <div style={{flex:1,height:6,borderRadius:3,backgroundColor:BORDER,overflow:"hidden"}}>
                     <div style={{height:"100%",borderRadius:3,width:`${value}%`,backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
                   </div>
                   <span style={{fontSize:11,fontWeight:900,color:"#1e293b",width:24,textAlign:"right"}}>{value}</span>
+                  <span style={{fontSize:9,fontWeight:900,color:TTEXT,width:18,textAlign:"center",backgroundColor:LIGHT,borderRadius:4,padding:"1px 0",flexShrink:0}}>{grade}</span>
                 </div>
               ))}
             </div>
@@ -452,6 +531,20 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   })()}
 </Card>
         </div>
+
+        <Card>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+            <BarChart2 size={14} color={PRIMARY}/>
+            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>9軸 早わかり：好材料・リスク</span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:4}}>
+            <span style={{fontSize:9,fontWeight:900,color:"#15803d"}}>✓ 好材料</span>
+            <span style={{fontSize:9,fontWeight:900,color:"#ef4444"}}>✕ リスク</span>
+          </div>
+          {GROUPS.map(g=>(axes[g.key]||[]).map((item:AxisItem)=>(
+            <AxisFactorsRow key={item.id} item={item} accentColor={g.color}/>
+          )))}
+        </Card>
 
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
