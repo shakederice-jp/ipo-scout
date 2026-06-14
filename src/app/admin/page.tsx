@@ -86,20 +86,32 @@ export default function AdminPage() {
       long: ["management", "unit_econ", "competitor"],
     };
     const axes = axisMap[period];
-    setStep(stepNum, true, `⏳ ${label} 分析中 1/3...`);
+    const totalSteps = axes.length * 2;
+    setStep(stepNum, true, `⏳ ${label} 分析中 1/${totalSteps}...`);
     const allResults: any[] = [];
     for (let i = 0; i < axes.length; i++) {
       const axisId = axes[i];
-      setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/3・${axisId} 分析中...`}));
-      try {
-        const res = await fetch("/api/axes", {
-          method: "POST", headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ company_id: selectedCompany.id, period, single_axis: axisId }),
-        });
-        const data = await res.json();
-        if (data.error) { setStep(stepNum, false, `❌ ${axisId}: ${data.error}`); return; }
-        allResults.push(data.axis_result);
-      } catch { setStep(stepNum, false, `❌ ${axisId} 通信エラー`); return; }
+      let combinedText = "";
+      let axisLabel = "";
+      let axisScore = 0;
+      let axisGrade = "C";
+      for (let part = 1; part <= 2; part++) {
+        const stepIndex = i * 2 + part;
+        setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${stepIndex}/${totalSteps}・${axisId}（${part}/2）分析中...`}));
+        try {
+          const res = await fetch("/api/axes", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ company_id: selectedCompany.id, period, single_axis: axisId, part }),
+          });
+          const data = await res.json();
+          if (data.error) { setStep(stepNum, false, `❌ ${axisId}（${part}/2）: ${data.error}`); return; }
+          combinedText += (part === 2 ? "\n\n" : "") + (data.text ?? "");
+          axisLabel = data.label;
+          axisScore = data.score;
+          axisGrade = data.grade;
+        } catch { setStep(stepNum, false, `❌ ${axisId}（${part}/2）通信エラー`); return; }
+      }
+      allResults.push({ id: axisId, label: axisLabel, score: axisScore, grade: axisGrade, report: combinedText.trim() });
     }
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
@@ -113,7 +125,6 @@ export default function AdminPage() {
     const preview = allResults.map((a: any) => `${a.id}:${a.grade}(${a.report?.length ?? 0}文字)`).join(" / ");
     setStep(stepNum, false, `✅ ${label} 完了・${preview}`);
   };
-
   const handleStep7 = async () => {
     if (!selectedCompany) return;
     setStep("7", true, undefined);
