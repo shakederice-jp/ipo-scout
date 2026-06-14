@@ -6,7 +6,13 @@ const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
 const COLORS = ["#66c3c6","#0d4f52","#f59e0b","#6366f1","#10b981","#f43f5e","#8b5cf6","#ec4899"];
 
 export default function VizCharts({ vizData }: { vizData: any }) {
-  if (!vizData) return null;
+  if (!vizData) {
+    return (
+      <div style={{ fontSize: 11, color: "#94a3b8", padding: 12, backgroundColor: "#f8fafc", borderRadius: 8 }}>
+        [デバッグ] visualizationDataがnull/undefinedです（VizCharts自体は呼ばれていません）
+      </div>
+    );
+  }
 
   const { revenue_chart, shareholders_chart, valuation_table } = vizData;
 
@@ -27,11 +33,23 @@ export default function VizCharts({ vizData }: { vizData: any }) {
 
   const fmt = (v: any, suffix: string = "") => (v === null || v === undefined ? "未定" : `${v}${suffix}`);
 
+  const revenueVisible = revenue_chart?.available && revenue_chart.data?.length > 0;
+  const anyVisible = revenueVisible || hasShareholders || valHasContent;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
 
+      {!anyVisible && (
+        <div style={{ fontSize: 10, color: "#92400e", padding: 12, backgroundColor: "#fffbeb", borderRadius: 8, whiteSpace: "pre-wrap", fontFamily: "monospace", lineHeight: 1.6 }}>
+          [デバッグ] vizDataは存在しますが、表示条件を満たす項目がありません。{"\n"}
+          revenue_chart.available: {String(revenue_chart?.available)} / data件数: {revenue_chart?.data?.length ?? "なし"}{"\n"}
+          shareholders_chart.data件数: {shareholderData.length}{"\n"}
+          valuation_table: {JSON.stringify(valuation_table)}
+        </div>
+      )}
+
       {/* ① 業績グラフ */}
-      {revenue_chart?.available && revenue_chart.data?.length > 0 && (
+      {revenueVisible && (
         <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>📈</span>
