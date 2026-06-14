@@ -147,6 +147,73 @@ function AxisFactorsRow({item,accentColor}:{item:AxisItem;accentColor:string}) {
   );
 }
 
+function parseNumbers(s?:string):number[] {
+  if(!s) return [];
+  const m=s.match(/-?\d+(\.\d+)?/g);
+  return m?m.map(Number):[];
+}
+
+function avg(nums:number[]):number {
+  if(!nums.length) return 0;
+  return nums.reduce((a,b)=>a+b,0)/nums.length;
+}
+
+function ScenarioCompareChart({scenarios}:{scenarios:Scenario[]}) {
+  if(!scenarios||scenarios.length===0) return null;
+  const rows=scenarios.map(s=>{
+    const probVal=Math.max(0,Math.min(100,avg(parseNumbers(s.prob))));
+    const retVal=avg(parseNumbers(s.vsIpo));
+    return {...s,probVal,retVal};
+  });
+  const maxAbsRet=Math.max(10,...rows.map(r=>Math.abs(r.retVal)));
+  const colorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
+  const bgFor=(v:string)=>v==="強気"?"#f0fdf4":v==="弱気"?"#fef2f2":"#fffbeb";
+  const borderFor=(v:string)=>v==="強気"?"#bbf7d0":v==="弱気"?"#fecaca":"#fde68a";
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+      {rows.map(r=>(
+        <div key={r.id} style={{backgroundColor:bgFor(r.verdict),border:`1px solid ${borderFor(r.verdict)}`,borderRadius:10,padding:"8px 10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+            <span style={{fontWeight:900,fontSize:10,padding:"1px 8px",borderRadius:20,backgroundColor:"white",color:colorFor(r.verdict),border:`1px solid ${borderFor(r.verdict)}`}}>{r.verdict}</span>
+            <span style={{fontWeight:900,fontSize:11,color:DARK}}>{r.name||r.verdict}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+            <span style={{fontSize:9,color:"#94a3b8",width:60,flexShrink:0}}>確率</span>
+            <div style={{flex:1,height:6,borderRadius:3,backgroundColor:"#ffffff",overflow:"hidden"}}>
+              <div style={{height:"100%",borderRadius:3,width:`${r.probVal}%`,backgroundColor:PRIMARY}}/>
+            </div>
+            <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:44,textAlign:"right"}}>{r.prob}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:9,color:"#94a3b8",width:60,flexShrink:0}}>期待リターン</span>
+            <div style={{flex:1,height:6,borderRadius:3,backgroundColor:"#ffffff",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,bottom:0,width:1,backgroundColor:"#cbd5e1",left:"50%"}}/>
+              <div style={{position:"absolute",top:0,height:"100%",borderRadius:3,
+                ...(r.retVal>=0?{left:"50%"}:{right:"50%"}),
+                width:`${Math.min(50,(Math.abs(r.retVal)/maxAbsRet)*50)}%`,
+                backgroundColor:r.retVal>=0?"#22c55e":"#f87171"}}/>
+            </div>
+            <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:44,textAlign:"right"}}>{r.vsIpo}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LockupTimeline({lockupPeriod}:{lockupPeriod:string}) {
+  return (
+    <div style={{marginTop:10,padding:"16px 10px 24px"}}>
+      <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1}}>
+        <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:PRIMARY,border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
+        <div style={{position:"absolute",right:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:"#ef4444",border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
+        <div style={{position:"absolute",left:0,top:10,fontSize:9,fontWeight:700,color:TTEXT,whiteSpace:"nowrap"}}>🔔 上場日</div>
+        <div style={{position:"absolute",right:0,top:10,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",whiteSpace:"nowrap"}}>🔓 解除：{lockupPeriod}</div>
+      </div>
+    </div>
+  );
+}
+
 const ICONS=[<Zap size={13} key="z"/>,<TrendingUp size={13} key="t"/>,<Users size={13} key="u"/>];
 function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   const [open,setOpen]=useState(false);
@@ -526,6 +593,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           ))}
         </div>
+        <LockupTimeline lockupPeriod={lockupPeriod}/>
       </>
     );
   })()}
@@ -558,6 +626,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </button>
             ))}
           </div>
+          <ScenarioCompareChart scenarios={scenTab==="short"?scenarios_short:scenarios_long}/>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {scenTab==="short"?(
   scenarios_short.length>0
@@ -594,12 +663,12 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               {GROUPS.map(g=>{
                 const items=axes[g.key]||[];
-                const avg=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
+                const avgScore=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
                 return (
                   <div key={g.key} style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:10,padding:"8px",textAlign:"center"}}>
                     <div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{g.icon}</div>
                     <div style={{fontWeight:900,fontSize:10,color:DARK}}>{g.label}</div>
-                    <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>{avg}</div>
+                    <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>{avgScore}</div>
                     <div style={{fontSize:8,color:TTEXT}}>/100</div>
                   </div>
                 );
@@ -610,7 +679,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             {GROUPS.map(g=>{
               const items=axes[g.key]||[];
               if(!items.length) return null;
-              const avg=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
+              const avgScore=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
               return (
                 <div key={g.key} style={{borderBottom:"1px solid #f1f5f9"}}>
                   <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.border}`,padding:"12px 16px"}}>
@@ -621,7 +690,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                         <span style={{fontWeight:700,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:g.color,color:"white",marginLeft:8}}>{g.sub}</span>
                       </div>
                       <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>
-                        {avg}<span style={{fontSize:10,color:TTEXT}}>/100</span>
+                        {avgScore}<span style={{fontSize:10,color:TTEXT}}>/100</span>
                       </div>
                     </div>
                   </div>
