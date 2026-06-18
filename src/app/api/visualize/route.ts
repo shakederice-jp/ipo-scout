@@ -83,9 +83,12 @@ Return this exact JSON structure:
 
   // market_structure_chart
   return `${header}
-- "citation" fields MUST be natural Japanese sentences, like "目論見書のIPO詳細によると、流通比率は17.5%である" — NEVER output raw key:value dumps like "field_name: value".
-- For share_structure_chart: use ipo_details.total_shares and ipo_details.float_ratio to compute "上場時流通株式数" (= total_shares × float_ratio / 100) and "ロックアップ対象等の非流通株式数" (= total_shares − 上場時流通株式数). The "ratio" values across data entries must sum to approximately 100. If public_shares and overallotment are also clearly available, you may further split "上場時流通株式" into "公募・売出（新規発行分）" and "オーバーアロットメント" categories instead — but the total ratios must still sum to 100. If total_shares or float_ratio is unavailable, set available to false and data to [].
-- For recent_ipo_chart: using the "Recent IPO market data" below, extract a numeric "performance" value (percentage, can be negative, e.g. 25 or -10) for each entry in recent_ipos by parsing its "result" field. If recent_ipos is empty or no entries have a parseable numeric result, set available to false and data to [].
+- "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
+- For share_structure_chart: Look for total_shares and float_ratio in ipo_details. IMPORTANT: these values may be stored as strings (e.g. "2,000,000株" or "推定15-20%程度"). You MUST parse them: strip commas and "株" to get numeric total_shares (e.g. 2000000). For float_ratio, if it's a range like "15-20%", use the midpoint (17.5). Then compute:
+  - 上場時流通株式数 = total_shares × float_ratio / 100
+  - ロックアップ対象等の非流通株式数 = total_shares − 上場時流通株式数
+  The two "ratio" values must sum to 100. Set available to true if you can extract both values.
+- For recent_ipo_chart: using the "Recent IPO market data" below, extract a numeric "performance" value (percentage, can be negative) for each entry in recent_ipos by parsing its "result" field. If no parseable numeric results exist, set available to false and data to [].
 - Use null for any numeric value that is genuinely unknown. Do not invent numbers.
 
 Recent IPO market data: ${JSON.stringify(market ?? {}, null, 2)}
@@ -99,7 +102,7 @@ Return this exact JSON structure:
       {"label": "上場時流通株式", "shares": 350000, "ratio": 17.5},
       {"label": "ロックアップ対象等", "shares": 1650000, "ratio": 82.5}
     ],
-    "citation": "目論見書のIPO詳細によると、流通比率は17.5%である"
+    "citation": "目論見書のIPO詳細によると、流通比率は推定15-20%程度（中央値17.5%）である"
   },
   "recent_ipo_chart": {
     "available": true,
