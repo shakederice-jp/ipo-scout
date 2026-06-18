@@ -11,7 +11,7 @@ type ChartType = typeof CHART_TYPES[number];
 const MAX_TOKENS: Record<ChartType, number> = {
   revenue_chart: 2000,
   shareholders_chart: 4000,
-  valuation_table: 2000,
+  valuation_table: 4000,
   market_structure_chart: 2000,
 };
 
