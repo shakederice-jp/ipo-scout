@@ -16,6 +16,8 @@ export default function AdminPage() {
   const [stepResult, setStepResult] = useState<Record<string,string|null>>({});
   const [vizLoading, setVizLoading] = useState(false);
   const [vizResult, setVizResult] = useState<string | null>(null);
+  const [edinetLoading, setEdinetLoading] = useState(false);
+  const [edinetResult, setEdinetResult] = useState("");
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
@@ -178,7 +180,20 @@ export default function AdminPage() {
       setVizLoading(false);
     }
   };
-
+  const handleEdinetCodes = async () => {
+    setEdinetLoading(true);
+    setEdinetResult("");
+    try {
+      const res = await fetch("/api/edinet-codes", { method: "POST" });
+      const data = await res.json();
+      if (data.error) setEdinetResult(`❌ ${data.error}`);
+      else setEdinetResult(`✅ ${data.total.toLocaleString()}件を保存しました`);
+    } catch {
+      setEdinetResult("❌ 通信エラー");
+    } finally {
+      setEdinetLoading(false);
+    }
+  };
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
     try {
@@ -291,6 +306,18 @@ export default function AdminPage() {
               </button>
               {vizResult && <p style={{ marginTop:8, fontSize:12, color:"#0d4f52" }}>{vizResult}</p>}
             </div>
+            {/* 5. EDINETコードリスト取得 */}
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"8px" }}>🏢 EDINETコードリスト取得</h2>
+          <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"12px" }}>
+            全上場企業のEDINETコード↔企業名対応表をダウンロードしてDBに保存します（競合他社検索に使用）
+          </p>
+          <button onClick={handleEdinetCodes} disabled={edinetLoading}
+            style={{ padding:"10px 20px", backgroundColor: edinetLoading ? "#94a3b8" : "#0369a1", color:"white", border:"none", borderRadius:"8px", cursor: edinetLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px" }}>
+            {edinetLoading ? "取得中..." : "🏢 EDINETコードリストを取得"}
+          </button>
+          {edinetResult && <p style={{ marginTop:"8px", fontSize:"12px", color:"#0d4f52" }}>{edinetResult}</p>}
+        </div>
         {/* 3. 初値・騰落率入力 */}
         <div style={sectionStyle}>
           <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📝 初値・騰落率入力</h2>
