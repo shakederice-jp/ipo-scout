@@ -114,38 +114,7 @@ function parseAxisReport(text:string):{sections:Record<string,string>;positives:
   return {sections,positives,negatives,summary};
 }
 
-function AxisFactorsRow({item,accentColor}:{item:AxisItem;accentColor:string}) {
-  const report=(item as any).report??"";
-  if(!report) return null;
-  const {positives,negatives}=parseAxisReport(report);
-  if(positives.length===0&&negatives.length===0) return null;
-  const sc=Math.max(0,Math.min(100,item.score||0));
-  const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
-  return (
-    <div style={{padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-        <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:accentColor,color:"white"}}>{grade}</span>
-        <span style={{fontWeight:900,fontSize:12,color:DARK}}>{item.label||item.title||item.id}</span>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <div>
-          {positives.slice(0,3).map((p,i)=>(
-            <div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2,lineHeight:1.5}}>
-              <span style={{color:"#22c55e",flexShrink:0}}>✓</span>{p}
-            </div>
-          ))}
-        </div>
-        <div>
-          {negatives.slice(0,3).map((n,i)=>(
-            <div key={i} style={{fontSize:10,color:"#475569",display:"flex",gap:4,marginBottom:2,lineHeight:1.5}}>
-              <span style={{color:"#f87171",flexShrink:0}}>✕</span>{n}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 function parseNumbers(s?:string):number[] {
   if(!s) return [];
@@ -599,20 +568,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   })()}
 </Card>
         </div>
-
-        <Card>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-            <BarChart2 size={14} color={PRIMARY}/>
-            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>9軸 早わかり：好材料・リスク</span>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:4}}>
-            <span style={{fontSize:9,fontWeight:900,color:"#15803d"}}>✓ 好材料</span>
-            <span style={{fontSize:9,fontWeight:900,color:"#ef4444"}}>✕ リスク</span>
-          </div>
-          {GROUPS.map(g=>(axes[g.key]||[]).map((item:AxisItem)=>(
-            <AxisFactorsRow key={item.id} item={item} accentColor={g.color}/>
-          )))}
-        </Card>
 
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
