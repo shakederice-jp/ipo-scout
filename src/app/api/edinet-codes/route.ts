@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
     formData.append("dispkbn", "1");
 
     const res = await fetch(
-      "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelist/Edinetcode_JP.zip",
-      { headers: { "User-Agent": "Mozilla/5.0" } }
-    );
+        "https://disclosure2.edinet-fsa.go.jp/EKW0EZ0015.aspx?lgKbn=2&dflg=0&iflg=0&dispkbn=1",
+        { headers: { "User-Agent": "Mozilla/5.0" } }
+      );
 
     if (!res.ok) {
       return NextResponse.json({ error: `ダウンロード失敗: ${res.status}` }, { status: 500 });
