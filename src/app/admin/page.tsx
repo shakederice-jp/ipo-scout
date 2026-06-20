@@ -183,19 +183,11 @@ export default function AdminPage() {
       setVizLoading(false);
     }
   };
-  const handleEdinetCodes = async () => {
-    setEdinetLoading(true);
-    setEdinetResult("");
-    try {
-      const res = await fetch("/api/edinet-codes", { method: "POST" });
-      const data = await res.json();
-      if (data.error) setEdinetResult(`❌ ${data.error}`);
-      else setEdinetResult(`✅ ${data.total.toLocaleString()}件を保存しました`);
-    } catch {
-      setEdinetResult("❌ 通信エラー");
-    } finally {
-      setEdinetLoading(false);
-    }
+  const handleEdinetCodes = () => {
+    window.open("https://disclosure2.edinet-fsa.go.jp/weee0010.aspx", "_blank");
+    setEdinetResult(
+      "📋 新しいタブでEDINETのダウンロードページを開きました。「EDINETコードリスト」の「ダウンロード」リンクからZIPを取得し、解凍したCSVの1行目（メタ情報の行）を削除、見出し行を edinet_code / listing_status / company_name / company_name_en / industry / security_code に書き換えてから、SupabaseのTable Editor → edinet_companiesテーブルでCSVインポートしてください。"
+    );
   };
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
@@ -311,15 +303,15 @@ export default function AdminPage() {
             </div>
             {/* 5. EDINETコードリスト取得 */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"8px" }}>🏢 EDINETコードリスト取得</h2>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"8px" }}>🏢 EDINETコードリスト取得（手動）</h2>
           <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"12px" }}>
-            全上場企業のEDINETコード↔企業名対応表をダウンロードしてDBに保存します（競合他社検索に使用）
+            EDINETサイトのリニューアル以降、自動ダウンロードができないため手動更新です。ボタンを押すとダウンロードページが開きます（更新頻度の目安：数ヶ月に1回）。
           </p>
-          <button onClick={handleEdinetCodes} disabled={edinetLoading}
-            style={{ padding:"10px 20px", backgroundColor: edinetLoading ? "#94a3b8" : "#0369a1", color:"white", border:"none", borderRadius:"8px", cursor: edinetLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px" }}>
-            {edinetLoading ? "取得中..." : "🏢 EDINETコードリストを取得"}
+          <button onClick={handleEdinetCodes}
+            style={{ padding:"10px 20px", backgroundColor:"#0369a1", color:"white", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:"700", fontSize:"13px" }}>
+            🏢 EDINETダウンロードページを開く
           </button>
-          {edinetResult && <p style={{ marginTop:"8px", fontSize:"12px", color:"#0d4f52" }}>{edinetResult}</p>}
+          {edinetResult && <p style={{ marginTop:"8px", fontSize:"12px", color:"#0d4f52", lineHeight:1.7 }}>{edinetResult}</p>}
         </div>
         {/* 3. 初値・騰落率入力 */}
         <div style={sectionStyle}>
