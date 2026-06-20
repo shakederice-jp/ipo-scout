@@ -151,6 +151,7 @@ export default function AdminPage() {
       { type: "market_structure_chart", label: "株式構成・市場比較チャート" },
       { type: "ipo_summary_table", label: "IPO条件サマリー表" },
       { type: "use_of_proceeds_table", label: "資金使途明細表" },
+      { type: "risk_table", label: "リスク重要度表" },
     ];
     const merged: Record<string, any> = {};
     for (let i = 0; i < chartTypes.length; i++) {

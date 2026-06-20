@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const anthropic = new Anthropic();
 export const maxDuration = 60;
 
-const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table"] as const;
+const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
 const MAX_TOKENS: Record<ChartType, number> = {
@@ -15,6 +15,7 @@ const MAX_TOKENS: Record<ChartType, number> = {
   market_structure_chart: 2000,
   ipo_summary_table: 2000,
   use_of_proceeds_table: 2000,
+  risk_table: 3000,
 };
 
 // 文字列から数値を抽出するヘルパー
@@ -146,6 +147,26 @@ Return this exact JSON structure:
       {"category": "既存事業の直営店新規出店資金", "amount": "144,882千円", "timing": "2028年8月期"}
     ],
     "citation": "目論見書によると、調達資金は既存事業の直営店新規出店資金に充当される予定である"
+  }
+}`;
+  }
+  if (chartType === "risk_table") {
+    return `${header}
+- "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
+- For each entry in the input "risks" array, classify it into a short Japanese category label based on its content (e.g. "競合", "法的規制", "市場・人口動態", "為替・海外事業", "人材・組織", "技術・セキュリティ", "顧客・取引先依存" etc — choose whatever label best fits each risk's actual content, do not force-fit into a fixed list).
+- Keep the original "severity" (高/中/低) and "description" from the input as-is. Use the risk's "title" as well.
+- Include ALL risks from the input array, do not omit or summarize them away.
+- Do not invent risks that aren't in the input data.
+
+Return this exact JSON structure:
+{
+  "risk_table": {
+    "available": true,
+    "title": "事業等のリスク（重要度別）",
+    "rows": [
+      {"category": "市場・人口動態", "severity": "高", "title": "人口動態の変化", "description": "少子化による既存店収支及び新規出店計画への影響"}
+    ],
+    "citation": "目論見書に記載されたリスク要因を、市場・法的規制・人材などのカテゴリ別に整理した"
   }
 }`;
   }
