@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const anthropic = new Anthropic();
 export const maxDuration = 60;
 
-const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart"] as const;
+const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
 const MAX_TOKENS: Record<ChartType, number> = {
@@ -13,6 +13,8 @@ const MAX_TOKENS: Record<ChartType, number> = {
   shareholders_chart: 4000,
   valuation_table: 4000,
   market_structure_chart: 2000,
+  ipo_summary_table: 2000,
+  use_of_proceeds_table: 2000,
 };
 
 // 文字列から数値を抽出するヘルパー
@@ -101,7 +103,52 @@ Return this exact JSON structure:
   }
 }`;
   }
+  if (chartType === "ipo_summary_table") {
+    return `${header}
+- "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
+- Extract from ipo_details: 公開株数（公募+売出の合計株数）, オーバーアロットメント（金額・有無）, 調達額（合計上限）, 流通比率, ロックアップ対象, ロックアップ期間. Use the original text values as-is (no need to compute or convert units).
+- If a value is genuinely unknown or not stated, use "記載なし" as the value (not null).
+- Do not invent numbers.
 
+Return this exact JSON structure:
+{
+  "ipo_summary_table": {
+    "available": true,
+    "title": "IPO条件・資金調達サマリー",
+    "rows": [
+      {"label": "公開株数（公募+売出）", "value": "100,000株"},
+      {"label": "オーバーアロットメント", "value": "上限222,525,000円相当"},
+      {"label": "調達額（上限）", "value": "318,403千円"},
+      {"label": "流通比率", "value": "推定15〜20%程度"},
+      {"label": "ロックアップ対象", "value": "創業者・主要株主"},
+      {"label": "ロックアップ期間", "value": "記載なし"}
+    ],
+    "citation": "目論見書のIPO概要によると、公募及び売出による調達額の上限は318,403千円である"
+  }
+}`;
+  }
+
+  if (chartType === "use_of_proceeds_table") {
+    return `${header}
+- "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
+- Extract from ipo_details.use_of_proceeds (and fundraising_amount if helpful). List each distinct use-of-funds item as a separate row, using the company's own wording for the category (do NOT force-fit into generic categories like 設備投資/人件費/広告費 unless the prospectus actually uses those terms).
+- "timing" should be the fiscal year/period the funds will be used in, if stated (e.g. "2027年8月期"). Omit (set to null) if not stated.
+- If use_of_proceeds information is too vague to break into rows (e.g. just one general sentence with no amounts), set available to false and rows to [].
+- Do not invent numbers.
+
+Return this exact JSON structure:
+{
+  "use_of_proceeds_table": {
+    "available": true,
+    "title": "調達資金の使途",
+    "rows": [
+      {"category": "既存事業の直営店新規出店資金", "amount": "173,520千円", "timing": "2027年8月期"},
+      {"category": "既存事業の直営店新規出店資金", "amount": "144,882千円", "timing": "2028年8月期"}
+    ],
+    "citation": "目論見書によると、調達資金は既存事業の直営店新規出店資金に充当される予定である"
+  }
+}`;
+  }
   // market_structure_chart: recent_ipo_chartのみClaudeに依頼
   return `${header}
 - "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.

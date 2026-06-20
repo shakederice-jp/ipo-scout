@@ -1,5 +1,6 @@
 "use client";
 import VizCharts from "@/components/VizCharts";
+import VizTables from "@/components/VizTables";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
@@ -479,6 +480,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
         </Card>
         {visualizationData && <VizCharts vizData={visualizationData} />}
+        {visualizationData && <VizTables vizData={visualizationData} />}
         {insights.length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
