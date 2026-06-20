@@ -89,7 +89,7 @@ ${rawText}
 
     const msg = await claude.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 3000,
+      max_tokens: 4000,
       messages: [
         { role: "user", content: prompt },
         { role: "assistant", content: '{"company_name":"' }

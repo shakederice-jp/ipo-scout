@@ -46,10 +46,10 @@ function cleanText(text: string): string {
     .trim();
 }
 
-function extractSection(text: string, keywords: string[], maxLen = 3000): string {
+function extractSection(text: string, keywords: string[], maxLen = 3000, useLast = false): string {
   const plain = cleanText(text);
   for (const kw of keywords) {
-    const idx = plain.indexOf(kw);
+    const idx = useLast ? plain.lastIndexOf(kw) : plain.indexOf(kw);
     if (idx !== -1) {
       const start = Math.max(0, idx - 50);
       return plain.slice(start, start + maxLen);
@@ -137,10 +137,11 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
 
      // ④ 株主構成・大株主（保有比率テーブル）
     const s4 = extractSection(text, [
+      "大株主の状況",
+      "発行済株式総数に対する所有株式数の割合",
       "氏名又は名称", "所有株式数", "持株比率",
-      "発行済株式総数に対する", "上場前の売出し",
-      "特別利害関係者等の株式", "大株主の状況"
-    ], 4000);
+      "上場前の売出し", "特別利害関係者等の株式"
+    ], 5000);
     if (s4) sections["株主構成"] = s4;
 
       // ⑥ 売出し情報・公開株式数（NEW）
@@ -153,11 +154,12 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
 
       // ⑦ ロックアップ・売却制限（NEW）
       const s6 = extractSection(text, [
+        "募集又は売出しに関する特別記載事項",
+        "ロックアップについて",
+        "継続所有等の確約",
         "ロックアップ", "lock-up", "lockup",
-        "売却制限", "継続所有", "180日",
-        "売出しの条件", "売出人及び申込みの方法",
-        "大株主との間の取り決め"
-      ], 3000);
+        "売却制限", "継続所有", "180日"
+      ], 6000, true);
       if (s6) sections["ロックアップ"] = s6;
 
       // ⑧ 株式分布・流通比率（NEW）
