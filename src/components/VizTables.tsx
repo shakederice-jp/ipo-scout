@@ -2,7 +2,7 @@
 
 const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
 
-export default function VizTables({ vizData }: { vizData: any }) {
+export default function VizTables({ vizData, section = "top" }: { vizData: any; section?: "top" | "bottom" }) {
   if (!vizData) return null;
 
   const { ipo_summary_table, use_of_proceeds_table, risk_table } = vizData;
@@ -14,11 +14,12 @@ export default function VizTables({ vizData }: { vizData: any }) {
   const proceedsVisible = use_of_proceeds_table?.available && proceedsRows.length > 0;
   const riskRows: any[] = risk_table?.rows ?? [];
   const riskVisible = risk_table?.available && riskRows.length > 0;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
 
-      {/* IPO条件・資金調達サマリー表 */}
-      {summaryVisible && (
+  if (section === "top") {
+    if (!summaryVisible) return null;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
+        {/* IPO条件・資金調達サマリー表 */}
         <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>📋</span>
@@ -47,7 +48,14 @@ export default function VizTables({ vizData }: { vizData: any }) {
             ))}
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // section === "bottom"
+  if (!proceedsVisible && !riskVisible) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
 
       {/* 調達資金の使途明細表 */}
       {proceedsVisible && (
@@ -80,8 +88,9 @@ export default function VizTables({ vizData }: { vizData: any }) {
           </div>
         </div>
       )}
-{/* 事業等のリスク（重要度別） */}
-{riskVisible && (
+
+      {/* 事業等のリスク（重要度別） */}
+      {riskVisible && (
         <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -108,6 +117,7 @@ export default function VizTables({ vizData }: { vizData: any }) {
           </div>
         </div>
       )}
+
     </div>
   );
 }
