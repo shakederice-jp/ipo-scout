@@ -1,6 +1,32 @@
 "use client";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
+const COLORS = ["#66c3c6","#0d4f52","#f59e0b","#6366f1","#10b981","#f43f5e","#8b5cf6","#ec4899"];
+
+function buildProceedsChartData(rows: any[]) {
+  const valid = rows.filter((r) => typeof r.amount_value === "number");
+  if (valid.length === 0) return { chartData: [] as any[], categories: [] as string[] };
+
+  const categories: string[] = [];
+  valid.forEach((r) => {
+    if (!categories.includes(r.category)) categories.push(r.category);
+  });
+
+  const timingOrder: string[] = [];
+  const byTiming: Record<string, any> = {};
+  valid.forEach((r) => {
+    const t = r.timing || "時期未定";
+    if (!byTiming[t]) {
+      byTiming[t] = { timing: t };
+      timingOrder.push(t);
+    }
+    byTiming[t][r.category] = (byTiming[t][r.category] || 0) + r.amount_value;
+  });
+
+  const chartData = timingOrder.map((t) => byTiming[t]);
+  return { chartData, categories };
+}
 
 export default function VizTables({ vizData, section = "top" }: { vizData: any; section?: "top" | "bottom" }) {
   if (!vizData) return null;
@@ -12,6 +38,11 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
 
   const proceedsRows: any[] = use_of_proceeds_table?.rows ?? [];
   const proceedsVisible = use_of_proceeds_table?.available && proceedsRows.length > 0;
+  const { chartData: proceedsChartData, categories: proceedsCategories } = proceedsVisible
+    ? buildProceedsChartData(proceedsRows)
+    : { chartData: [] as any[], categories: [] as string[] };
+  const proceedsChartVisible = proceedsChartData.length > 0 && proceedsCategories.length > 0;
+
   const riskRows: any[] = risk_table?.rows ?? [];
   const riskVisible = risk_table?.available && riskRows.length > 0;
 
@@ -67,6 +98,31 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
           {use_of_proceeds_table.citation && (
             <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {use_of_proceeds_table.citation}</p>
           )}
+
+          {proceedsChartVisible && (
+            <div style={{ marginBottom: 16 }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={proceedsChartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0f0f0" />
+                  <XAxis dataKey="timing" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 10).toLocaleString()}万`} />
+                  <Tooltip formatter={(value: any) => [`${(Number(value) / 10).toLocaleString()}万円`]} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {proceedsCategories.map((cat, i) => (
+                    <Bar
+                      key={cat}
+                      dataKey={cat}
+                      name={cat}
+                      stackId="proceeds"
+                      fill={COLORS[i % COLORS.length]}
+                      radius={i === proceedsCategories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {proceedsRows.map((r: any, i: number) => (
               <div key={i} style={{ backgroundColor: C.bg, borderRadius: 10, padding: "10px 12px" }}>
