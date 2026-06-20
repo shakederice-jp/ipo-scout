@@ -75,7 +75,7 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
       return priority(a) - priority(b);
     });
     const targetFiles = sorted.length > 0 ? sorted : files.filter(f => !zip.files[f].dir);
-    for (const filename of targetFiles.slice(0, 8)) {
+    for (const filename of targetFiles.slice(0, 20)) {
       try {
         const content = await zip.files[filename].async("string");
         if (content.length > 500) {
