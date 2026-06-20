@@ -5,28 +5,34 @@ const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
 const COLORS = ["#66c3c6","#0d4f52","#f59e0b","#6366f1","#10b981","#f43f5e","#8b5cf6","#ec4899"];
 
 function buildProceedsChartData(rows: any[]) {
-  const valid = rows.filter((r) => typeof r.amount_value === "number");
-  if (valid.length === 0) return { chartData: [] as any[], categories: [] as string[] };
-
-  const categories: string[] = [];
-  valid.forEach((r) => {
-    if (!categories.includes(r.category)) categories.push(r.category);
-  });
-
-  const timingOrder: string[] = [];
-  const byTiming: Record<string, any> = {};
-  valid.forEach((r) => {
-    const t = r.timing || "時期未定";
-    if (!byTiming[t]) {
-      byTiming[t] = { timing: t };
-      timingOrder.push(t);
-    }
-    byTiming[t][r.category] = (byTiming[t][r.category] || 0) + r.amount_value;
-  });
-
-  const chartData = timingOrder.map((t) => byTiming[t]);
-  return { chartData, categories };
-}
+    const valid = rows
+      .map((r) => {
+        const n = typeof r.amount_value === "number" ? r.amount_value : Number(r.amount_value);
+        return { ...r, _val: n };
+      })
+      .filter((r) => r.amount_value !== null && r.amount_value !== undefined && !isNaN(r._val));
+  
+    if (valid.length === 0) return { chartData: [] as any[], categories: [] as string[] };
+  
+    const categories: string[] = [];
+    valid.forEach((r) => {
+      if (!categories.includes(r.category)) categories.push(r.category);
+    });
+  
+    const timingOrder: string[] = [];
+    const byTiming: Record<string, any> = {};
+    valid.forEach((r) => {
+      const t = r.timing || "時期未定";
+      if (!byTiming[t]) {
+        byTiming[t] = { timing: t };
+        timingOrder.push(t);
+      }
+      byTiming[t][r.category] = (byTiming[t][r.category] || 0) + r._val;
+    });
+  
+    const chartData = timingOrder.map((t) => byTiming[t]);
+    return { chartData, categories };
+  }
 
 export default function VizTables({ vizData, section = "top" }: { vizData: any; section?: "top" | "bottom" }) {
   if (!vizData) return null;
