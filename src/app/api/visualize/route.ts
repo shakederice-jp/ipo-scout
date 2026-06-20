@@ -133,6 +133,8 @@ Return this exact JSON structure:
     return `${header}
 - "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
 - Extract from ipo_details.use_of_proceeds (and fundraising_amount if helpful). List each distinct use-of-funds item as a separate row, using the company's own wording for the category (do NOT force-fit into generic categories like 設備投資/人件費/広告費 unless the prospectus actually uses those terms).
+- "amount" is the original display string exactly as stated (e.g. "173,520千円").
+- "amount_value" is the SAME amount converted to a plain number in 千円 (thousand-yen) units, for charting. Examples: "173,520千円" → 173520. "1.5億円" → 150000. "2,000万円" → 200. "3,000,000円" → 3000. If the amount is not a parseable number (e.g. "未定" or a percentage only), set amount_value to null.
 - "timing" should be the fiscal year/period the funds will be used in, if stated (e.g. "2027年8月期"). Omit (set to null) if not stated.
 - If use_of_proceeds information is too vague to break into rows (e.g. just one general sentence with no amounts), set available to false and rows to [].
 - Do not invent numbers.
@@ -143,8 +145,8 @@ Return this exact JSON structure:
     "available": true,
     "title": "調達資金の使途",
     "rows": [
-      {"category": "既存事業の直営店新規出店資金", "amount": "173,520千円", "timing": "2027年8月期"},
-      {"category": "既存事業の直営店新規出店資金", "amount": "144,882千円", "timing": "2028年8月期"}
+      {"category": "既存事業の直営店新規出店資金", "amount": "173,520千円", "amount_value": 173520, "timing": "2027年8月期"},
+      {"category": "既存事業の直営店新規出店資金", "amount": "144,882千円", "amount_value": 144882, "timing": "2028年8月期"}
     ],
     "citation": "目論見書によると、調達資金は既存事業の直営店新規出店資金に充当される予定である"
   }
