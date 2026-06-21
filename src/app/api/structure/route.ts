@@ -137,6 +137,32 @@ ${rawText}
       return NextResponse.json({ error: "データの構造化に失敗しました。再試行してください。" }, { status: 500 });
     }
 
+    // 流通比率はAIの自由記述だと不安定なため、保存直前にプログラムで確実に再計算する
+    function extractShares(text: string | undefined | null, keyword?: string): number | null {
+      if (!text) return null;
+      const pattern = keyword
+        ? new RegExp(keyword + "[^0-9]{0,5}([0-9,]+)\\s*株")
+        : /([0-9,]+)\s*株/;
+      const m = text.match(pattern);
+      if (!m) return null;
+      return parseInt(m[1].replace(/,/g, ""), 10);
+    }
+
+    if (structured?.ipo_details) {
+      const existingTotal = extractShares(structured.ipo_details.total_shares);
+      const publicSharesText = structured.ipo_details.public_shares ?? "";
+      const newShares = extractShares(publicSharesText, "公募");
+      const soldShares = extractShares(publicSharesText, "売出");
+      const oaShares = extractShares(structured.ipo_details.overallotment);
+
+      if (existingTotal && newShares) {
+        const postIpoTotal = existingTotal + newShares;
+        const floatShares = newShares + (soldShares ?? 0) + (oaShares ?? 0);
+        const ratio = Math.round((floatShares / postIpoTotal) * 1000) / 10;
+        structured.ipo_details.float_ratio = `推定${ratio}%程度`;
+      }
+    }
+
     await supabase.from("ipo_companies").update({
       structured_data: structured,
       analysis_detail: null,
