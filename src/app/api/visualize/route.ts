@@ -33,8 +33,8 @@ function parseNumericShares(val: any): number | null {
 function parseFloatRatio(val: any): number | null {
   if (typeof val === "number") return val;
   if (typeof val === "string") {
-    // "15-20%", "15～20%程度" → midpoint
-    const range = val.match(/(\d+(?:\.\d+)?)[^\d]+(\d+(?:\.\d+)?)/);
+    // "15-20%", "15～20%程度" → midpoint（範囲を示す記号がある場合のみ。小数点は範囲とみなさない）
+    const range = val.match(/(\d+(?:\.\d+)?)\s*[~〜\-ー]\s*(\d+(?:\.\d+)?)/);
     if (range) return (parseFloat(range[1]) + parseFloat(range[2])) / 2;
     const single = val.match(/(\d+(?:\.\d+)?)/);
     if (single) return parseFloat(single[1]);
