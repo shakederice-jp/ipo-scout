@@ -48,6 +48,8 @@ function buildPrompt(chartType: ChartType, name: string, sd: any, market: any): 
 Company: ${name}
 Data: ${JSON.stringify(sd, null, 2)}
 
+CRITICAL: Your response must be a JSON object containing EXACTLY the top-level key(s) shown in the example structure below — nothing more. Do NOT invent or add any additional chart types, additional keys, or extra analysis beyond what is explicitly requested.
+
 IMPORTANT RULES:`;
 
   if (chartType === "revenue_chart") {
@@ -315,7 +317,9 @@ if (chart_type === "shareholders_lockup_table") {
     const text = (message.content[0] as any).text;
     const clean = text.replace(/```json|```/g, "").trim();
     const chartData = JSON.parse(clean);
-    return NextResponse.json({ success: true, chart_type, data: chartData });
+    // 念のため、頼んだchart_type以外の余計なキーは全て捨てる（Claudeが余計なデータを作ってしまった場合の保険）
+    const filtered = { [chart_type]: chartData[chart_type] };
+    return NextResponse.json({ success: true, chart_type, data: filtered });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
