@@ -8,8 +8,6 @@ export const maxDuration = 60;
 const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table", "shareholders_lockup_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
-const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table", "shareholders_lockup_table", "key_metrics_table"] as const;
-type ChartType = typeof CHART_TYPES[number];
 
 const MAX_TOKENS: Record<ChartType, number> = {
   revenue_chart: 2000,
