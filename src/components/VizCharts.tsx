@@ -141,7 +141,26 @@ export default function VizCharts({ vizData }: { vizData: any }) {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
               <ResponsiveContainer width={200} height={200}>
                 <PieChart>
-                  <Pie data={pieData} dataKey="ratio" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ value }) => `${value}%`} labelLine={false}>
+                  <Pie
+                    data={pieData}
+                    dataKey="ratio"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    labelLine={false}
+                    label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>
+                          {`${value}%`}
+                        </text>
+                      );
+                    }}
+                  >
                     {pieData.map((_: any, i: number) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}

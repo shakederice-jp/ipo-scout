@@ -18,6 +18,9 @@ export default function AdminPage() {
   const [vizResult, setVizResult] = useState<string | null>(null);
   const [edinetLoading, setEdinetLoading] = useState(false);
   const [edinetResult, setEdinetResult] = useState("");
+  const [ipoPriceInput, setIpoPriceInput] = useState("");
+  const [ipoPriceLoading, setIpoPriceLoading] = useState(false);
+  const [ipoPriceResult, setIpoPriceResult] = useState<string | null>(null);
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
@@ -33,6 +36,8 @@ export default function AdminPage() {
     setEdinetDocId("");
     setStepResult({});
     setStepLoading({});
+    setIpoPriceInput(c.ipo_price != null ? String(c.ipo_price) : "");
+    setIpoPriceResult(null);
   };
 
   const handleStep1 = async () => {
@@ -185,6 +190,25 @@ export default function AdminPage() {
       setVizLoading(false);
     }
   };
+  const handleSetIpoPrice = async () => {
+    if (!selectedCompany) return;
+    setIpoPriceLoading(true);
+    setIpoPriceResult(null);
+    try {
+      const res = await fetch("/api/admin/set-ipo-price", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ company_id: selectedCompany.id, ipo_price: ipoPriceInput }),
+      });
+      const data = await res.json();
+      if (data.error) setIpoPriceResult(`❌ ${data.error}`);
+      else setIpoPriceResult("✅ 保存しました");
+    } catch {
+      setIpoPriceResult("❌ 通信エラー");
+    }
+    setIpoPriceLoading(false);
+  };
+
+  const handleEdinetCodes = () => {
   const handleEdinetCodes = () => {
     window.open("https://disclosure2.edinet-fsa.go.jp/weee0010.aspx", "_blank");
     setEdinetResult(
@@ -274,6 +298,26 @@ export default function AdminPage() {
             <>
               <div style={{ background:"#f0fdf4", borderRadius:"8px", padding:"10px 12px", marginBottom:"16px", fontSize:"12px", color:"#166534" }}>
                 ✅ 選択中：<strong>{selectedCompany.name}</strong>（ID: {selectedCompany.id}）
+              </div>
+              <div style={{ background:"#fffbeb", borderRadius:"8px", padding:"12px", marginBottom:"16px", border:"1px solid #fde68a" }}>
+                <label style={labelStyle}>IPO公開価格（円）※決定後に入力。PER・PBRの自動計算に使われます</label>
+                <div style={{ display:"flex", gap:"8px" }}>
+                  <input
+                    type="number"
+                    value={ipoPriceInput}
+                    onChange={e => setIpoPriceInput(e.target.value)}
+                    placeholder="例：1290"
+                    style={{ ...inputStyle, flex:1 }}
+                  />
+                  <button
+                    onClick={handleSetIpoPrice}
+                    disabled={ipoPriceLoading}
+                    style={{ padding:"8px 16px", backgroundColor: ipoPriceLoading ? "#94a3b8" : "#d97706", color:"white", border:"none", borderRadius:"8px", cursor: ipoPriceLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px", whiteSpace:"nowrap" }}
+                  >
+                    {ipoPriceLoading ? "保存中..." : "保存"}
+                  </button>
+                </div>
+                {ipoPriceResult && <p style={{ marginTop:"6px", fontSize:"11px", color: ipoPriceResult.startsWith("❌") ? "#dc2626" : "#166534" }}>{ipoPriceResult}</p>}
               </div>
               <div style={{ marginBottom:"16px" }}>
                 <label style={labelStyle}>EDINET書類ID（任意・空白で自動検索）</label>
