@@ -37,7 +37,7 @@ function buildProceedsChartData(rows: any[]) {
 export default function VizTables({ vizData, section = "top" }: { vizData: any; section?: "top" | "bottom" }) {
   if (!vizData) return null;
 
-  const { ipo_summary_table, use_of_proceeds_table, risk_table } = vizData;
+  const { ipo_summary_table, use_of_proceeds_table, risk_table, shareholders_lockup_table } = vizData;
 
   const summaryRows: any[] = ipo_summary_table?.rows ?? [];
   const summaryVisible = ipo_summary_table?.available && summaryRows.length > 0;
@@ -51,6 +51,9 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
 
   const riskRows: any[] = risk_table?.rows ?? [];
   const riskVisible = risk_table?.available && riskRows.length > 0;
+
+  const shareholdersRows: any[] = shareholders_lockup_table?.rows ?? [];
+  const shareholdersVisible = shareholders_lockup_table?.available && shareholdersRows.length > 0;
 
   if (section === "top") {
     if (!summaryVisible) return null;
@@ -89,8 +92,8 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
     );
   }
 
-  // section === "bottom"
-  if (!proceedsVisible && !riskVisible) return null;
+ // section === "bottom"
+ if (!proceedsVisible && !riskVisible && !shareholdersVisible) return null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
 
@@ -150,7 +153,42 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
           </div>
         </div>
       )}
-
+{/* 大株主・ロックアップ情報 */}
+{shareholdersVisible && (
+        <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16 }}>👥</span>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: C.nav, margin: 0 }}>{shareholders_lockup_table.title ?? "大株主・ロックアップ情報"}</h3>
+          </div>
+          {shareholders_lockup_table.citation && (
+            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {shareholders_lockup_table.citation}</p>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {shareholdersRows.map((r: any, i: number) => (
+              <div key={i} style={{ backgroundColor: C.bg, borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#082b2e" }}>{r.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: C.teal }}>{r.ratio}</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ backgroundColor: "white", borderRadius: 6, padding: "4px 10px", flex: "1 1 100px" }}>
+                    <div style={{ fontSize: 9, color: "#94a3b8" }}>保有株式数</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{r.shares}</div>
+                  </div>
+                  <div style={{ backgroundColor: "white", borderRadius: 6, padding: "4px 10px", flex: "1 1 100px" }}>
+                    <div style={{ fontSize: 9, color: "#94a3b8" }}>属性</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{r.type}</div>
+                  </div>
+                  <div style={{ backgroundColor: "white", borderRadius: 6, padding: "4px 10px", flex: "1 1 100px" }}>
+                    <div style={{ fontSize: 9, color: "#94a3b8" }}>ロックアップ</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: r.lockup === "有" ? "#dc2626" : "#475569" }}>{r.lockup}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* 事業等のリスク（重要度別） */}
       {riskVisible && (
         <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>

@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const anthropic = new Anthropic();
 export const maxDuration = 60;
 
-const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table"] as const;
+const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table", "shareholders_lockup_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
 const MAX_TOKENS: Record<ChartType, number> = {
@@ -16,6 +16,7 @@ const MAX_TOKENS: Record<ChartType, number> = {
   ipo_summary_table: 2000,
   use_of_proceeds_table: 2000,
   risk_table: 3000,
+  shareholders_lockup_table: 1000,
 };
 
 // 文字列から数値を抽出するヘルパー
@@ -269,7 +270,43 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+// shareholders_lockup_table: すでに構造化済みのデータをそのまま使うのでClaude不要
+if (chart_type === "shareholders_lockup_table") {
+  const shareholders: any[] = Array.isArray(sd?.shareholders) ? sd.shareholders : [];
+  const lockupPeriod = sd?.ipo_details?.lockup_period ?? null;
+  const lockupTargets = sd?.ipo_details?.lockup_targets ?? null;
 
+  const rows = shareholders.map((s: any) => ({
+    name: s?.name ?? "不明",
+    shares: s?.shares ?? "不明",
+    ratio: s?.ratio ?? "不明",
+    type: s?.type ?? "不明",
+    lockup: s?.lockup ?? "不明",
+  }));
+
+  const citationParts: string[] = [];
+  if (lockupTargets) citationParts.push(`ロックアップ対象は${lockupTargets}`);
+  if (lockupPeriod) citationParts.push(`期間は${lockupPeriod}`);
+  const citation = citationParts.length > 0 ? `目論見書によると、${citationParts.join("、")}である。` : "";
+
+  return NextResponse.json({
+    success: true,
+    chart_type,
+    data: {
+      shareholders_lockup_table: {
+        available: rows.length > 0,
+        title: "大株主・ロックアップ情報",
+        rows,
+        lockup_period: lockupPeriod,
+        lockup_targets: lockupTargets,
+        citation,
+      },
+    },
+  });
+}
+
+// その他のchartType
+const prompt = buildPrompt(chart_type as ChartType, (co as any).name, sd, market);
   // その他のchartType
   const prompt = buildPrompt(chart_type as ChartType, (co as any).name, sd, market);
   try {

@@ -152,11 +152,12 @@ export default function AdminPage() {
       { type: "ipo_summary_table", label: "IPO条件サマリー表" },
       { type: "use_of_proceeds_table", label: "資金使途明細表" },
       { type: "risk_table", label: "リスク重要度表" },
+      { type: "shareholders_lockup_table", label: "大株主・ロックアップ情報表" },
     ];
     const merged: Record<string, any> = {};
     for (let i = 0; i < chartTypes.length; i++) {
       const { type, label } = chartTypes[i];
-      setVizResult(`⏳ ${label} 生成中 (${i+1}/3)...`);
+      setVizResult(`⏳ ${label} 生成中 (${i+1}/${chartTypes.length})...`);
       try {
         const res = await fetch("/api/visualize", {
           method: "POST", headers: {"Content-Type": "application/json"},
