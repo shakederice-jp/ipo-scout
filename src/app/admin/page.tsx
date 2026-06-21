@@ -208,8 +208,7 @@ export default function AdminPage() {
     setIpoPriceLoading(false);
   };
 
-  const handleEdinetCodes = () => {
-  const handleEdinetCodes = () => {
+    const handleEdinetCodes = () => {
     window.open("https://disclosure2.edinet-fsa.go.jp/weee0010.aspx", "_blank");
     setEdinetResult(
       "📋 新しいタブでEDINETのダウンロードページを開きました。「EDINETコードリスト」の「ダウンロード」リンクからZIPを取得し、解凍したCSVの1行目（メタ情報の行）を削除、見出し行を edinet_code / listing_status / company_name / company_name_en / industry / security_code に書き換えてから、SupabaseのTable Editor → edinet_companiesテーブルでCSVインポートしてください。"
