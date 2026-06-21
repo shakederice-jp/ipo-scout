@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const rawText = Object.entries(sections)
       .map(([label, content]) => `【${label}】\n${content}`)
       .join("\n\n")
-      .slice(0, 50000);
+      .slice(0, 80000);
 
     const prompt = `以下は日本のIPO企業「${company.name}」の目論見書テキストです。
 必要な財務・株主数値はデータを抽出してJSONのみで返してください。前置き・後置き・マークダウン記法は一切不要です。
