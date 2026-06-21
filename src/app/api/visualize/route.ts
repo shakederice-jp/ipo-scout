@@ -75,7 +75,8 @@ if (chartType === "revenue_chart") {
 - "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
 - Use null for any numeric value that is genuinely unknown. Do not invent numbers.
 - CRITICAL UNIT RULE: "revenue" and "profit" values MUST be in 百万円（millions of yen）units. Convert as needed: if the source data is in 千円（thousands of yen）, divide by 1,000. If the source data is in 億円（hundred-millions of yen）, multiply by 100. Example: "2,855,346千円" → 2855 (百万円). "285.5億円" → 28550 (百万円). Double-check your conversion before output — a value like 2855346 is WRONG (that means you forgot to convert from 千円).
-- "profit" must be 営業利益（operating profit）specifically, taken from financials.profit_trend. Do NOT substitute 経常利益（ordinary profit）or any other profit type, and do not use that term in the title/citation either.
+- - "profit" must be 営業利益（operating profit）specifically, taken from financials.profit_trend. Do NOT substitute 経常利益（ordinary profit）or any other profit type, and do not use that term in the title/citation either.
+- The "citation" sentence MUST describe the exact same 営業利益 figures you used in the "data" array above (not 経常利益 from key_metrics or any other source). Before writing the citation, double-check that the profit number you mention matches the "profit" value for that year in your own "data" array.
 
 Return this exact JSON structure:
 {
