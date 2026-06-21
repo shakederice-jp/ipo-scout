@@ -305,8 +305,6 @@ if (chart_type === "shareholders_lockup_table") {
   });
 }
 
-// その他のchartType
-const prompt = buildPrompt(chart_type as ChartType, (co as any).name, sd, market);
   // その他のchartType
   const prompt = buildPrompt(chart_type as ChartType, (co as any).name, sd, market);
   try {
