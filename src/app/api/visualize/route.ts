@@ -70,21 +70,23 @@ CRITICAL: Your response must be a JSON object containing EXACTLY the top-level k
 
 IMPORTANT RULES:`;
 
-  if (chartType === "revenue_chart") {
-    return `${header}
+if (chartType === "revenue_chart") {
+  return `${header}
 - "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
 - Use null for any numeric value that is genuinely unknown. Do not invent numbers.
+- CRITICAL UNIT RULE: "revenue" and "profit" values MUST be in 百万円（millions of yen）units. Convert as needed: if the source data is in 千円（thousands of yen）, divide by 1,000. If the source data is in 億円（hundred-millions of yen）, multiply by 100. Example: "2,855,346千円" → 2855 (百万円). "285.5億円" → 28550 (百万円). Double-check your conversion before output — a value like 2855346 is WRONG (that means you forgot to convert from 千円).
+- "profit" must be 営業利益（operating profit）specifically, taken from financials.profit_trend. Do NOT substitute 経常利益（ordinary profit）or any other profit type, and do not use that term in the title/citation either.
 
 Return this exact JSON structure:
 {
-  "revenue_chart": {
-    "available": true,
-    "title": "売上高・営業利益推移",
-    "data": [{"year": "2023年8月期", "revenue": 23210, "profit": 780}],
-    "citation": "目論見書の財務情報によると、2024年8月期の売上高は前年比23.0%増加し285.5億円となった"
-  }
+"revenue_chart": {
+  "available": true,
+  "title": "売上高・営業利益推移",
+  "data": [{"year": "2023年8月期", "revenue": 23210, "profit": 780}],
+  "citation": "目論見書の財務情報によると、2024年8月期の売上高は前年比23.0%増加し285.5億円となった"
+}
 }`;
-  }
+}
 
   if (chartType === "shareholders_chart") {
     return `${header}
