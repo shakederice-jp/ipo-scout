@@ -297,6 +297,50 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+// revenue_chart: 5期分確実に揃っているkey_metrics（経常利益）を使い、TS側で確定的に計算する
+if (chart_type === "revenue_chart") {
+  const keyMetrics: any[] = Array.isArray(sd?.key_metrics) ? sd.key_metrics : [];
+
+  if (keyMetrics.length === 0) {
+    return NextResponse.json({
+      success: true,
+      chart_type,
+      data: { revenue_chart: { available: false, title: "売上高・経常利益推移", data: [], citation: "" } },
+    });
+  }
+
+  const chartData = keyMetrics.map((m: any) => {
+    const revenueThousand = parseJpNumber(m.revenue); // 千円
+    const profitThousand = parseJpNumber(m.ordinary_profit); // 千円
+    return {
+      year: m.period,
+      revenue: revenueThousand !== null ? Math.round(revenueThousand / 1000) : null, // 百万円に変換
+      profit: profitThousand !== null ? Math.round(profitThousand / 1000) : null, // 百万円に変換
+    };
+  });
+
+  const first = chartData[0];
+  const last = chartData[chartData.length - 1];
+  const toOku = (man: number | null) => (man !== null ? (man / 100).toFixed(1) : "不明");
+
+  const citation = (first && last)
+    ? `${(co as any).name}の財務実績によると、売上高は${first.year}の${toOku(first.revenue)}億円から${last.year}の${toOku(last.revenue)}億円へ成長し、経常利益も${last.year}には${toOku(last.profit)}億円となった。`
+    : "";
+
+  return NextResponse.json({
+    success: true,
+    chart_type,
+    data: {
+      revenue_chart: {
+        available: true,
+        title: "売上高・経常利益推移",
+        data: chartData,
+        citation,
+      },
+    },
+  });
+}
+
 // shareholders_lockup_table: すでに構造化済みのデータをそのまま使うのでClaude不要
 if (chart_type === "shareholders_lockup_table") {
   const shareholders: any[] = Array.isArray(sd?.shareholders) ? sd.shareholders : [];

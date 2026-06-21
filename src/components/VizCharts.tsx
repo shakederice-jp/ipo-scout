@@ -64,7 +64,7 @@ export default function VizCharts({ vizData }: { vizData: any }) {
               <Tooltip formatter={(value: any) => [`${(value/100).toFixed(1)}億円`]} />
               <Legend />
               <Bar dataKey="revenue" name="売上高" fill={C.teal} radius={[4,4,0,0]} />
-              <Bar dataKey="profit" name="営業利益" fill={C.nav} radius={[4,4,0,0]} />
+              <Bar dataKey="profit" name="経常利益" fill={C.nav} radius={[4,4,0,0]} />
               </BarChart>
           </ResponsiveContainer>
         </div>
