@@ -109,7 +109,7 @@ Return this exact JSON structure:
     return `${header}
 - "citation" fields MUST be natural Japanese sentences — NEVER output raw key:value dumps.
 - Extract from ipo_details: 公開株数（公募+売出の合計株数）, オーバーアロットメント（金額・有無）, 調達額（合計上限）, 流通比率, ロックアップ対象, ロックアップ期間. Use the original text values as-is (no need to compute or convert units).
-- If a value is genuinely unknown or not stated, use "記載なし" as the value (not null).
+- If a value is genuinely unknown or not stated, use "目論見書に記載なし" as the value (not null).
 - Do not invent numbers.
 
 Return this exact JSON structure:
@@ -123,7 +123,7 @@ Return this exact JSON structure:
       {"label": "調達額（上限）", "value": "318,403千円"},
       {"label": "流通比率", "value": "推定15〜20%程度"},
       {"label": "ロックアップ対象", "value": "創業者・主要株主"},
-      {"label": "ロックアップ期間", "value": "記載なし"}
+      {"label": "ロックアップ期間", "value": "目論見書に記載なし"}
     ],
     "citation": "目論見書のIPO概要によると、公募及び売出による調達額の上限は318,403千円である"
   }
@@ -277,11 +277,11 @@ if (chart_type === "shareholders_lockup_table") {
   const lockupTargets = sd?.ipo_details?.lockup_targets ?? null;
 
   const rows = shareholders.map((s: any) => ({
-    name: s?.name ?? "不明",
-    shares: s?.shares ?? "不明",
-    ratio: s?.ratio ?? "不明",
-    type: s?.type ?? "不明",
-    lockup: s?.lockup ?? "不明",
+    name: s?.name ?? "目論見書に記載なし",
+    shares: s?.shares ?? "目論見書に記載なし",
+    ratio: s?.ratio ?? "目論見書に記載なし",
+    type: s?.type ?? "目論見書に記載なし",
+    lockup: s?.lockup ?? "目論見書に記載なし",
   }));
 
   const citationParts: string[] = [];

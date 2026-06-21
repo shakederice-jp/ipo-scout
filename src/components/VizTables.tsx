@@ -83,7 +83,7 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
                 }}
               >
                 <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700, flexShrink: 0 }}>{r.label}</span>
-                <span style={{ fontSize: 13, color: "#082b2e", fontWeight: 700, textAlign: "right", flex: 1, minWidth: 0 }}>{r.value ?? "不明"}</span>
+                <span style={{ fontSize: 13, color: "#082b2e", fontWeight: 700, textAlign: "right", flex: 1, minWidth: 0 }}>{r.value ?? "目論見書に記載なし"}</span>
               </div>
             ))}
           </div>
@@ -139,7 +139,7 @@ export default function VizTables({ vizData, section = "top" }: { vizData: any; 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <div style={{ backgroundColor: "white", borderRadius: 6, padding: "4px 10px", flex: "1 1 100px" }}>
                     <div style={{ fontSize: 9, color: "#94a3b8" }}>金額</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: C.nav }}>{r.amount ?? "不明"}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.nav }}>{r.amount ?? "目論見書に記載なし"}</div>
                   </div>
                   {r.timing && (
                     <div style={{ backgroundColor: "white", borderRadius: 6, padding: "4px 10px", flex: "1 1 100px" }}>
