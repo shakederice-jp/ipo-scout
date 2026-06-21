@@ -146,13 +146,16 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
     ], 22000);
     if (s4) sections["株主構成"] = s4;
 
-      // ⑥ 売出し情報・公開株式数（NEW）
-      const s5 = extractSection(text, [
-        "募集又は売出しの概要", "売出しの概要", "募集の概要",
-        "公募株式数", "売出株式数", "発行新株式数",
-        "オーバーアロットメント", "引受人の買取引受"
-      ], 3000);
-      if (s5) sections["売出し情報"] = s5;
+     // ⑥ 売出し情報・公開株式数（「新規発行株式」「売出株式」の見出し表をまるごと取得）
+     const s5 = extractSection(text, [
+      "新規発行株式",
+      "募集要項",
+      "売出株式（引受人の買取引受による売出し）",
+      "売出株式",
+      "募集又は売出しの概要", "売出しの概要", "募集の概要",
+      "オーバーアロットメント", "引受人の買取引受"
+    ], 7000);
+    if (s5) sections["売出し情報"] = s5;
 
       // ⑦ ロックアップ・売却制限（NEW）
       const s6 = extractSection(text, [
