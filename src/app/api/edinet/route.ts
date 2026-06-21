@@ -154,7 +154,7 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       "売出株式",
       "募集又は売出しの概要", "売出しの概要", "募集の概要",
       "オーバーアロットメント", "引受人の買取引受"
-    ], 7000);
+    ], 18000);
     if (s5) sections["売出し情報"] = s5;
 
       // ⑦ ロックアップ・売却制限（NEW）
