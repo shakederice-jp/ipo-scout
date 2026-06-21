@@ -41,7 +41,13 @@ function parseFloatRatio(val: any): number | null {
   }
   return null;
 }
-
+// public_sharesの文字列（例："公募100,000株、売出1,050,000株"）から公募株数だけを取り出す
+function parsePublicOfferingShares(val: any): number | null {
+  if (typeof val !== "string") return null;
+  const m = val.match(/公募[^0-9]{0,5}([0-9,]+)\s*株/);
+  if (!m) return null;
+  return parseInt(m[1].replace(/,/g, ""), 10);
+}
 function buildPrompt(chartType: ChartType, name: string, sd: any, market: any): string {
   const header = `You are a financial data extractor. Extract visualization data from this IPO company structured data and return ONLY valid JSON with no explanation or markdown.
 
@@ -227,7 +233,11 @@ export async function POST(req: NextRequest) {
   // market_structure_chart: share_structure_chartはTS側で計算
   if (chart_type === "market_structure_chart") {
     const ipoDetails = sd?.ipo_details ?? {};
-    const totalShares = parseNumericShares(ipoDetails.total_shares);
+    const existingShares = parseNumericShares(ipoDetails.total_shares);
+    const newShares = parsePublicOfferingShares(ipoDetails.public_shares);
+    const totalShares = (existingShares !== null && newShares !== null)
+      ? existingShares + newShares
+      : existingShares;
     const floatRatio = parseFloatRatio(ipoDetails.float_ratio);
 
     let shareStructureChart: any;
@@ -242,7 +252,7 @@ export async function POST(req: NextRequest) {
           { label: "上場時流通株式", shares: floatShares, ratio: floatRatio },
           { label: "ロックアップ対象等", shares: lockupShares, ratio: lockupRatio },
         ],
-        citation: `目論見書のIPO詳細によると、発行済株式総数${totalShares.toLocaleString()}株に対し流通比率は推定${floatRatio}%程度である`,
+        citation: `目論見書のIPO詳細によると、上場後発行済株式総数${totalShares.toLocaleString()}株に対し流通比率は推定${floatRatio}%程度である`,
       };
     } else {
       shareStructureChart = { available: false, title: "株式構成（上場時）", data: [], citation: "" };
