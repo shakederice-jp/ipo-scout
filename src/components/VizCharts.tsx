@@ -8,7 +8,13 @@ const COLORS = ["#66c3c6","#0d4f52","#f59e0b","#6366f1","#10b981","#f43f5e","#8b
 export default function VizCharts({ vizData }: { vizData: any }) {
   if (!vizData) return null;
 
-  const { revenue_chart, shareholders_chart, valuation_table, share_structure_chart, recent_ipo_chart } = vizData;
+  const { revenue_chart, shareholders_chart, valuation_table, share_structure_chart, recent_ipo_chart, key_metrics_table } = vizData;
+
+  const keyMetricsRows: any[] = key_metrics_table?.trend_rows ?? [];
+  const keyMetricsVisible = key_metrics_table?.available && keyMetricsRows.length > 0;
+  const latestSummary = key_metrics_table?.latest_summary;
+  const per = key_metrics_table?.per;
+  const pbr = key_metrics_table?.pbr;
 
   const shareholderData: any[] = shareholders_chart?.data ?? [];
   const hasShareholders = shareholderData.length > 0;
@@ -59,8 +65,64 @@ export default function VizCharts({ vizData }: { vizData: any }) {
               <Legend />
               <Bar dataKey="revenue" name="売上高" fill={C.teal} radius={[4,4,0,0]} />
               <Bar dataKey="profit" name="営業利益" fill={C.nav} radius={[4,4,0,0]} />
-            </BarChart>
+              </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* 主要経営指標の推移 */}
+      {keyMetricsVisible && (
+        <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16 }}>📐</span>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: C.nav, margin: 0 }}>主要経営指標の推移</h3>
+          </div>
+          {key_metrics_table.citation && (
+            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {key_metrics_table.citation}</p>
+          )}
+
+          {latestSummary && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+              {[
+                { label: "自己資本比率", value: latestSummary.equity_ratio },
+                { label: "ROE", value: latestSummary.roe },
+                { label: "PER", value: per ? `${per}倍` : "未定" },
+                { label: "PBR", value: pbr ? `${pbr}倍` : "未定" },
+              ].map((item, i) => (
+                <div key={i} style={{ backgroundColor: C.bg, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 2 }}>{item.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: item.value === "未定" ? "#cbd5e1" : C.nav }}>{item.value ?? "不明"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #d0f0f0" }}>
+                  <th style={{ textAlign: "left", padding: "6px 8px", color: "#6b9ea0" }}>決算期</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", color: "#6b9ea0" }}>売上高</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", color: "#6b9ea0" }}>経常利益</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", color: "#6b9ea0" }}>当期純利益</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", color: "#6b9ea0" }}>自己資本比率</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", color: "#6b9ea0" }}>ROE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keyMetricsRows.map((row: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f0fafa" }}>
+                    <td style={{ padding: "6px 8px", color: "#082b2e", fontWeight: 700 }}>{row.period}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: "#374151" }}>{row.revenue}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: "#374151" }}>{row.ordinary_profit}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: "#374151" }}>{row.net_profit}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: "#374151" }}>{row.equity_ratio}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: "#374151" }}>{row.roe}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

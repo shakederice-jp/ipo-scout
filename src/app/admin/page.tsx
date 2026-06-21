@@ -153,6 +153,7 @@ export default function AdminPage() {
       { type: "use_of_proceeds_table", label: "資金使途明細表" },
       { type: "risk_table", label: "リスク重要度表" },
       { type: "shareholders_lockup_table", label: "大株主・ロックアップ情報表" },
+      { type: "key_metrics_table", label: "主要経営指標の推移" },
     ];
     const merged: Record<string, any> = {};
     for (let i = 0; i < chartTypes.length; i++) {

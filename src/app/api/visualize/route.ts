@@ -8,6 +8,9 @@ export const maxDuration = 60;
 const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table", "shareholders_lockup_table"] as const;
 type ChartType = typeof CHART_TYPES[number];
 
+const CHART_TYPES = ["revenue_chart", "shareholders_chart", "valuation_table", "market_structure_chart", "ipo_summary_table", "use_of_proceeds_table", "risk_table", "shareholders_lockup_table", "key_metrics_table"] as const;
+type ChartType = typeof CHART_TYPES[number];
+
 const MAX_TOKENS: Record<ChartType, number> = {
   revenue_chart: 2000,
   shareholders_chart: 4000,
@@ -17,6 +20,7 @@ const MAX_TOKENS: Record<ChartType, number> = {
   use_of_proceeds_table: 2000,
   risk_table: 3000,
   shareholders_lockup_table: 1000,
+  key_metrics_table: 1000,
 };
 
 // 文字列から数値を抽出するヘルパー
@@ -47,6 +51,16 @@ function parsePublicOfferingShares(val: any): number | null {
   const m = val.match(/公募[^0-9]{0,5}([0-9,]+)\s*株/);
   if (!m) return null;
   return parseInt(m[1].replace(/,/g, ""), 10);
+}
+// "△9.77円" や "15.1%" のような文字列を数値に変換（△は日本の会計でマイナスを表す）
+function parseJpNumber(val: any): number | null {
+  if (typeof val === "number") return val;
+  if (typeof val !== "string") return null;
+  const isNegative = val.includes("△") || val.includes("▲") || val.trim().startsWith("-");
+  const m = val.replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)/);
+  if (!m) return null;
+  const num = parseFloat(m[1]);
+  return isNegative ? -num : num;
 }
 function buildPrompt(chartType: ChartType, name: string, sd: any, market: any): string {
   const header = `You are a financial data extractor. Extract visualization data from this IPO company structured data and return ONLY valid JSON with no explanation or markdown.
@@ -221,7 +235,7 @@ export async function POST(req: NextRequest) {
 
   const { data: co, error } = await supabase
     .from("ipo_companies")
-    .select("structured_data, name, analysis_market")
+    .select("structured_data, name, analysis_market, ipo_price")
     .eq("id", companyId)
     .single();
 
@@ -312,6 +326,43 @@ if (chart_type === "shareholders_lockup_table") {
         lockup_period: lockupPeriod,
         lockup_targets: lockupTargets,
         citation,
+      },
+    },
+  });
+}
+
+// key_metrics_table: 構造化済みデータをそのまま使い、PER・PBRはIPO価格が入力されていれば自動計算する
+if (chart_type === "key_metrics_table") {
+  const keyMetrics: any[] = Array.isArray(sd?.key_metrics) ? sd.key_metrics : [];
+  const latest = keyMetrics.length > 0 ? keyMetrics[keyMetrics.length - 1] : null;
+
+  const ipoPrice = (co as any).ipo_price ?? null;
+  const latestEps = latest ? parseJpNumber(latest.eps) : null;
+  const latestBps = latest ? parseJpNumber(latest.bps) : null;
+  const per = (ipoPrice && latestEps && latestEps > 0) ? Math.round((ipoPrice / latestEps) * 10) / 10 : null;
+  const pbr = (ipoPrice && latestBps && latestBps > 0) ? Math.round((ipoPrice / latestBps) * 100) / 100 : null;
+
+  return NextResponse.json({
+    success: true,
+    chart_type,
+    data: {
+      key_metrics_table: {
+        available: keyMetrics.length > 0,
+        title: "主要経営指標の推移",
+        trend_rows: keyMetrics,
+        latest_summary: latest ? {
+          period: latest.period,
+          equity_ratio: latest.equity_ratio,
+          roe: latest.roe,
+          eps: latest.eps,
+          bps: latest.bps,
+        } : null,
+        per,
+        pbr,
+        ipo_price: ipoPrice,
+        citation: keyMetrics.length > 0
+          ? `目論見書の主要経営指標等の推移によると、直近期（${latest?.period ?? ""}）の自己資本比率は${latest?.equity_ratio ?? "不明"}、自己資本利益率（ROE）は${latest?.roe ?? "不明"}である。`
+          : "",
       },
     },
   });
