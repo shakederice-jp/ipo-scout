@@ -21,9 +21,18 @@ export default function AdminPage() {
   const [ipoPriceInput, setIpoPriceInput] = useState("");
   const [ipoPriceLoading, setIpoPriceLoading] = useState(false);
   const [ipoPriceResult, setIpoPriceResult] = useState<string | null>(null);
+  const [econEvents, setEconEvents] = useState<any[]>([]);
+  const [econDate, setEconDate] = useState("");
+  const [econType, setEconType] = useState("FOMC");
+  const [econLabel, setEconLabel] = useState("");
+  const [econLoading, setEconLoading] = useState(false);
+  const [econResult, setEconResult] = useState<string | null>(null);
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+    fetch("/api/admin/economic-events").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setEconEvents(data);
+    }).catch(() => {});
   }, [authed]);
 
   const setStep = (key: string, loading: boolean, result?: string) => {
@@ -207,7 +216,38 @@ export default function AdminPage() {
     }
     setIpoPriceLoading(false);
   };
+  const handleAddEconEvent = async () => {
+    if (!econDate || !econType) return;
+    setEconLoading(true); setEconResult(null);
+    try {
+      const res = await fetch("/api/admin/economic-events", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_date: econDate, event_type: econType, label: econLabel || null }),
+      });
+      const data = await res.json();
+      if (data.error) { setEconResult(`❌ ${data.error}`); }
+      else {
+        setEconResult("✅ 追加しました");
+        setEconDate(""); setEconLabel("");
+        const updated = await fetch("/api/admin/economic-events").then(r => r.json());
+        if (Array.isArray(updated)) setEconEvents(updated);
+      }
+    } catch { setEconResult("❌ 通信エラー"); }
+    setEconLoading(false);
+  };
 
+  const handleDeleteEconEvent = async (id: string) => {
+    if (!confirm("このイベントを削除しますか？")) return;
+    try {
+      await fetch("/api/admin/economic-events", {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setEconEvents(prev => prev.filter(e => e.id !== id));
+    } catch {}
+  };
+
+  const handleEdinetCodes = () => {
     const handleEdinetCodes = () => {
     window.open("https://disclosure2.edinet-fsa.go.jp/weee0010.aspx", "_blank");
     setEdinetResult(
@@ -358,10 +398,62 @@ export default function AdminPage() {
           </button>
           {edinetResult && <p style={{ marginTop:"8px", fontSize:"12px", color:"#0d4f52", lineHeight:1.7 }}>{edinetResult}</p>}
         </div>
-        {/* 3. 初値・騰落率入力 */}
-        <div style={sectionStyle}>
+       {/* 3. 初値・騰落率入力 */}
+       <div style={sectionStyle}>
           <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"16px" }}>📝 初値・騰落率入力</h2>
           <InitialPriceForm />
+        </div>
+
+        {/* 6. 経済指標カレンダー登録 */}
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"4px" }}>🌐 経済指標カレンダー登録</h2>
+          <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"16px" }}>FOMC・日銀・NFP・CPIの日程を登録します。年に数回まとめて入力してください。</p>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginBottom:"12px" }}>
+            <div>
+              <label style={labelStyle}>日付 *</label>
+              <input type="date" value={econDate} onChange={e => setEconDate(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>イベント種別 *</label>
+              <select value={econType} onChange={e => setEconType(e.target.value)} style={inputStyle}>
+                <option value="FOMC">🇺🇸 FOMC</option>
+                <option value="日銀">🇯🇵 日銀金融政策決定会合</option>
+                <option value="NFP">📊 米雇用統計（NFP）</option>
+                <option value="CPI">📈 米CPI</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>メモ（任意・例：結果発表23:00）</label>
+              <input value={econLabel} onChange={e => setEconLabel(e.target.value)} placeholder="例：結果発表23:00" style={inputStyle} />
+            </div>
+            <button onClick={handleAddEconEvent} disabled={econLoading || !econDate}
+              style={{ padding:"10px", backgroundColor: econLoading ? "#94a3b8" : "#0369a1", color:"white", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:"700", fontSize:"13px" }}>
+              {econLoading ? "追加中..." : "➕ 追加する"}
+            </button>
+            {econResult && <p style={{ fontSize:"12px", color: econResult.startsWith("❌") ? "#dc2626" : "#166534" }}>{econResult}</p>}
+          </div>
+
+          {econEvents.length > 0 && (
+            <div>
+              <div style={{ fontSize:"11px", fontWeight:"700", color:"#2a7a7e", marginBottom:"8px" }}>登録済みイベント（{econEvents.length}件）</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"4px", maxHeight:"300px", overflowY:"auto" }}>
+                {econEvents.map(e => (
+                  <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 10px", backgroundColor:"#f8fafc", borderRadius:"8px", border:"1px solid #e2e8f0" }}>
+                    <div>
+                      <span style={{ fontSize:"12px", fontWeight:"700", color:"#082b2e" }}>{e.event_date}</span>
+                      <span style={{ fontSize:"11px", color:"#2a7a7e", marginLeft:"8px" }}>{e.event_type}</span>
+                      {e.label && <span style={{ fontSize:"11px", color:"#64748b", marginLeft:"6px" }}>（{e.label}）</span>}
+                    </div>
+                    <button onClick={() => handleDeleteEconEvent(e.id)}
+                      style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:"16px", padding:"2px 6px" }}>
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
