@@ -31,7 +31,7 @@ type EconomicEvent = {
 const EVENT_STYLE: Record<string, { emoji: string; color: string; bg: string }> = {
   FOMC: { emoji: "🇺🇸", color: "#b91c1c", bg: "#fef2f2" },
   日銀:  { emoji: "🇯🇵", color: "#c2410c", bg: "#fff7ed" },
-  NFP:  { emoji: "📊", color: "#1d4ed8", bg: "#eff6ff" },
+  米雇用統計: { emoji: "🇺🇸", color: "#1d4ed8", bg: "#eff6ff" },
   CPI:  { emoji: "📈", color: "#15803d", bg: "#f0fdf4" },
 };
 
@@ -333,7 +333,7 @@ export default function CalendarClient() {
                       return (
                         <div key={ev.id} title={ev.label ?? ev.event_type}
                           style={{ fontSize:9, fontWeight:700, color:s.color, backgroundColor:s.bg, borderRadius:3, padding:"1px 3px", marginBottom:1, lineHeight:1.5, textAlign:"center" }}>
-                          {s.emoji} {ev.event_type}
+                          {s.emoji} {ev.event_type === "米雇用統計" ? "雇用統計" : ev.event_type}
                         </div>
                       );
                     })}
