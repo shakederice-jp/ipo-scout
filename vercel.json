@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/notify",
       "schedule": "0 9 * * 5"
+    },
+    {
+      "path": "/api/cron/edinet-scan",
+      "schedule": "0 6 * * 1,4"
     }
   ]
 }
