@@ -16,11 +16,11 @@ async function fetchEdinetDocuments(date: string) {
 }
 
 export async function GET(req: NextRequest) {
-  // Vercel Cronからの正規リクエストかチェック（テスト中は一時的に無効化）
-  // const authHeader = req.headers.get("authorization");
-  // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // }
+ // Vercel Cronからの正規リクエストかチェック
+ const authHeader = req.headers.get("authorization");
+ if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+ }
 
   const supabase = getSupabase();
   const results: string[] = [];
