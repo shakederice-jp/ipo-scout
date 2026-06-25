@@ -22,6 +22,8 @@ export default function AdminPage() {
   const [ipoPriceLoading, setIpoPriceLoading] = useState(false);
   const [ipoPriceResult, setIpoPriceResult] = useState<string | null>(null);
   const [econEvents, setEconEvents] = useState<any[]>([]);
+  const [compLoading, setCompLoading] = useState(false);
+  const [compResult, setCompResult] = useState<string | null>(null);
   const [econDate, setEconDate] = useState("");
   const [econType, setEconType] = useState("FOMC");
   const [econLabel, setEconLabel] = useState("");
@@ -216,6 +218,27 @@ export default function AdminPage() {
     }
     setIpoPriceLoading(false);
   };
+  const handleCompetitor = async () => {
+    if (!selectedCompany) return;
+    setCompLoading(true); setCompResult(null);
+    try {
+      const res = await fetch("/api/competitor", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: selectedCompany.id }),
+      });
+      const data = await res.json();
+      if (data.error) { setCompResult(`❌ ${data.error}`); }
+      else {
+        const summary = data.results.map((r: any) =>
+          r.error ? `❌ ${r.name}: ${r.error}` : `✅ ${r.name}: 売上${r.revenue}億・営業利益${r.operating_profit}億（${r.fiscal_year}）`
+        ).join("\n");
+        setCompResult(summary);
+      }
+    } catch (e) { setCompResult("❌ 通信エラー"); }
+    setCompLoading(false);
+  };
+
+  const handleAddEconEvent = async () => {
   const handleAddEconEvent = async () => {
     if (!econDate || !econType) return;
     setEconLoading(true); setEconResult(null);
@@ -369,6 +392,19 @@ export default function AdminPage() {
               {stepBox("4","#7c3aed","超短期3軸 詳細分析（Gemini Flash）","需給・ロックアップ・タイミングの詳細レポートを生成します（約30〜45秒）","④ 超短期3軸を詳細分析する", () => handleAxes("ultra_short","4","超短期3軸"))}
               {stepBox("5","#b45309","短期3軸 詳細分析（Gemini Flash）","バリュエーション・VC売圧・成長性の詳細レポートを生成します（約30〜45秒）","⑤ 短期3軸を詳細分析する", () => handleAxes("short","5","短期3軸"))}
               {stepBox("6","#065f46","長期3軸 詳細分析（Gemini Flash）","経営陣・ユニットエコノミクス・競合環境の詳細レポートを生成します（約30〜45秒）","⑥ 長期3軸を詳細分析する", () => handleAxes("long","6","長期3軸"))}
+
+{/* 競合他社財務データ取得 */}
+<div style={{ background:"#f8fafc", borderRadius:"10px", padding:"14px", marginBottom:"12px", border:"1px solid #e2e8f0" }}>
+  <div style={{ fontWeight:"900", color:"#0f766e", marginBottom:"4px" }}>🏢 競合他社財務データ取得</div>
+  <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"10px", margin:"4px 0 10px" }}>⑦で収集した競合企業の有価証券報告書から財務データを取得します（約30〜60秒）</p>
+  <button onClick={handleCompetitor} disabled={compLoading}
+    style={{ padding:"10px 16px", backgroundColor: compLoading ? "#94a3b8" : "#0f766e", color:"white", border:"none", borderRadius:"8px", cursor: compLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px", width:"100%", marginBottom: compResult ? "8px" : "0" }}>
+    {compLoading ? "取得中..." : "🏢 競合財務データを取得する"}
+  </button>
+  {compResult && <div style={{ fontSize:"11px", lineHeight:"1.7", padding:"8px 10px", borderRadius:"6px", backgroundColor:"#f0fdf4", color:"#166534", whiteSpace:"pre-wrap" }}>{compResult}</div>}
+</div>
+
+</>
               
             </>
           )}
