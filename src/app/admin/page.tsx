@@ -239,8 +239,7 @@ export default function AdminPage() {
   };
 
   const handleAddEconEvent = async () => {
-  const handleAddEconEvent = async () => {
-    if (!econDate || !econType) return;
+      if (!econDate || !econType) return;
     setEconLoading(true); setEconResult(null);
     try {
       const res = await fetch("/api/admin/economic-events", {
