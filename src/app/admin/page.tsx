@@ -404,7 +404,6 @@ export default function AdminPage() {
   {compResult && <div style={{ fontSize:"11px", lineHeight:"1.7", padding:"8px 10px", borderRadius:"6px", backgroundColor:"#f0fdf4", color:"#166534", whiteSpace:"pre-wrap" }}>{compResult}</div>}
 </div>
 
-</>
               
             </>
           )}
