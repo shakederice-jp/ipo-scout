@@ -10,20 +10,33 @@ const getSupabase = () => createClient(
 const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?edinetCode=${edinetCode}&type=2&count=10`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const docs: any[] = data?.results ?? [];
-    const found = docs.find((doc: any) =>
-      doc.ordinanceCode === "010" &&
-      doc.formCode === "030000"
-    );
-    return found ? found.docID : null;
-  } catch { return null; }
+  const today = new Date();
+  const dates: string[] = [];
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  const results = await Promise.all(
+    dates.map(async (dateStr) => {
+      try {
+        const res = await fetch(
+          `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        const found = (data?.results ?? []).find((doc: any) =>
+          doc.edinetCode === edinetCode &&
+          doc.ordinanceCode === "010" &&
+          doc.formCode === "030000"
+        );
+        return found ? found.docID : null;
+      } catch { return null; }
+    })
+  );
+  return results.find(r => r !== null) ?? null;
 }
 
 async function fetchDocumentText(docId: string): Promise<string> {
