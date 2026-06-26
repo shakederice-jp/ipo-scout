@@ -45,39 +45,48 @@ async function fetchDocumentText(docId: string): Promise<string> {
   } catch { return ""; }
 }
 
-// 半角→全角変換
 function toFullWidth(str: string): string {
   return str.replace(/[A-Za-z0-9]/g, c =>
     String.fromCharCode(c.charCodeAt(0) + 0xFEE0)
   );
 }
 
-// EDINETコードを複数戦略で検索
 async function findEdinetCode(supabase: any, compName: string): Promise<string | null> {
+  // 1. 証券コード（括弧内4桁）で検索
+  const codeMatch = compName.match(/[（(](\d{4})[）)]/);
+  if (codeMatch) {
+    const code5 = codeMatch[1] + "0";
+    const { data: r1 } = await supabase
+      .from("edinet_companies")
+      .select("edinet_code")
+      .eq("security_code", code5)
+      .limit(1);
+    if (r1?.[0]?.edinet_code) return r1[0].edinet_code;
+  }
+
+  // 2. 社名クリーニングして部分一致
   const cleanName = compName
     .replace(/[（(].*[）)]/g, "")
     .replace(/株式会社|（株）|\(株\)|㈱/g, "")
     .trim();
-
   if (!cleanName) return null;
 
-  // 半角で部分一致検索
-  const { data: r1 } = await supabase
+  const { data: r2 } = await supabase
     .from("edinet_companies")
     .select("edinet_code")
     .ilike("company_name", `%${cleanName}%`)
     .limit(1);
-  if (r1?.[0]?.edinet_code) return r1[0].edinet_code;
+  if (r2?.[0]?.edinet_code) return r2[0].edinet_code;
 
-  // 全角に変換して再検索（LITALICO→ＬＩＴＡＬＩＣＯ対策）
+  // 3. 全角変換して再検索（LITALICO→ＬＩＴＡＬＩＣＯ対策）
   const fullWidthName = toFullWidth(cleanName);
   if (fullWidthName !== cleanName) {
-    const { data: r2 } = await supabase
+    const { data: r3 } = await supabase
       .from("edinet_companies")
       .select("edinet_code")
       .ilike("company_name", `%${fullWidthName}%`)
       .limit(1);
-    if (r2?.[0]?.edinet_code) return r2[0].edinet_code;
+    if (r3?.[0]?.edinet_code) return r3[0].edinet_code;
   }
 
   return null;
