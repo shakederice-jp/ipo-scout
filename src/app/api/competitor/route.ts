@@ -10,41 +10,20 @@ const getSupabase = () => createClient(
 const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
-  const today = new Date();
-  
-  // チェック対象日付を生成（7日間隔×80週=約18ヶ月分）
-  const dates: string[] = [];
-  for (let i = 0; i < 560; i += 7) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-
-  // 10件ずつ並列フェッチ
-  for (let i = 0; i < dates.length; i += 10) {
-    const batch = dates.slice(i, i + 10);
-    const results = await Promise.all(
-      batch.map(async (dateStr) => {
-        try {
-          const res = await fetch(
-            `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`,
-            { signal: AbortSignal.timeout(5000) }
-          );
-          if (!res.ok) return null;
-          const data = await res.json();
-          const found = (data?.results ?? []).find((doc: any) =>
-            doc.edinetCode === edinetCode &&
-            doc.ordinanceCode === "010" &&
-            doc.formCode === "030000"
-          );
-          return found ? found.docID : null;
-        } catch { return null; }
-      })
+  try {
+    const res = await fetch(
+      `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?edinetCode=${edinetCode}&type=2&count=10`,
+      { signal: AbortSignal.timeout(10000) }
     );
-    const found = results.find(r => r !== null);
-    if (found) return found;
-  }
-  return null;
+    if (!res.ok) return null;
+    const data = await res.json();
+    const docs: any[] = data?.results ?? [];
+    const found = docs.find((doc: any) =>
+      doc.ordinanceCode === "010" &&
+      doc.formCode === "030000"
+    );
+    return found ? found.docID : null;
+  } catch { return null; }
 }
 
 async function fetchDocumentText(docId: string): Promise<string> {
