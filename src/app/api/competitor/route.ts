@@ -47,60 +47,39 @@ async function fetchDocumentText(docId: string): Promise<string> {
 
 // EDINETコードを複数戦略で検索
 async function findEdinetCode(supabase: any, compName: string): Promise<string | null> {
-  // 1. 証券コードを括弧内から抽出
   const codeMatch = compName.match(/[（(](\d{4})[）)]/);
   if (codeMatch) {
+    const code5 = codeMatch[1] + "0";
     const code4 = codeMatch[1];
-    const code5 = code4 + "0";
 
-    // 5桁で検索
     const { data: r1 } = await supabase
       .from("edinet_companies")
       .select("edinet_code")
       .eq("security_code", code5)
-      .maybeSingle();
-    if (r1?.edinet_code) return r1.edinet_code;
+      .limit(1);
+    if (r1?.[0]?.edinet_code) return r1[0].edinet_code;
 
-    // 4桁で検索
     const { data: r2 } = await supabase
       .from("edinet_companies")
       .select("edinet_code")
       .eq("security_code", code4)
-      .maybeSingle();
-    if (r2?.edinet_code) return r2.edinet_code;
+      .limit(1);
+    if (r2?.[0]?.edinet_code) return r2[0].edinet_code;
   }
 
-  // 2. 社名から不要部分を除去して検索
   const cleanName = compName
-    .replace(/[（(].*[）)]/g, "")  // 括弧内を削除
-    .replace(/株式会社|（株）|\(株\)|㈱/g, "")  // 会社形態を削除
+    .replace(/[（(].*[）)]/g, "")
+    .replace(/株式会社|（株）|\(株\)|㈱/g, "")
     .trim();
 
   if (!cleanName) return null;
 
-  // 完全一致（会社形態なし）
   const { data: r3 } = await supabase
     .from("edinet_companies")
     .select("edinet_code")
-    .ilike("company_name", cleanName)
-    .maybeSingle();
-  if (r3?.edinet_code) return r3.edinet_code;
-
-  // 部分一致
-  const { data: r4 } = await supabase
-    .from("edinet_companies")
-    .select("edinet_code, company_name")
     .ilike("company_name", `%${cleanName}%`)
     .limit(1);
-  if (r4?.[0]?.edinet_code) return r4[0].edinet_code;
-
-  // 3. 英語社名で検索（例：LITALICO）
-  const { data: r5 } = await supabase
-    .from("edinet_companies")
-    .select("edinet_code")
-    .ilike("company_name_en", `%${cleanName}%`)
-    .limit(1);
-  if (r5?.[0]?.edinet_code) return r5[0].edinet_code;
+  if (r3?.[0]?.edinet_code) return r3[0].edinet_code;
 
   return null;
 }
