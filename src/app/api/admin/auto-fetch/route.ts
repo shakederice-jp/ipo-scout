@@ -50,7 +50,8 @@ ${sourceText}
     });
 
     const parseText = (parseMsg.content[0] as any).text.replace(/```json|```/g, "").trim();
-    const ipos: any[] = JSON.parse(parseText);
+    const parsedIpos = JSON.parse(parseText);
+    const ipos: any[] = Array.isArray(parsedIpos) ? parsedIpos : [];
     const newIpos = ipos.filter(ipo => !existingTickers.has(ipo.ticker));
 
     let added = 0;
