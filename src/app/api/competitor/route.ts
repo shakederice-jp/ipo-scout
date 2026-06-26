@@ -11,28 +11,38 @@ const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
   const today = new Date();
-  // 月1回チェック（30日間隔×18ヶ月＝18回のAPIコール）
-  for (let i = 0; i < 540; i += 30) {
-    // 各月の前後7日も確認（月をずらしながら週単位でスキャン）
-    for (let j = -7; j <= 7; j += 7) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i + j);
-      const dateStr = d.toISOString().slice(0, 10);
-      try {
-        const res = await fetch(
-          `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`
-        );
-        if (!res.ok) continue;
-        const data = await res.json();
-        const docs = data?.results ?? [];
-        const found = docs.find((doc: any) =>
-          doc.edinetCode === edinetCode &&
-          doc.ordinanceCode === "010" &&
-          doc.formCode === "030000"
-        );
-        if (found) return found.docID;
-      } catch { continue; }
-    }
+  
+  // チェック対象日付を生成（7日間隔×80週=約18ヶ月分）
+  const dates: string[] = [];
+  for (let i = 0; i < 560; i += 7) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  // 10件ずつ並列フェッチ
+  for (let i = 0; i < dates.length; i += 10) {
+    const batch = dates.slice(i, i + 10);
+    const results = await Promise.all(
+      batch.map(async (dateStr) => {
+        try {
+          const res = await fetch(
+            `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`,
+            { signal: AbortSignal.timeout(5000) }
+          );
+          if (!res.ok) return null;
+          const data = await res.json();
+          const found = (data?.results ?? []).find((doc: any) =>
+            doc.edinetCode === edinetCode &&
+            doc.ordinanceCode === "010" &&
+            doc.formCode === "030000"
+          );
+          return found ? found.docID : null;
+        } catch { return null; }
+      })
+    );
+    const found = results.find(r => r !== null);
+    if (found) return found;
   }
   return null;
 }
