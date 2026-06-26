@@ -11,7 +11,7 @@ const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
   const today = new Date();
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 450; i += 14) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
