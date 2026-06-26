@@ -9,7 +9,6 @@ const getSupabase = () => createClient(
 
 const anthropic = new Anthropic();
 
-// EDINETから最新の有価証券報告書を検索
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
   const today = new Date();
   for (let i = 0; i < 60; i++) {
@@ -26,7 +25,7 @@ async function findLatestAnnualReport(edinetCode: string): Promise<string | null
       const found = docs.find((doc: any) =>
         doc.edinetCode === edinetCode &&
         doc.ordinanceCode === "010" &&
-        doc.formCode === "030000" // 有価証券報告書
+        doc.formCode === "030000"
       );
       if (found) return found.docID;
     } catch { continue; }
@@ -34,7 +33,6 @@ async function findLatestAnnualReport(edinetCode: string): Promise<string | null
   return null;
 }
 
-// EDINETから書類テキストを取得
 async function fetchDocumentText(docId: string): Promise<string> {
   try {
     const res = await fetch(
@@ -47,6 +45,66 @@ async function fetchDocumentText(docId: string): Promise<string> {
   } catch { return ""; }
 }
 
+// EDINETコードを複数戦略で検索
+async function findEdinetCode(supabase: any, compName: string): Promise<string | null> {
+  // 1. 証券コードを括弧内から抽出
+  const codeMatch = compName.match(/[（(](\d{4})[）)]/);
+  if (codeMatch) {
+    const code4 = codeMatch[1];
+    const code5 = code4 + "0";
+
+    // 5桁で検索
+    const { data: r1 } = await supabase
+      .from("edinet_companies")
+      .select("edinet_code")
+      .eq("security_code", code5)
+      .maybeSingle();
+    if (r1?.edinet_code) return r1.edinet_code;
+
+    // 4桁で検索
+    const { data: r2 } = await supabase
+      .from("edinet_companies")
+      .select("edinet_code")
+      .eq("security_code", code4)
+      .maybeSingle();
+    if (r2?.edinet_code) return r2.edinet_code;
+  }
+
+  // 2. 社名から不要部分を除去して検索
+  const cleanName = compName
+    .replace(/[（(].*[）)]/g, "")  // 括弧内を削除
+    .replace(/株式会社|（株）|\(株\)|㈱/g, "")  // 会社形態を削除
+    .trim();
+
+  if (!cleanName) return null;
+
+  // 完全一致（会社形態なし）
+  const { data: r3 } = await supabase
+    .from("edinet_companies")
+    .select("edinet_code")
+    .ilike("company_name", cleanName)
+    .maybeSingle();
+  if (r3?.edinet_code) return r3.edinet_code;
+
+  // 部分一致
+  const { data: r4 } = await supabase
+    .from("edinet_companies")
+    .select("edinet_code, company_name")
+    .ilike("company_name", `%${cleanName}%`)
+    .limit(1);
+  if (r4?.[0]?.edinet_code) return r4[0].edinet_code;
+
+  // 3. 英語社名で検索（例：LITALICO）
+  const { data: r5 } = await supabase
+    .from("edinet_companies")
+    .select("edinet_code")
+    .ilike("company_name_en", `%${cleanName}%`)
+    .limit(1);
+  if (r5?.[0]?.edinet_code) return r5[0].edinet_code;
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { company_id } = await req.json();
@@ -54,7 +112,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // ipo_companiesからanalysis_marketを取得
     const { data: co, error } = await supabase
       .from("ipo_companies")
       .select("name, analysis_market")
@@ -72,53 +129,26 @@ export async function POST(req: NextRequest) {
 
     for (const comp of competitors) {
       const compName = comp.name ?? "";
-      // 証券コードを括弧内から抽出（例："幼児活動研究会（2152）"→"2152"）
-      const codeMatch = compName.match(/[（(](\d{4})[）)]/);
-      const secCode = codeMatch ? codeMatch[1] + "0" : null; // 末尾に0を追加（例:2152→21520）
 
-      // edinet_companiesからEDINETコードを検索
-      let edinetCode: string | null = null;
-      if (secCode) {
-        const { data: edinetCo } = await supabase
-          .from("edinet_companies")
-          .select("edinet_code, company_name")
-          .eq("security_code", secCode)
-          .single();
-        if (edinetCo) edinetCode = edinetCo.edinet_code;
-      }
-
-      // 名前で検索（証券コードで見つからない場合）
-      if (!edinetCode) {
-        const cleanName = compName.replace(/[（(].*[）)]/g, "").trim();
-        const { data: edinetCo } = await supabase
-          .from("edinet_companies")
-          .select("edinet_code, company_name")
-          .ilike("company_name", `%${cleanName}%`)
-          .limit(1)
-          .single();
-        if (edinetCo) edinetCode = edinetCo.edinet_code;
-      }
+      const edinetCode = await findEdinetCode(supabase, compName);
 
       if (!edinetCode) {
         results.push({ name: compName, error: "EDINETコードが見つかりません", revenue: null, operating_profit: null, per: null, pbr: null });
         continue;
       }
 
-      // 最新の有価証券報告書を検索
       const docId = await findLatestAnnualReport(edinetCode);
       if (!docId) {
         results.push({ name: compName, error: "有価証券報告書が見つかりません", revenue: null, operating_profit: null, per: null, pbr: null });
         continue;
       }
 
-      // テキストを取得
       const text = await fetchDocumentText(docId);
       if (!text) {
         results.push({ name: compName, error: "テキスト取得失敗", revenue: null, operating_profit: null, per: null, pbr: null });
         continue;
       }
 
-      // Claudeで財務データを抽出
       try {
         const message = await anthropic.messages.create({
           model: "claude-haiku-4-5",
@@ -151,7 +181,6 @@ ${text}`
       }
     }
 
-    // 結果をSupabaseに保存
     const { error: saveError } = await supabase
       .from("ipo_companies")
       .update({ analysis_market: { ...co.analysis_market, competitor_financials: results } })
