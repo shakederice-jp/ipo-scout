@@ -11,24 +11,28 @@ const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
   const today = new Date();
-  for (let i = 0; i < 450; i += 14) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    try {
-      const res = await fetch(
-        `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      const docs = data?.results ?? [];
-      const found = docs.find((doc: any) =>
-        doc.edinetCode === edinetCode &&
-        doc.ordinanceCode === "010" &&
-        doc.formCode === "030000"
-      );
-      if (found) return found.docID;
-    } catch { continue; }
+  // 月1回チェック（30日間隔×18ヶ月＝18回のAPIコール）
+  for (let i = 0; i < 540; i += 30) {
+    // 各月の前後7日も確認（月をずらしながら週単位でスキャン）
+    for (let j = -7; j <= 7; j += 7) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i + j);
+      const dateStr = d.toISOString().slice(0, 10);
+      try {
+        const res = await fetch(
+          `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        const docs = data?.results ?? [];
+        const found = docs.find((doc: any) =>
+          doc.edinetCode === edinetCode &&
+          doc.ordinanceCode === "010" &&
+          doc.formCode === "030000"
+        );
+        if (found) return found.docID;
+      } catch { continue; }
+    }
   }
   return null;
 }
