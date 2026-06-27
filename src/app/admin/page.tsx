@@ -292,10 +292,7 @@ export default function AdminPage() {
   const handleTestNotify = async () => {
     setNotifyLoading(true); setNotifyResult(null);
     try {
-      const res = await fetch("/api/cron/notify", {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "test"}` },
-      });
+      const res = await fetch("/api/admin/send-notify", { method: "POST" });
       const data = await res.json();
       if (data.error) setNotifyResult(`❌ ${data.error}`);
       else setNotifyResult(`✅ 送信完了・${data.sent}件送信・範囲：${data.range ?? ""}`);
