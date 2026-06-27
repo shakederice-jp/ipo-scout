@@ -87,6 +87,7 @@ export default async function AnalysisPage({
       company={company as any}
       initialAnalysis={initialAnalysis}
       visualizationData={visualizationData}
+      allCompanies={allCompanies as any[]}
     />
   );
 }

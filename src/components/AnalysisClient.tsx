@@ -377,7 +377,7 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis,visualizationData}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[]}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -434,6 +434,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 16px",backgroundColor:"#e8f4f5",borderBottom:"1px solid #d0e8ea"}}>
         <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:6,backgroundColor:"#0d4f52",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>🔔 通知</button>
         <a href="/" style={{color:"#0d4f52",fontSize:11,display:"flex",alignItems:"center",gap:3,textDecoration:"none",fontWeight:600}}>‹ トップへ</a>
+        {allCompanies && allCompanies.length > 0 && (
+          <select onChange={e => { if(e.target.value) window.location.href=`/analysis/${e.target.value}`; }}
+            style={{fontSize:11,padding:"2px 6px",borderRadius:6,border:"1px solid #b3e8ea",color:"#0d4f52",backgroundColor:"white",cursor:"pointer",maxWidth:160}}>
+            <option value="">他の銘柄を選ぶ</option>
+            {allCompanies.map((c:any) => (
+              <option key={c.id} value={c.id} selected={c.id===company.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
         {showNotify&&<NotifyModal company={company} userId={userId} onClose={()=>setShowNotify(false)}/>}
       </div>
 
@@ -752,7 +761,28 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             ))}
           </Card>
         )}
-
+{allCompanies && allCompanies.length > 1 && (()=>{
+          const sorted=[...allCompanies].sort((a,b)=>new Date(a.listing_date??0).getTime()-new Date(b.listing_date??0).getTime());
+          const idx=sorted.findIndex(c=>c.id===company.id);
+          const prev=idx>0?sorted[idx-1]:null;
+          const next=idx<sorted.length-1?sorted[idx+1]:null;
+          return (
+            <div style={{display:"flex",gap:8,justifyContent:"space-between"}}>
+              <a href={prev?`/analysis/${prev.id}`:undefined as any}
+                style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:prev?"white":"#f1f5f9",border:`1px solid ${prev?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",opacity:prev?1:0.4,pointerEvents:prev?"auto":"none"}}>
+                <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>← 前の銘柄</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{prev?.name??""}</div>
+                <div style={{fontSize:10,color:"#66c3c6"}}>{prev?.listing_date??""}</div>
+              </a>
+              <a href={next?`/analysis/${next.id}`:undefined as any}
+                style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:next?"white":"#f1f5f9",border:`1px solid ${next?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",textAlign:"right",opacity:next?1:0.4,pointerEvents:next?"auto":"none"}}>
+                <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>次の銘柄 →</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{next?.name??""}</div>
+                <div style={{fontSize:10,color:"#66c3c6"}}>{next?.listing_date??""}</div>
+              </a>
+            </div>
+          );
+        })()}
         <div style={{textAlign:"center",fontSize:10,color:"#94a3b8",paddingTop:8}}>
           <div style={{fontWeight:900,fontSize:11,color:"#64748b",marginBottom:4}}>⚠ 免責事項</div>
           <p style={{lineHeight:1.7,maxWidth:560,margin:"0 auto 8px"}}>
