@@ -705,9 +705,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   <tbody>
                     <tr style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:PRIMARY+"22"}}>
                       <td style={{padding:"8px 10px",fontWeight:900,color:DARK}}>🎯 {company.name}（IPO銘柄）</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}`:"-"}</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}`:"-"}</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}億円`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}億円`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}億円`:"-"}</td>
                       <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{ownFiscalYear||"目論見書参照"}</td>
                     </tr>
                     {valid.map((c:any,i:number)=>(
