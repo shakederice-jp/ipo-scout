@@ -670,10 +670,20 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           const valid=cf.filter((c:any)=>!c.error&&(c.revenue!=null||c.net_profit!=null));
           if(!valid.length) return null;
           const sd=(company as any).structured_data;
-          const ownRevenue=sd?.financials?.revenue??sd?.financials?.net_sales??null;
-          const ownProfit=sd?.financials?.operating_profit??null;
-          const ownNetProfit=sd?.financials?.net_profit??null;
-          const ownFiscalYear=sd?.financials?.fiscal_year??null;
+          const km=sd?.key_metrics;
+          const latestKm=Array.isArray(km)&&km.length>0?km[km.length-1]:null;
+          const parseJpNum=(s:string|null|undefined)=>{
+            if(!s) return null;
+            const neg=s.includes("△")||s.includes("-");
+            const n=parseFloat(s.replace(/[△▲\-,△円千万億]/g,"").replace(/,/g,""));
+            if(isNaN(n)) return null;
+            return neg?-n:n;
+          };
+          const toOku=(sen:number|null)=>sen==null?null:Math.round(sen/10000)/10;
+          const ownRevenue=toOku(parseJpNum(latestKm?.revenue));
+          const ownProfit=toOku(parseJpNum(latestKm?.ordinary_profit));
+          const ownNetProfit=toOku(parseJpNum(latestKm?.net_profit));
+          const ownFiscalYear=latestKm?.period??null;
           return (
             <Card>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
