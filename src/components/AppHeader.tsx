@@ -29,20 +29,13 @@ export default function AppHeader({ slot }: AppHeaderProps = {}) {
   }, [fontSize]);
 
   const isAnalysis = pathname.startsWith("/analysis/");
-  const isCalendar = pathname === "/calendar";
 
   type Crumb = { label: string; href: string; link: boolean };
   let crumbs: Crumb[] = [];
 
-  if (isCalendar) {
+  if (isAnalysis) {
     crumbs = [
       { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
-      { label: lang === "ja" ? "カレンダー" : "Calendar", href: "/calendar", link: false },
-    ];
-  } else if (isAnalysis) {
-    crumbs = [
-      { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
-      { label: lang === "ja" ? "カレンダー" : "Calendar", href: "/calendar", link: true },
       { label: lang === "ja" ? "銘柄分析" : "Analysis", href: pathname, link: false },
     ];
   }
