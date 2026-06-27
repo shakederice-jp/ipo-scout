@@ -286,6 +286,23 @@ export default function AdminPage() {
     setAutoLoading(false);
   };
 
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<string | null>(null);
+
+  const handleTestNotify = async () => {
+    setNotifyLoading(true); setNotifyResult(null);
+    try {
+      const res = await fetch("/api/cron/notify", {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "test"}` },
+      });
+      const data = await res.json();
+      if (data.error) setNotifyResult(`❌ ${data.error}`);
+      else setNotifyResult(`✅ 送信完了・${data.sent}件送信・範囲：${data.range ?? ""}`);
+    } catch { setNotifyResult("❌ 通信エラー"); }
+    setNotifyLoading(false);
+  };
+
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
   const labelStyle = { fontSize:"11px", fontWeight:"700" as const, color:"#2a7a7e", marginBottom:"4px", display:"block" as const };
   const sectionStyle = { background:"white", borderRadius:"12px", padding:"20px", marginBottom:"16px", border:"1px solid #d1f5f7" };
@@ -333,6 +350,17 @@ export default function AdminPage() {
             {autoLoading ? "取得中..." : "自動取得実行"}
           </button>
           {autoResult && <p style={{ marginTop:"8px", fontSize:"12px", color:"#2a7a7e" }}>{autoResult}</p>}
+        </div>
+
+{/* メール通知テスト */}
+<div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"4px" }}>📧 メール通知送信</h2>
+          <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"12px" }}>翌週のBB開始・申込開始・上場銘柄がある場合、通知設定ユーザーにメールを送信します（毎週金曜18時自動実行）。</p>
+          <button onClick={handleTestNotify} disabled={notifyLoading}
+            style={{ padding:"10px 20px", backgroundColor: notifyLoading ? "#94a3b8" : "#0369a1", color:"white", border:"none", borderRadius:"8px", cursor: notifyLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px" }}>
+            {notifyLoading ? "送信中..." : "📧 通知メールを今すぐ送信"}
+          </button>
+          {notifyResult && <p style={{ marginTop:"8px", fontSize:"12px", color: notifyResult.startsWith("❌") ? "#dc2626" : "#166534" }}>{notifyResult}</p>}
         </div>
 
         {/* 2. EDINET分析（銘柄選択→7ステップ） */}
