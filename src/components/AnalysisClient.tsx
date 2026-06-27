@@ -697,8 +697,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                     <tr style={{backgroundColor:LIGHT}}>
                       <th style={{padding:"8px 10px",textAlign:"left",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>企業名</th>
                       <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>売上高</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>営業利益</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>経常利益</th>
                       <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>当期純利益</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>PER</th>
                       <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>決算期</th>
                     </tr>
                   </thead>
@@ -708,6 +709,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                       <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}億円`:"-"}</td>
                       <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}億円`:"-"}</td>
                       <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}億円`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>
+                        {(()=>{const ipoPrice=(company as any).ipo_price;const eps=parseJpNum(latestKm?.eps);return ipoPrice&&eps&&eps>0?`${Math.round(ipoPrice/eps*10)/10}倍`:"-";})()}
+                      </td>
                       <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{ownFiscalYear||"目論見書参照"}</td>
                     </tr>
                     {valid.map((c:any,i:number)=>(
@@ -716,6 +720,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                         <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.revenue!=null?`${c.revenue}億円`:"–"}</td>
                         <td style={{padding:"8px 10px",textAlign:"right",color:c.operating_profit>=0?"#15803d":"#ef4444"}}>{c.operating_profit!=null?`${c.operating_profit}億円`:"–"}</td>
                         <td style={{padding:"8px 10px",textAlign:"right",color:c.net_profit>=0?"#15803d":"#ef4444"}}>{c.net_profit!=null?`${c.net_profit}億円`:"–"}</td>
+                        <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.per!=null?`${c.per}倍`:"–"}</td>
                         <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{c.fiscal_year||"–"}</td>
                       </tr>
                     ))}
