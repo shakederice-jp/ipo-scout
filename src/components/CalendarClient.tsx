@@ -272,8 +272,8 @@ export default function CalendarClient() {
       )}
 
       {/* ── メインレイアウト ── */}
-      <div className="calendar-layout" style={{ maxWidth:1200, margin:"0 auto", padding:"16px 12px", gap:24 }}>
-        <div className="calendar-left">
+      <div style={{ maxWidth:900, margin:"0 auto", padding:"16px 12px" }}>
+        <div>
           <div style={{ backgroundColor:C.white, borderRadius:16, border:`1px solid ${C.border}`, marginBottom:20, overflow:"hidden" }}>
 
             {/* ヘッダー：月移動 */}
@@ -371,10 +371,10 @@ export default function CalendarClient() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* ── 右カラム：IPO一覧 ── */}
-        <div style={{ flex:1, minWidth:0 }}>
+{/* ── IPO一覧（カレンダー下） ── */}
+<div style={{ marginTop:16 }}>
           <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
             <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>📋 IPO予定企業一覧</h2>
             <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${monthSorted.length}社）`}</span>

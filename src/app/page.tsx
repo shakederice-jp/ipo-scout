@@ -69,8 +69,8 @@ export default async function Home({
       {/* メインレイアウト */}
       <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:24, alignItems:"flex-start" }}>
 
-        {/* 左：カレンダー＋IPO一覧 */}
-        <div style={{ flex:"1 1 600px", minWidth:0 }}>
+       {/* 左：カレンダー＋IPO一覧 */}
+       <div style={{ flex:"1 1 580px", minWidth:0 }}>
           <CalendarClient />
         </div>
 
