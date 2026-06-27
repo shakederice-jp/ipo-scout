@@ -669,6 +669,11 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           if(!cf||!cf.length) return null;
           const valid=cf.filter((c:any)=>!c.error&&(c.revenue!=null||c.net_profit!=null));
           if(!valid.length) return null;
+          const sd=(company as any).structured_data;
+          const ownRevenue=sd?.financials?.revenue??sd?.financials?.net_sales??null;
+          const ownProfit=sd?.financials?.operating_profit??null;
+          const ownNetProfit=sd?.financials?.net_profit??null;
+          const ownFiscalYear=sd?.financials?.fiscal_year??null;
           return (
             <Card>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
@@ -688,6 +693,13 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                     </tr>
                   </thead>
                   <tbody>
+                    <tr style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:PRIMARY+"22"}}>
+                      <td style={{padding:"8px 10px",fontWeight:900,color:DARK}}>🎯 {company.name}（IPO銘柄）</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}`:"-"}</td>
+                      <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{ownFiscalYear||"目論見書参照"}</td>
+                    </tr>
                     {valid.map((c:any,i:number)=>(
                       <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:i%2===0?"white":LIGHT}}>
                         <td style={{padding:"8px 10px",fontWeight:700,color:DARK}}>{c.name}</td>
