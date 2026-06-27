@@ -43,13 +43,28 @@ async function findLatestAnnualReport(edinetCode: string): Promise<string | null
 async function fetchDocumentText(docId: string): Promise<string> {
   const apiKey = process.env.EDINET_API_KEY ?? "";
   try {
+    // type=2でメタデータのみ取得（軽量）→ type=1のZIPは重いため
     const res = await fetch(
       `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=1&Subscription-Key=${apiKey}`
     );
     if (!res.ok) return "";
     const buffer = await res.arrayBuffer();
-    const decoder = new TextDecoder("utf-8");
-    return decoder.decode(buffer).slice(0, 30000);
+    
+    // ZIPファイルを展開してテキストを抽出
+    const { default: JSZip } = await import("jszip");
+    const zip = await JSZip.loadAsync(buffer);
+    
+    let combinedText = "";
+    for (const [filename, file] of Object.entries(zip.files)) {
+      if (filename.endsWith(".htm") || filename.endsWith(".html") || filename.endsWith(".txt")) {
+        const content = await (file as any).async("string");
+        // HTMLタグを除去
+        const text = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        combinedText += text.slice(0, 10000) + "\n";
+        if (combinedText.length > 25000) break;
+      }
+    }
+    return combinedText.slice(0, 30000);
   } catch { return ""; }
 }
 
