@@ -10,6 +10,7 @@ const getSupabase = () => createClient(
 const anthropic = new Anthropic();
 
 async function findLatestAnnualReport(edinetCode: string): Promise<string | null> {
+  const apiKey = process.env.EDINET_API_KEY ?? "";
   const today = new Date();
   const dates: string[] = [];
   for (let i = 0; i < 90; i++) {
@@ -22,7 +23,7 @@ async function findLatestAnnualReport(edinetCode: string): Promise<string | null
     dates.map(async (dateStr) => {
       try {
         const res = await fetch(
-          `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`,
+          `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${apiKey}`,
           { signal: AbortSignal.timeout(8000) }
         );
         if (!res.ok) return null;
@@ -40,9 +41,10 @@ async function findLatestAnnualReport(edinetCode: string): Promise<string | null
 }
 
 async function fetchDocumentText(docId: string): Promise<string> {
+  const apiKey = process.env.EDINET_API_KEY ?? "";
   try {
     const res = await fetch(
-      `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=1`
+      `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=1&Subscription-Key=${apiKey}`
     );
     if (!res.ok) return "";
     const buffer = await res.arrayBuffer();
