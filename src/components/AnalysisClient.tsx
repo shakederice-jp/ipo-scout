@@ -667,7 +667,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {(()=>{
           const cf=(analysis as any).market_data?.competitor_financials;
           if(!cf||!cf.length) return null;
-          const valid=cf.filter((c:any)=>!c.error&&c.revenue!=null);
+          const valid=cf.filter((c:any)=>!c.error&&(c.revenue!=null||c.net_profit!=null));
           if(!valid.length) return null;
           return (
             <Card>
