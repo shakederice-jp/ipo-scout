@@ -663,6 +663,48 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             })}
           </div>
         </div>
+
+        {(()=>{
+          const cf=(analysis as any).market_data?.competitor_financials;
+          if(!cf||!cf.length) return null;
+          const valid=cf.filter((c:any)=>!c.error&&c.revenue!=null);
+          if(!valid.length) return null;
+          return (
+            <Card>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
+                <BarChart2 size={14} color={PRIMARY}/>
+                <span style={{fontWeight:900,fontSize:14,color:DARK}}>競合他社 財務比較</span>
+                <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>有価証券報告書より</span>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                  <thead>
+                    <tr style={{backgroundColor:LIGHT}}>
+                      <th style={{padding:"8px 10px",textAlign:"left",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>企業名</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>売上高</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>営業利益</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>当期純利益</th>
+                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>決算期</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {valid.map((c:any,i:number)=>(
+                      <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:i%2===0?"white":LIGHT}}>
+                        <td style={{padding:"8px 10px",fontWeight:700,color:DARK}}>{c.name}</td>
+                        <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.revenue!=null?`${c.revenue}億円`:"–"}</td>
+                        <td style={{padding:"8px 10px",textAlign:"right",color:c.operating_profit>=0?"#15803d":"#ef4444"}}>{c.operating_profit!=null?`${c.operating_profit}億円`:"–"}</td>
+                        <td style={{padding:"8px 10px",textAlign:"right",color:c.net_profit>=0?"#15803d":"#ef4444"}}>{c.net_profit!=null?`${c.net_profit}億円`:"–"}</td>
+                        <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{c.fiscal_year||"–"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{fontSize:10,color:"#94a3b8",marginTop:8,lineHeight:1.6}}>※ EDINETの有価証券報告書から自動取得。単位：億円（百万円未満切り捨て）</p>
+            </Card>
+          );
+        })()}
+
         {visualizationData && <VizTables vizData={visualizationData} section="bottom" />}
         {(analysis.sources||[]).length>0&&(
           <Card>
