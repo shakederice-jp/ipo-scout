@@ -381,7 +381,7 @@ export default function CalendarClient() {
           </div>
 
           <div style={{ backgroundColor:C.tealLt, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#2a7a7e" }}>
-            ☑️ 毎月、日付順で<strong>最初の3銘柄の分析レポートは完全無料</strong>。特定銘柄だけをピックアップして読む場合は¥500です。
+            ☑️ 毎月、日付順で<strong>最初の2銘柄の分析レポートは完全無料</strong>。特定銘柄だけをピックアップして読む場合は¥500です。
           </div>
 
           {loading && <div style={{ textAlign:"center", padding:"40px 0", color:C.muted, fontSize:13 }}>データを読み込み中...</div>}
@@ -390,11 +390,11 @@ export default function CalendarClient() {
             const d = new Date(company.listing_date);
             const weekStr = "日月火水木金土"[d.getDay()];
             const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${weekStr}）`;
-            const isFree = company.is_free ?? i < 3;
+            const isFree = company.is_free ?? i < 2;
             const isHL = highlighted === company.id;
             return (
               <div key={company.id} ref={el => { itemRefs.current[company.id] = el; }}
-                style={{ backgroundColor:C.white, borderRadius:14, border: isHL ? `2px solid ${C.teal}` : `1px solid ${C.border}`, marginBottom:12, overflow:"hidden", transition:"border .3s, box-shadow .3s", boxShadow: isHL ? `0 0 0 4px ${C.tealLt}` : "none" }}>
+                style={{ backgroundColor:C.white, borderRadius:14, border: isHL ? `2px solid ${C.teal}` : isFree ? `1px solid ${C.teal}` : `1px solid #fde68a`, marginBottom:12, overflow:"hidden", transition:"border .3s, box-shadow .3s", boxShadow: isHL ? `0 0 0 4px ${C.tealLt}` : "none" }}>
                 <div style={{ padding:"12px 16px", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <span style={{ fontSize:22, color:C.teal, lineHeight:1 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
