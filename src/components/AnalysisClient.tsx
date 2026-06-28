@@ -173,12 +173,14 @@ function ScenarioCompareChart({scenarios}:{scenarios:Scenario[]}) {
 
 function LockupTimeline({lockupPeriod}:{lockupPeriod:string}) {
   return (
-    <div style={{marginTop:10,padding:"16px 10px 24px"}}>
-      <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1}}>
+    <div style={{marginTop:10,padding:"16px 10px 8px"}}>
+      <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1,marginBottom:24}}>
         <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:PRIMARY,border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
         <div style={{position:"absolute",right:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:"#ef4444",border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
-        <div style={{position:"absolute",left:0,top:10,fontSize:9,fontWeight:700,color:TTEXT,whiteSpace:"nowrap"}}>🔔 上場日</div>
-        <div style={{position:"absolute",right:0,top:10,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",whiteSpace:"nowrap"}}>🔓 解除：{lockupPeriod}</div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+        <div style={{fontSize:9,fontWeight:700,color:TTEXT}}>🔔 上場日</div>
+        <div style={{fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",maxWidth:"60%",lineHeight:1.4}}>🔓 解除：{lockupPeriod}</div>
       </div>
     </div>
   );
