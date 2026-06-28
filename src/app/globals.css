@@ -33,5 +33,6 @@ body {
 }
 .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
 
-:root { --app-zoom: 1; }
-.app-content { zoom: var(--app-zoom); }
+:root { --app-base-font: 16px; }
+.app-content { font-size: var(--app-base-font); }
+.app-content * { font-size: inherit; }

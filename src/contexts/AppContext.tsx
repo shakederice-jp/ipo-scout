@@ -16,22 +16,32 @@ const AppContext = createContext<AppContextType>({
   lang: "ja",     setLang: () => {},
 });
 
+const SCALE_MAP: Record<FontSize, string> = {
+  sm: "14px",
+  md: "16px",
+  lg: "18px",
+};
+
+function applyFontSize(s: FontSize) {
+  document.documentElement.style.setProperty("--app-base-font", SCALE_MAP[s]);
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [fontSize, setFontSizeState] = useState<FontSize>("md");
   const [lang, setLangState]         = useState<Lang>("ja");
 
+  // ページ読み込み時にlocalStorageから復元して即適用
   useEffect(() => {
     const fs = localStorage.getItem("app-fs") as FontSize | null;
     const lg = localStorage.getItem("app-lang") as Lang | null;
-    if (fs) setFontSizeState(fs);
+    if (fs) { setFontSizeState(fs); applyFontSize(fs); }
     if (lg) setLangState(lg);
   }, []);
 
   const setFontSize = (s: FontSize) => {
     setFontSizeState(s);
     localStorage.setItem("app-fs", s);
-    const scale = s === "sm" ? "1.05" : s === "lg" ? "1.28" : "1.16";
-    document.documentElement.style.setProperty("--app-zoom", scale);
+    applyFontSize(s);
   };
 
   const setLang = (l: Lang) => {
