@@ -16,14 +16,14 @@ const AppContext = createContext<AppContextType>({
   lang: "ja",     setLang: () => {},
 });
 
-const SCALE_MAP: Record<FontSize, string> = {
-  sm: "14px",
-  md: "16px",
-  lg: "18px",
+const ZOOM_MAP: Record<FontSize, string> = {
+  sm: "0.92",
+  md: "1",
+  lg: "1.12",
 };
 
 function applyFontSize(s: FontSize) {
-  document.documentElement.style.setProperty("--app-base-font", SCALE_MAP[s]);
+  document.documentElement.style.setProperty("--app-zoom", ZOOM_MAP[s]);
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
