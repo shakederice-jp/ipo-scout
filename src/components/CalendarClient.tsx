@@ -10,7 +10,7 @@ type Company = {
   sector?: string;
   exchange?: string;
   listing_date: string;
-  summary?: string;
+  ai_summary?: string;
   is_free?: boolean;
 };
 
@@ -436,9 +436,9 @@ export default function CalendarClient() {
                   <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
                     <span style={{ fontSize:11, fontWeight:700, color:C.teal }}>⚡ AI分析要約</span>
                   </div>
-                  {company.summary ? (
+                  {company.ai_summary ? (
                     <p style={{ fontSize:12, color:"#374151", lineHeight:1.9, margin:"0 0 12px" }}>
-                      {company.summary}
+                      {company.ai_summary}
                     </p>
                   ) : (
                     <p style={{ fontSize:11, color:C.muted, lineHeight:1.7, margin:"0 0 12px", fontStyle:"italic" }}>
