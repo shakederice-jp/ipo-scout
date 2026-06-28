@@ -35,6 +35,3 @@ body {
 
 :root { --app-zoom: 1; }
 .app-content { zoom: var(--app-zoom); }
-@media (max-width: 768px) {
-  .app-content { zoom: 1 !important; }
-}
