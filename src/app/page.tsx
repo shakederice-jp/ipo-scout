@@ -3,7 +3,7 @@ import RefferalSection from "@/components/RefferalSection";
 import CalendarClient from "@/components/CalendarClient";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { TrendingUp, Zap, Crown, AlertCircle } from "lucide-react";
+import { TrendingUp, Zap, Crown, AlertCircle, User } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "IPO企業情報AI分析レポート｜大手町調査室九課",
@@ -11,17 +11,26 @@ export const metadata: Metadata = {
   openGraph: {
     title: "IPO企業情報AI分析レポート｜大手町調査室九課",
     description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
-    url: "https://ipo-scout-six.vercel.app",
+    url: "https://ipo-jp.vercel.app",
     siteName: "大手町調査室九課",
     locale: "ja_JP",
     type: "website",
+    images: [{ url: "https://ipo-jp.vercel.app/ogp.png", width: 1200, height: 630 }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "IPO企業情報AI分析レポート｜大手町調査室九課",
     description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
+    images: ["https://ipo-jp.vercel.app/ogp.png"],
   },
-  alternates: { canonical: "https://ipo-scout-six.vercel.app" },
+  alternates: { canonical: "https://ipo-jp.vercel.app" },
+};
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: "white",
+  borderRadius: 16,
+  border: "1px solid #b3e8ea",
+  overflow: "hidden",
 };
 
 export default async function Home({
@@ -54,7 +63,7 @@ export default async function Home({
       )}
 
       {/* リード文 */}
-      <div style={{ margin:"12px 16px 0", borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:12, backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea" }}>
+      <div style={{ margin:"12px 16px 0", ...cardStyle, padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:12, backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea" }}>
         <div style={{ borderRadius:10, padding:8, backgroundColor:"#66c3c6", flexShrink:0 }}>
           <TrendingUp size={16} color="white" />
         </div>
@@ -67,18 +76,24 @@ export default async function Home({
       </div>
 
       {/* メインレイアウト */}
-      <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:24, alignItems:"flex-start" }}>
+      <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:16, alignItems:"flex-start" }}>
 
-       {/* 左：カレンダー＋IPO一覧 */}
-       <div style={{ flex:"1 1 580px", minWidth:0 }}>
+        {/* 左：カレンダー＋IPO一覧 */}
+        <div style={{ flex:"1 1 560px", minWidth:0 }}>
           <CalendarClient />
         </div>
 
         {/* 右：サイドバー */}
-        <aside style={{ width:300, flexShrink:0, position:"sticky", top:16, display:"flex", flexDirection:"column", gap:16 }}>
+        <aside style={{ flex:"0 0 300px", minWidth:280, display:"flex", flexDirection:"column", gap:12 }}>
+
+          {/* マイページ（ゴールド・冒頭） */}
+          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 16px", backgroundColor:"#d97706", border:"2px solid #b45309", textDecoration:"none", fontWeight:900, fontSize:14, color:"white", boxShadow:"0 2px 8px rgba(217,119,6,0.25)" }}>
+            <User size={16} color="white" />
+            👤 マイページ・通知設定
+          </a>
 
           {/* 購入パネル */}
-          <div style={{ borderRadius:16, overflow:"hidden", border:"2px solid #b3e8ea" }}>
+          <div style={cardStyle}>
             <div style={{ padding:"12px 16px", backgroundColor:"#66c3c6", display:"flex", alignItems:"center", gap:8 }}>
               <Crown size={16} color="#082b2e" />
               <div>
@@ -92,7 +107,7 @@ export default async function Home({
           </div>
 
           {/* 通知案内 */}
-          <div style={{ borderRadius:16, padding:16, backgroundColor:"white", border:"1px solid #dff3f4" }}>
+          <div style={{ ...cardStyle, padding:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
               <Zap size={16} color="#66c3c6" />
               <span style={{ fontWeight:900, fontSize:13, color:"#082b2e" }}>通知サービス</span>
@@ -108,10 +123,6 @@ export default async function Home({
             ))}
           </div>
 
-{/* マイページリンク */}
-<a href="/mypage" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", backgroundColor:"white", border:"1px solid #b3e8ea", borderRadius:12, textDecoration:"none", fontWeight:700, fontSize:13, color:"#0d4f52" }}>
-            👤 マイページ
-          </a>
           <RefferalSection userId={userId ?? "test"} />
         </aside>
       </div>
