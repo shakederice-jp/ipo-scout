@@ -34,4 +34,8 @@ body {
 .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
 
 :root { --app-zoom: 1; }
-.app-content { zoom: var(--app-zoom); }
+.app-content {
+  zoom: var(--app-zoom);
+  max-width: 100vw;
+  overflow-x: hidden;
+}
