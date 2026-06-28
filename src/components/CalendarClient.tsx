@@ -432,12 +432,24 @@ export default function CalendarClient() {
                     })()}
                   </div>
                 </div>
-                {company.summary && <div style={{ padding:"0 16px 12px", fontSize:12, color:"#4a5568", lineHeight:1.8 }}>{company.summary}</div>}
-                <div style={{ padding:"10px 16px", borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ fontSize:11, color:C.muted }}>⚡ AI分析要約</span>
-                  <a href={`/analysis/${company.id}`} style={{ padding:"7px 18px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
-                    {isFree ? "分析レポートを見る →" : "¥500で読む →"}
-                  </a>
+                <div style={{ padding:"10px 16px 14px", borderTop:`1px solid ${C.border}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:C.teal }}>⚡ AI分析要約</span>
+                  </div>
+                  {company.summary ? (
+                    <p style={{ fontSize:12, color:"#374151", lineHeight:1.9, margin:"0 0 12px" }}>
+                      {company.summary}
+                    </p>
+                  ) : (
+                    <p style={{ fontSize:11, color:C.muted, lineHeight:1.7, margin:"0 0 12px", fontStyle:"italic" }}>
+                      📄 目論見書が公表され次第、AIによる銘柄要約を掲載します。
+                    </p>
+                  )}
+                  <div style={{ display:"flex", justifyContent:"flex-end" }}>
+                    <a href={`/analysis/${company.id}`} style={{ padding:"7px 18px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
+                      {isFree ? "分析レポートを見る →" : "¥500で読む →"}
+                    </a>
+                  </div>
                 </div>
               </div>
             );

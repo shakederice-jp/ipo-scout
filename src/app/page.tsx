@@ -48,6 +48,12 @@ export default async function Home({
   return (
     <div style={{ backgroundColor:"#f4fbfc", minHeight:"100vh", fontFamily:"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif" }}>
 
+<style>{`
+        @media (max-width: 700px) {
+          .top-sidebar { flex: 1 1 100% !important; min-width: 0 !important; max-width: 100% !important; }
+        }
+      `}</style>
+
       {/* 決済結果バナー */}
       {params.checkout === "success" && (
         <div style={{ margin:"12px 16px 0", borderRadius:12, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, backgroundColor:"#dcfce7", border:"1px solid #bbf7d0" }}>
@@ -84,10 +90,10 @@ export default async function Home({
         </div>
 
         {/* 右：サイドバー */}
-        <aside style={{ flex:"0 0 300px", minWidth:280, display:"flex", flexDirection:"column", gap:12 }}>
+        <aside className="top-sidebar" style={{ flex:"0 0 300px", minWidth:280, display:"flex", flexDirection:"column", gap:12 }}>
 
-          {/* マイページ（ゴールド・冒頭） */}
-          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 16px", backgroundColor:"#d97706", border:"2px solid #b45309", textDecoration:"none", fontWeight:900, fontSize:14, color:"white", boxShadow:"0 2px 8px rgba(217,119,6,0.25)" }}>
+          {/* マイページ（冒頭） */}
+          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", fontWeight:900, fontSize:14, color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
             <User size={16} color="white" />
             👤 マイページ・通知設定
           </a>
