@@ -378,8 +378,10 @@ export default function CalendarClient() {
 {/* ── IPO一覧（カレンダー下） ── */}
 <div style={{ marginTop:16 }}>
           <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-            <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>📋 IPO予定企業一覧</h2>
-            <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${monthSorted.length}社）`}</span>
+          <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>
+            📋 {lang === "ja" ? "IPO予定企業一覧" : "Upcoming IPOs"}
+          </h2>
+            <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "ja" ? "社" : " co."}）`}</span>
           </div>
 
           <div style={{ backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"flex-start", gap:10 }}>
@@ -413,7 +415,7 @@ export default function CalendarClient() {
                     <span style={{ fontSize:22, color:C.teal, lineHeight:1 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
                     <div>
                       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
-                        <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e" }}>{isFree ? "無料" : "有料"}</span>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e" }}>{isFree ? (lang === "ja" ? "無料" : "Free") : (lang === "ja" ? "有料" : "Paid")}</span>
                         <span style={{ fontSize:16, fontWeight:900, color:C.text }}>{company.name}</span>
                       </div>
                       <div style={{ fontSize:11, color:C.muted }}>{[company.exchange, company.sector, company.ticker].filter(Boolean).join("・")}</div>
@@ -426,19 +428,19 @@ export default function CalendarClient() {
                       const diff = ld.getTime() - today2.getTime();
                       if (diff < 0) return (
                         <>
-                          <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>上場済み</div>
+                          <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
                           <div style={{ fontSize:12, fontWeight:700, color:"#64748b" }}>{dateStr}</div>
                         </>
                       );
                       if (diff === 0) return (
                         <>
-                          <div style={{ fontSize:10, fontWeight:700, color:"#b91c1c", backgroundColor:"#fef2f2", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>本日上場🎉</div>
+                          <div style={{ fontSize:10, fontWeight:700, color:"#b91c1c", backgroundColor:"#fef2f2", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>{lang === "ja" ? "本日上場🎉" : "Listed Today🎉"}</div>
                           <div style={{ fontSize:12, fontWeight:700, color:"#b91c1c" }}>{dateStr}</div>
                         </>
                       );
                       return (
                         <>
-                          <div style={{ fontSize:10, color:C.muted }}>上場予定日</div>
+                          <div style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</div>
                           <div style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</div>
                         </>
                       );
@@ -459,8 +461,8 @@ export default function CalendarClient() {
                     </p>
                   )}
                   <div style={{ display:"flex", justifyContent:"flex-end" }}>
-                    <a href={`/analysis/${company.id}`} style={{ padding:"7px 18px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
-                      {isFree ? "分析レポートを見る →" : "¥500で読む →"}
+                  <a href={`/analysis/${company.id}`} style={{ padding:"7px 18px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
+                      {isFree ? (lang === "ja" ? "分析レポートを見る →" : "View Report →") : (lang === "ja" ? "¥500で読む →" : "Read for ¥500 →")}
                     </a>
                   </div>
                 </div>

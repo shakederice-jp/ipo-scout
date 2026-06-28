@@ -30,7 +30,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setFontSize = (s: FontSize) => {
     setFontSizeState(s);
     localStorage.setItem("app-fs", s);
-    const scale = s === "sm" ? "0.88" : s === "lg" ? "1.14" : "1";
+    const scale = s === "sm" ? "1.05" : s === "lg" ? "1.28" : "1.16";
     document.documentElement.style.setProperty("--app-zoom", scale);
   };
 
