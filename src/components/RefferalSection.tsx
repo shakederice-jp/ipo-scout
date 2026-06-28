@@ -6,7 +6,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
   const [copied, setCopied] = useState(false);
   
   const referralCode = "A375D106";
-  const referralUrl = `https://ipo-scout-six.vercel.app?ref=${referralCode}`;
+  const referralUrl = `https://ipo-jp.vercel.app?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralUrl);
