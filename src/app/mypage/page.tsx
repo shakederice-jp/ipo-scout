@@ -45,11 +45,40 @@ export default function MyPage() {
   const [savingNotify, setSavingNotify] = useState(false);
 
   useEffect(() => {
+    // 管理者プレビューモード（URLに?admin=1がある場合）
+    const isAdminPreview = new URLSearchParams(window.location.search).get("admin") === "1";
+    
     fetch("/api/mypage")
       .then(r => r.json())
       .then(d => {
-        setData(d);
-        setNotifyState(d.notifySettings);
+        if (d.error && isAdminPreview) {
+          // 管理者プレビュー用ダミーデータ
+          setData({
+            email: "shakederice@gmail.com",
+            profile: {
+              id: "749843f1-8dd5-4fd7-8e1b-43933af8a8cf",
+              plan: "free",
+              referral_code: "DEMO1234",
+              referral_count: 0,
+              referral_credits: 0,
+              created_at: new Date().toISOString(),
+            },
+            referralLogs: [],
+            purchases: [],
+            notifySettings: {
+              notify_bb: true,
+              notify_apply: true,
+              notify_listing: true,
+              notify_lockup_90: false,
+              notify_lockup_180: false,
+              method_email: true,
+            },
+            calendarNotes: [],
+          });
+        } else {
+          setData(d);
+          setNotifyState(d.notifySettings);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
