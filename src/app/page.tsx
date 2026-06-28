@@ -108,6 +108,10 @@ export default async function Home({
             ))}
           </div>
 
+{/* マイページリンク */}
+<a href="/mypage" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", backgroundColor:"white", border:`1px solid ${BORDER}`, borderRadius:12, textDecoration:"none", fontWeight:700, fontSize:13, color:MID }}>
+            👤 マイページ
+          </a>
           <RefferalSection userId={userId ?? "test"} />
         </aside>
       </div>
