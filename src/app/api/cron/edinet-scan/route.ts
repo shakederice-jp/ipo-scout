@@ -91,6 +91,22 @@ export async function GET(req: NextRequest) {
           results.push(`❌ テキスト取得失敗: ${companyName} - ${edinetData.error}`);
         } else {
           results.push(`✅ テキスト取得成功: ${companyName}（${docId}）`);
+          // ②分析・ai_summary自動生成
+          try {
+            const analyzeRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analyze`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: existing.id }),
+            });
+            const analyzeData = await analyzeRes.json();
+            if (analyzeData.error) {
+              results.push(`⚠️ 分析失敗: ${companyName} - ${analyzeData.error}`);
+            } else {
+              results.push(`✅ 分析・ai_summary生成完了: ${companyName}`);
+            }
+          } catch (e) {
+            results.push(`⚠️ 分析通信エラー: ${companyName}`);
+          }
         }
       } catch (e) {
         results.push(`❌ 通信エラー: ${companyName}`);
