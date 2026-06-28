@@ -32,3 +32,6 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 0.25s ease-out; }
+
+:root { --app-zoom: 1; }
+.app-content { zoom: var(--app-zoom); }

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useApp } from "@/contexts/AppContext";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 type Company = {
@@ -51,6 +52,7 @@ const C = {
 
 export default function CalendarClient() {
   const today = new Date();
+  const { lang } = useApp();
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -380,8 +382,19 @@ export default function CalendarClient() {
             <span style={{ fontSize:11, color:C.muted }}>{loading ? "読み込み中..." : `（${monthSorted.length}社）`}</span>
           </div>
 
-          <div style={{ backgroundColor:C.tealLt, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#2a7a7e" }}>
-            ☑️ 毎月、日付順で<strong>最初の2銘柄の分析レポートは完全無料</strong>。特定銘柄だけをピックアップして読む場合は¥500です。
+          <div style={{ backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"flex-start", gap:10 }}>
+            <span style={{ fontSize:18, flexShrink:0 }}>📋</span>
+            <div>
+              <div style={{ fontWeight:900, fontSize:13, color:"#082b2e", marginBottom:2 }}>
+                {lang === "ja" ? "まず無料でお試しください" : "Try for Free First"}
+              </div>
+              <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:0 }}>
+                {lang === "ja"
+                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます。特定銘柄だけをピックアップして読む場合は¥500です。また、すべてコミコミの<strong style={{ color:"#082b2e" }}>コンプリートパック</strong>もあります。</>
+                  : <>The first <strong style={{ color:"#082b2e" }}>2 IPO reports each month are completely free</strong>. Single reports are ¥500. A <strong style={{ color:"#082b2e" }}>Complete Pack</strong> with all features is also available.</>
+                }
+              </p>
+            </div>
           </div>
 
           {loading && <div style={{ textAlign:"center", padding:"40px 0", color:C.muted, fontSize:13 }}>データを読み込み中...</div>}

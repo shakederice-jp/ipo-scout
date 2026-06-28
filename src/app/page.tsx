@@ -3,7 +3,7 @@ import RefferalSection from "@/components/RefferalSection";
 import CalendarClient from "@/components/CalendarClient";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { TrendingUp, Zap, Crown, AlertCircle, User } from "lucide-react";
+import { Zap, Crown, AlertCircle, User } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "IPO企業情報AI分析レポート｜大手町調査室九課",
@@ -68,19 +68,7 @@ export default async function Home({
         </div>
       )}
 
-      {/* リード文 */}
-      <div style={{ margin:"12px 16px 0", ...cardStyle, padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:12, backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea" }}>
-        <div style={{ borderRadius:10, padding:8, backgroundColor:"#66c3c6", flexShrink:0 }}>
-          <TrendingUp size={16} color="white" />
-        </div>
-        <div>
-          <div style={{ fontWeight:900, fontSize:14, color:"#082b2e", marginBottom:2 }}>まず無料でお試しください</div>
-          <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:0 }}>
-            毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます。特定銘柄だけをピックアップして読む場合は¥500です。
-          </p>
-        </div>
-      </div>
-
+      
       {/* メインレイアウト */}
       <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:16, alignItems:"flex-start" }}>
 
