@@ -290,6 +290,8 @@ export default function AdminPage() {
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState<any | null>(null);
+  const [dbCheckLoading, setDbCheckLoading] = useState(false);
+  const [dbCheckResult, setDbCheckResult] = useState<any | null>(null);
 
   const handleTestNotify = async () => {
     setNotifyLoading(true); setNotifyResult(null);
@@ -314,6 +316,20 @@ export default function AdminPage() {
       setHealthResult({ ok: false, error: String(e) });
     }
     setHealthLoading(false);
+  };
+
+  const handleDbCheck = async () => {
+    setDbCheckLoading(true); setDbCheckResult(null);
+    try {
+      const res = await fetch("/api/cron/db-check", {
+        headers: { authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "otemachi9"}` }
+      });
+      const data = await res.json();
+      setDbCheckResult(data);
+    } catch (e) {
+      setDbCheckResult({ ok: false, error: String(e) });
+    }
+    setDbCheckLoading(false);
   };
 
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
@@ -387,6 +403,35 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+{/* DB整合性チェック */}
+<div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"4px" }}>🔍 DB整合性チェック</h2>
+          <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"12px" }}>ai_summary未生成・分析未実施・上場7日以内の未対応銘柄を検出します（毎週月曜自動実行）。</p>
+          <button onClick={handleDbCheck} disabled={dbCheckLoading}
+            style={{ padding:"10px 20px", backgroundColor: dbCheckLoading ? "#94a3b8" : "#7c3aed", color:"white", border:"none", borderRadius:"8px", cursor: dbCheckLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px" }}>
+            {dbCheckLoading ? "確認中..." : "🔍 整合性チェックを実行"}
+          </button>
+          {dbCheckResult && (
+            <div style={{ marginTop:"12px" }}>
+              <div style={{ fontSize:"12px", fontWeight:"700", color: dbCheckResult.ok ? "#15803d" : "#d97706", marginBottom:"8px" }}>
+                {dbCheckResult.ok ? "✅ 問題なし" : `⚠️ ${dbCheckResult.issues_count}件の問題を検出`}
+              </div>
+              {dbCheckResult.issues?.map((issue: string, i: number) => (
+                <div key={i} style={{ fontSize:"11px", color:"#374151", padding:"8px 10px", backgroundColor:"#fffbeb", border:"1px solid #fde68a", borderRadius:"8px", marginBottom:"6px", whiteSpace:"pre-wrap", lineHeight:1.7 }}>
+                  {issue}
+                </div>
+              ))}
+              {dbCheckResult.ok && (
+                <div style={{ fontSize:"11px", color:"#64748b" }}>
+                  確認時刻: {new Date(dbCheckResult.checked_at).toLocaleString("ja-JP", { timeZone:"Asia/Tokyo" })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 1. IPO情報自動取得 */}
 
         {/* 1. IPO情報自動取得 */}
         <div style={sectionStyle}>
