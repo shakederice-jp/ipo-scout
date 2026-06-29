@@ -76,7 +76,7 @@ const plans = [
     color: C.nav,
     bg: "#e8f9f9",
     border: C.teal,
-    badge: "👑 おすすめ",
+    badge: null,
     target: "通知も情報も両方欲しい方・IPO投資に本気で取り組む方",
     features: [
       { label: "AI分析レポート", value: "無制限", ok: true },
