@@ -132,9 +132,11 @@ export default async function Home({
       {/* フッター */}
       <footer style={{ borderTop:"1px solid #b3e8ea", backgroundColor:"white", padding:"24px 16px", textAlign:"center" }}>
         <div style={{ display:"flex", justifyContent:"center", gap:16, marginBottom:10 }}>
-          <a href="/tokushoho" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>特定商取引法に基づく表記</a>
+        <a href="/tokushoho" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>特定商取引法に基づく表記</a>
           <span style={{ color:"#e2e8f0" }}>|</span>
           <a href="/privacy" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>プライバシーポリシー</a>
+          <span style={{ color:"#e2e8f0" }}>|</span>
+          <a href="/contact" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>お問い合わせ</a>
         </div>
         <p style={{ fontSize:10, color:"#94a3b8", lineHeight:1.7, margin:0 }}>
           本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br/>
