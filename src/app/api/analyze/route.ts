@@ -6,6 +6,39 @@ import { notifyAdmin } from "@/lib/notify-admin";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function callClaudeWithRetry(
+  claude: Anthropic,
+  prompt: string,
+  maxRetries: number = 2
+): Promise<any> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      const msg = await claude.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 3500,
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: '{' }
+        ]
+      });
+      return msg;
+    } catch (e: any) {
+      lastError = e;
+      console.error(`Claude API attempt ${attempt} failed:`, e?.message);
+      if (attempt <= maxRetries) {
+        console.log(`Retrying in 30s... (attempt ${attempt + 1}/${maxRetries + 1})`);
+        await sleep(30000);
+      }
+    }
+  }
+  throw lastError;
+}
+
 function repairJson(text: string): any {
   try { return JSON.parse(text); } catch {}
   const t = text.trimEnd();
@@ -146,21 +179,39 @@ export async function POST(req: NextRequest) {
 グレードはA〜Eの5段階:
 A=強気（上位20%）, B=やや強気, C=中立, D=やや弱気, E=弱気（下位20%）`;
 
-    const msg = await claude.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 3500,
-      messages: [
-        { role: "user", content: prompt },
-        { role: "assistant", content: '{' }
-      ]
-    });
-
-    const raw2 = (msg.content[0] as any).text ?? "";
+const msg = await callClaudeWithRetry(claude, prompt);
+const raw2 = (msg.content[0] as any).text ?? "";
     const text = '{' + raw2;
 
-    const parsed = repairJson(text);
+    let parsed = repairJson(text);
+
+    // パース失敗時は1回だけ再試行
     if (!parsed) {
-      console.error("③ parse failed:", text.slice(0, 400));
+      console.warn("③ parse failed, retrying once...");
+      await sleep(10000);
+      try {
+        const retryMsg = await claude.messages.create({
+          model: "claude-sonnet-4-5",
+          max_tokens: 3500,
+          messages: [
+            { role: "user", content: prompt },
+            { role: "assistant", content: '{' }
+          ]
+        });
+        const retryRaw = '{' + ((retryMsg.content[0] as any).text ?? "");
+        parsed = repairJson(retryRaw);
+      } catch (retryErr) {
+        console.error("③ retry also failed:", retryErr);
+      }
+    }
+
+    if (!parsed) {
+      console.error("③ parse failed after retry:", text.slice(0, 400));
+      await notifyAdmin(
+        "分析JSONパース失敗（リトライ後も失敗）",
+        `銘柄: ${co.name ?? "不明"}\n出力の先頭: ${text.slice(0, 300)}`,
+        'error'
+      );
       return NextResponse.json({ error: "parse failed" }, { status: 500 });
     }
 
