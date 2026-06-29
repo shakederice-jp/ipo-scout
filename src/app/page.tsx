@@ -143,7 +143,7 @@ export default async function Home({
         <p style={{ fontSize:10, color:"#94a3b8", lineHeight:1.7, margin:0 }}>
           本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br/>
           最終的な投資判断はご自身の責任のもとで行ってください。<br/>
-          © 2026 大手町調査室九課
+          © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製を禁じます。
         </p>
       </footer>
     </div>
