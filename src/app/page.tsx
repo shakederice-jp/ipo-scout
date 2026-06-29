@@ -137,6 +137,8 @@ export default async function Home({
           <a href="/privacy" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>プライバシーポリシー</a>
           <span style={{ color:"#e2e8f0" }}>|</span>
           <a href="/contact" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>お問い合わせ</a>
+          <span style={{ color:"#e2e8f0" }}>|</span>
+          <a href="/guide" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>このサイトの使い方</a>
         </div>
         <p style={{ fontSize:10, color:"#94a3b8", lineHeight:1.7, margin:0 }}>
           本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br/>
