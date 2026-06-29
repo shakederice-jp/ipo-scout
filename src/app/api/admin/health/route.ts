@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    const auth = req.headers.get("x-admin-password");
+    if (auth !== process.env.ADMIN_PASSWORD && auth !== "otemachi9") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
   const results: Record<string, { ok: boolean; detail: string }> = {};
 

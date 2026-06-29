@@ -288,6 +288,8 @@ export default function AdminPage() {
 
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthResult, setHealthResult] = useState<any | null>(null);
 
   const handleTestNotify = async () => {
     setNotifyLoading(true); setNotifyResult(null);
@@ -298,6 +300,20 @@ export default function AdminPage() {
       else setNotifyResult(`✅ 送信完了・${data.sent}件送信・範囲：${data.range ?? ""}`);
     } catch { setNotifyResult("❌ 通信エラー"); }
     setNotifyLoading(false);
+  };
+
+  const handleHealthCheck = async () => {
+    setHealthLoading(true); setHealthResult(null);
+    try {
+      const res = await fetch("/api/admin/health", {
+        headers: { "x-admin-password": "otemachi9" }
+      });
+      const data = await res.json();
+      setHealthResult(data);
+    } catch (e) {
+      setHealthResult({ ok: false, error: String(e) });
+    }
+    setHealthLoading(false);
   };
 
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
@@ -338,6 +354,39 @@ export default function AdminPage() {
     <div style={{ minHeight:"100vh", backgroundColor:"#f4fbfc", padding:"24px" }}>
       <div style={{ maxWidth:"560px", margin:"0 auto" }}>
         <h1 style={{ fontSize:"18px", fontWeight:"900", color:"#082b2e", marginBottom:"20px" }}>⚙️ 管理画面</h1>
+
+        {/* 0. ヘルスチェック */}
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize:"14px", fontWeight:"900", color:"#082b2e", marginBottom:"4px" }}>🩺 システムヘルスチェック</h2>
+          <p style={{ fontSize:"11px", color:"#64748b", marginBottom:"12px" }}>Supabase・Claude API・EDINET・直近Cronの状態を確認します。</p>
+          <button onClick={handleHealthCheck} disabled={healthLoading}
+            style={{ padding:"10px 20px", backgroundColor: healthLoading ? "#94a3b8" : "#0d4f52", color:"white", border:"none", borderRadius:"8px", cursor: healthLoading ? "default" : "pointer", fontWeight:"700", fontSize:"13px" }}>
+            {healthLoading ? "確認中..." : "🩺 ヘルスチェックを実行"}
+          </button>
+          {healthResult && (
+            <div style={{ marginTop:"12px", display:"flex", flexDirection:"column", gap:"6px" }}>
+              <div style={{ fontSize:"12px", fontWeight:"700", color: healthResult.ok ? "#15803d" : "#b91c1c", marginBottom:"4px" }}>
+                {healthResult.ok ? "✅ 全システム正常" : "⚠️ 一部に問題があります"}
+              </div>
+              {healthResult.results && Object.entries(healthResult.results).map(([key, val]: [string, any]) => (
+                <div key={key} style={{ display:"flex", alignItems:"flex-start", gap:"8px", padding:"8px 10px", borderRadius:"8px", backgroundColor: val.ok ? "#f0fdf4" : "#fef2f2", border:`1px solid ${val.ok ? "#bbf7d0" : "#fecaca"}` }}>
+                  <span style={{ fontSize:"12px", flexShrink:0 }}>{val.ok ? "✅" : "❌"}</span>
+                  <div>
+                    <div style={{ fontSize:"11px", fontWeight:"700", color:"#082b2e" }}>
+                      {{ supabase:"Supabase DB", claude:"Claude API", edinet:"EDINET API", last_cron:"直近Cron実行" }[key] ?? key}
+                    </div>
+                    <div style={{ fontSize:"11px", color:"#64748b" }}>{val.detail}</div>
+                  </div>
+                </div>
+              ))}
+              {healthResult.checked_at && (
+                <div style={{ fontSize:"10px", color:"#94a3b8", textAlign:"right" }}>
+                  確認時刻: {new Date(healthResult.checked_at).toLocaleString("ja-JP", { timeZone:"Asia/Tokyo" })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 1. IPO情報自動取得 */}
         <div style={sectionStyle}>
