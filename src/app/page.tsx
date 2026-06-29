@@ -69,6 +69,14 @@ export default async function Home({
       )}
 
       
+      {/* サービス説明・免責一言 */}
+      <div style={{ margin:"12px 16px 0", padding:"10px 16px", backgroundColor:"#f0fafa", border:"1px solid #b3e8ea", borderRadius:10, display:"flex", alignItems:"flex-start", gap:10 }}>
+        <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>📋</span>
+        <p style={{ fontSize:11, color:"#2a7a7e", lineHeight:1.8, margin:0 }}>
+          本サービスは、IPO銘柄が金融庁に提出する何百ページにもわたる目論見書をAIが解析・要約し、投資判断に役立つ情報を抽出することを目的としています。分析内容は目論見書の記載に基づいており、記載のない情報については「不明」「データ不足」と表示されます。AIによる試算・評価であり、投資勧誘ではありません。
+        </p>
+      </div>
+
       {/* メインレイアウト */}
       <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:16, alignItems:"flex-start" }}>
 
