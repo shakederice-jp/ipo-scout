@@ -414,8 +414,8 @@ export default function AdminPage() {
           </button>
           {dbCheckResult && (
             <div style={{ marginTop:"12px" }}>
-              <div style={{ fontSize:"12px", fontWeight:"700", color: dbCheckResult.ok ? "#15803d" : "#d97706", marginBottom:"8px" }}>
-                {dbCheckResult.ok ? "✅ 問題なし" : `⚠️ ${dbCheckResult.issues?.length ?? 0}件の問題を検出`}
+              <div style={{ fontSize:"12px", fontWeight:"700", color: (dbCheckResult.ok || (dbCheckResult.issues?.length ?? 0) === 0) ? "#15803d" : "#d97706", marginBottom:"8px" }}>
+                {(dbCheckResult.ok || (dbCheckResult.issues?.length ?? 0) === 0) ? "✅ 問題なし" : `⚠️ ${dbCheckResult.issues?.length}件の問題を検出`}
               </div>
               {dbCheckResult.issues?.map((issue: string, i: number) => (
                 <div key={i} style={{ fontSize:"11px", color:"#374151", padding:"8px 10px", backgroundColor:"#fffbeb", border:"1px solid #fde68a", borderRadius:"8px", marginBottom:"6px", whiteSpace:"pre-wrap", lineHeight:1.7 }}>
