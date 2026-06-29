@@ -377,12 +377,17 @@ export default function CalendarClient() {
 
 {/* ── IPO一覧（カレンダー下） ── */}
 <div style={{ marginTop:16 }}>
-          <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>
-            📋 {lang === "ja" ? "IPO予定企業一覧" : "Upcoming IPOs"}
-          </h2>
-            <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "ja" ? "社" : " co."}）`}</span>
-          </div>
+<div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>
+                {lang === "ja" ? "📋 IPO予定企業一覧" : "Upcoming IPOs"}
+              </h2>
+              <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "en" ? " co." : "社"}）`}</span>
+            </div>
+            <a href="/guide" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", backgroundColor:"#15803d", borderRadius:20, textDecoration:"none", marginBottom:8 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"white" }}>📖 このサイトの効果的な使い方</span>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)" }}>→</span>
+            </a>
+            </div>
 
           <div style={{ backgroundColor:"#e8f9f9", border:"1.5px solid #b3e8ea", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"flex-start", gap:10 }}>
             <span style={{ fontSize:18, flexShrink:0 }}>📋</span>
