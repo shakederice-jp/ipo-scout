@@ -385,7 +385,7 @@ export default function CalendarClient() {
               </h2>
               <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "en" ? " co." : "社"}）`}</span>
             </div>
-            <a href="/guide" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", backgroundColor:"#15803d", borderRadius:20, textDecoration:"none", marginBottom:8 }}>
+            <a href="/guide" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", backgroundColor:C.teal, borderRadius:20, textDecoration:"none", marginBottom:8 }}>
               <span style={{ fontSize:11, fontWeight:700, color:"white" }}>📖 このサイトの効果的な使い方</span>
               <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)" }}>→</span>
             </a>
