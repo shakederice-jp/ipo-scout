@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { notifyAdmin } from '@/lib/notify-admin';
 
 export const maxDuration = 60;
 
@@ -138,6 +139,11 @@ export async function GET(req: NextRequest) {
       sentCount++;
     } catch (e) {
       console.error(`メール送信失敗: ${email}`, e);
+      await notifyAdmin(
+        `週次通知メール送信失敗`,
+        `送信先: ${email}\nエラー: ${String(e)}`,
+        'error'
+      );
     }
   }
 

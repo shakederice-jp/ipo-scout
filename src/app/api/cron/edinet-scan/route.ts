@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifyAdmin } from "@/lib/notify-admin";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,6 +113,17 @@ export async function GET(req: NextRequest) {
         results.push(`❌ 通信エラー: ${companyName}`);
       }
     }
+  }
+
+  // エラーが1件以上あれば管理者通知
+  const errors = results.filter(r => r.startsWith('❌'));
+  if (errors.length > 0) {
+    await notifyAdmin(
+      `EDINETスキャン エラーあり（${errors.length}件）`,
+      `実行日時: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}\n\n` +
+      `結果サマリー:\n${results.join('\n')}`,
+      'warn'
+    );
   }
 
   return NextResponse.json({ success: true, results, scanned_dates: dates });

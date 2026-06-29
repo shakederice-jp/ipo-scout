@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { notifyAdmin } from "@/lib/notify-admin";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -198,6 +199,11 @@ A=強気（上位20%）, B=やや強気, C=中立, D=やや弱気, E=弱気（�
     return NextResponse.json(summary);
   } catch (e: any) {
     console.error("③ analyze error:", e?.message);
+    await notifyAdmin(
+      `分析生成エラー`,
+      `銘柄ID: ${body?.id ?? "不明"}\nエラー: ${e?.message ?? "unknown"}\n\n${e?.stack ?? ""}`,
+      'error'
+    );
     return NextResponse.json({ error: e?.message }, { status: 500 });
   }
 }
