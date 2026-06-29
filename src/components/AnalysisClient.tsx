@@ -484,11 +484,37 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         </div>
 
         <Card>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-            <Zap size={14} color={PRIMARY}/>
-            <span style={{fontWeight:900,fontSize:14,color:DARK}}>AI分析要約</span>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <Zap size={14} color={PRIMARY}/>
+              <span style={{fontWeight:900,fontSize:14,color:DARK}}>AI分析要約</span>
+            </div>
+            {(analysis as any).data_confidence && (
+              <span style={{
+                fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20,
+                backgroundColor:
+                  (analysis as any).data_confidence === "high" ? "#dcfce7" :
+                  (analysis as any).data_confidence === "medium" ? "#fef3c7" : "#fef2f2",
+                color:
+                  (analysis as any).data_confidence === "high" ? "#15803d" :
+                  (analysis as any).data_confidence === "medium" ? "#92400e" : "#b91c1c",
+              }}>
+                {(analysis as any).data_confidence === "high" ? "✅ 実データ引用" :
+                 (analysis as any).data_confidence === "medium" ? "⚠️ 一部推定含む" : "❌ データ不足"}
+              </span>
+            )}
           </div>
           <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
+          {(analysis as any).data_citations?.length > 0 && (
+            <div style={{marginTop:10,padding:"10px 12px",backgroundColor:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:6}}>📄 引用データ根拠</div>
+              {(analysis as any).data_citations.map((c:string, i:number) => (
+                <div key={i} style={{fontSize:11,color:"#475569",display:"flex",gap:6,marginBottom:3}}>
+                  <span style={{color:"#66c3c6",flexShrink:0}}>›</span>{c}
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
         {visualizationData && <VizCharts vizData={visualizationData} />}
         {visualizationData && <VizTables vizData={visualizationData} section="top" />}
