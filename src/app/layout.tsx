@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   },
   description: "AI分析で日本のIPO投資判断をサポート。初値予測・スコアリング・需給分析・財務分析を提供します。",
   keywords: ["IPO", "新規上場", "投資", "分析", "初値予測", "日本株"],
+  verification: {
+    google: "zxV54LwwUEhL4EUHpiVivnO2KykbnhJ3CGS6w01bYH4",
+  },
 };
 
 const GA_ID = "G-27Z6CDZXB1";
