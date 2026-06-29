@@ -94,6 +94,15 @@ export default async function Home({
             </p>
           </div>
 
+          {/* 料金プランページへのリンク */}
+          <a href="/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>📋 料金プランを見る</div>
+              <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥2,490/月・4プラン比較</div>
+            </div>
+            <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
+          </a>
+
           {/* 購入パネル */}
           <div style={cardStyle}>
             <div style={{ padding:"12px 16px", backgroundColor:"#66c3c6", display:"flex", alignItems:"center", gap:8 }}>
@@ -139,6 +148,8 @@ export default async function Home({
           <a href="/contact" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>お問い合わせ</a>
           <span style={{ color:"#e2e8f0" }}>|</span>
           <a href="/guide" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>このサイトの使い方</a>
+          <span style={{ color:"#e2e8f0" }}>|</span>
+          <a href="/plans" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>料金プラン</a>
         </div>
         <p style={{ fontSize:10, color:"#94a3b8", lineHeight:1.7, margin:0 }}>
           本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br/>
