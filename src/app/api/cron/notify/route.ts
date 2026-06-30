@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { notifyAdmin } from '@/lib/notify-admin';
+import { postToX } from '@/lib/post-to-x';
 
 export const maxDuration = 60;
 
@@ -45,6 +46,32 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: '翌週の通知対象なし', sent: 0 });
   }
 
+  const formatDate = (d: string) => {
+    const dt = new Date(d);
+    const dow = ["日","月","火","水","木","金","土"][dt.getDay()];
+    return `${dt.getMonth()+1}/${dt.getDate()}（${dow}）`;
+  };
+
+  // X（旧Twitter）への自動投稿
+  const xLines: string[] = [];
+  if (listingList?.length) {
+    listingList.forEach(c => xLines.push(`▶ ${formatDate(c.listing_date)} ${c.name} 上場`));
+  }
+  if (bbList?.length) {
+    bbList.forEach(c => xLines.push(`▶ ${formatDate(c.bb_start_date)} ${c.name} BB開始`));
+  }
+  if (applyList?.length) {
+    applyList.forEach(c => xLines.push(`▶ ${formatDate(c.apply_start_date)} ${c.name} 申込開始`));
+  }
+
+  if (xLines.length > 0) {
+    const xText = `📊【今週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はAI分析レポートで👇\nhttps://ipo-jp.vercel.app\n\n#IPO #新規上場 #IPO投資`;
+    const xResult = await postToX(xText);
+    if (!xResult.success) {
+      await notifyAdmin("X自動投稿失敗", `エラー: ${xResult.error}`, "warn");
+    }
+  }
+
   // 通知設定を取得
   const { data: settings } = await supabase
     .from('notification_settings')
@@ -60,13 +87,7 @@ export async function GET(req: NextRequest) {
   const emailMap: Record<string, string> = {};
   users.forEach(u => { if (u.email) emailMap[u.id] = u.email; });
 
-  const formatDate = (d: string) => {
-    const dt = new Date(d);
-    const dow = ["日","月","火","水","木","金","土"][dt.getDay()];
-    return `${dt.getMonth()+1}/${dt.getDate()}（${dow}）`;
-  };
-
-  let sentCount = 0;
+    let sentCount = 0;
 
   for (const setting of settings) {
     const email = emailMap[setting.user_id];
