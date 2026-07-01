@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (xLines.length > 0) {
-    const xText = `📊【今週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はAI分析レポートで👇\nhttps://ipo-jp.vercel.app\n\n#IPO #新規上場 #IPO投資`;
+    const xText = `📊【今週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はプロフィールのリンクから👇\n\n#IPO #新規上場 #IPO投資`;
     const xResult = await postToX(xText);
     if (!xResult.success) {
       await notifyAdmin("X自動投稿失敗", `エラー: ${xResult.error}`, "warn");
