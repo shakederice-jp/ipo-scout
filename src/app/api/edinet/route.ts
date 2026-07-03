@@ -12,26 +12,28 @@ const getSupabase = () => createClient(
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
 async function searchEdinetDoc(companyName: string): Promise<string | null> {
-  try {
-    const today = new Date();
-    const name4 = companyName.slice(0, 3);
-    for (let i = 0; i < 180; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
+  const today = new Date();
+  for (let i = 0; i < 180; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    try {
       const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) continue;
       const json = await res.json();
       const docs = json?.results || [];
-      for (const doc of docs) {
-        if (doc.formCode === "030000" && (doc.filerName?.includes(name4) || doc.filerName?.includes(companyName))) {
-          return doc.docID;
-        }
-      }
+      // 会社名の完全一致を最優先
+      const exact = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName === companyName);
+      if (exact) return exact.docID;
+      // 完全一致がなければ、会社名まるごとの部分一致のみ許可（短い接頭辞は使わない）
+      const partial = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName?.includes(companyName));
+      if (partial) return partial.docID;
+    } catch {
+      continue; // その日の取得に失敗しても、次の日付の検索を続ける
     }
-    return null;
-  } catch { return null; }
+  }
+  return null;
 }
 
 function cleanText(text: string): string {
@@ -228,6 +230,18 @@ export async function POST(req: NextRequest) {
     const sections = await fetchProspectusText(docId);
     const sectionCount = Object.keys(sections).length;
     console.log(`EDINET ${docId}: ${sectionCount}sections`, Object.keys(sections));
+
+    // 🛡 安全チェック：取得した書類本文に、本当に指定企業名が含まれているか検証
+    if (sectionCount > 0 && company_name) {
+      const allText = Object.values(sections).join(" ");
+      const nameCore = company_name.replace(/株式会社|㈱/g, "").trim();
+      if (nameCore && !allText.includes(nameCore)) {
+        return NextResponse.json({
+          error: `取得した書類（docID: ${docId}）の本文に企業名「${company_name}」が見つかりませんでした。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。書類IDを確認のうえ、手動で正しいdocIDを入力してください。`,
+          doc_id: docId,
+        }, { status: 422 });
+      }
+    }
 
     await supabase.from("ipo_companies").update({
       edinet_doc_id: docId,
