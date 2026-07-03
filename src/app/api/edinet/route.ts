@@ -23,14 +23,12 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
       if (!res.ok) continue;
       const json = await res.json();
       const docs = json?.results || [];
-      // 会社名の完全一致を最優先
       const exact = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName === companyName);
       if (exact) return exact.docID;
-      // 完全一致がなければ、会社名まるごとの部分一致のみ許可（短い接頭辞は使わない）
       const partial = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName?.includes(companyName));
       if (partial) return partial.docID;
     } catch {
-      continue; // その日の取得に失敗しても、次の日付の検索を続ける
+      continue;
     }
   }
   return null;
@@ -58,6 +56,14 @@ function extractSection(text: string, keywords: string[], maxLen = 3000, useLast
     }
   }
   return "";
+}
+
+// 表紙の【会社名】タグから、書類の本当の提出者名を取り出す
+function extractCoverCompanyName(text: string): string {
+  const plain = cleanText(text);
+  const idx = plain.indexOf("【会社名】");
+  if (idx === -1) return "";
+  return plain.slice(idx + 6, idx + 60).trim();
 }
 
 async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
@@ -93,8 +99,9 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   }
 }
 
-async function fetchProspectusText(docId: string): Promise<Record<string, string>> {
+async function fetchProspectusText(docId: string): Promise<{ sections: Record<string, string>; coverCompanyName: string }> {
   const sections: Record<string, string> = {};
+  let coverCompanyName = "";
 
   for (const docType of [1, 5]) {
     try {
@@ -115,21 +122,22 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       if (text.length < 100) continue;
       console.log(`type=${docType}: got ${text.length} chars`);
 
-      // ① 主要経営指標
+      if (!coverCompanyName) {
+        coverCompanyName = extractCoverCompanyName(text);
+      }
+
       const s0 = extractSection(text, [
         "主要な経営指標等の推移", "経営指標等の推移", "主要経営指標",
         "経営成績等の状況", "業績の推移"
       ], 4000);
       if (s0) sections["主要経営指標"] = s0;
 
-      // ② 事業の概況
       const s1 = extractSection(text, [
         "事業の概況", "事業概況", "事業の内容",
         "当社の事業", "サービスの概要"
       ], 2500);
       if (s1) sections["事業の概況"] = s1;
 
-      // ③ リスク要因
       const s2 = extractSection(text, [
         "リスク要因", "事業等のリスク", "投資リスク",
         "リスクファクター", "事業上のリスク", "主なリスク",
@@ -137,7 +145,6 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       ], 3500);
       if (s2) sections["リスク要因"] = s2;
 
-     // ④ 株主構成・大株主（「提出会社の状況」章をまるごと取得し、Claudeに株主テーブルを探させる）
     const s4 = extractSection(text, [
       "第４ 【提出会社の状況】",
       "提出会社の状況",
@@ -148,7 +155,6 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
     ], 22000);
     if (s4) sections["株主構成"] = s4;
 
-     // ⑥ 売出し情報・公開株式数（「新規発行株式」「売出株式」の見出し表をまるごと取得）
      const s5 = extractSection(text, [
       "新規発行株式",
       "募集要項",
@@ -159,7 +165,6 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
     ], 18000);
     if (s5) sections["売出し情報"] = s5;
 
-      // ⑦ ロックアップ・売却制限（NEW）
       const s6 = extractSection(text, [
         "募集又は売出しに関する特別記載事項",
         "ロックアップについて",
@@ -169,7 +174,6 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       ], 6000, true);
       if (s6) sections["ロックアップ"] = s6;
 
-      // ⑧ 株式分布・流通比率（NEW）
       const s7 = extractSection(text, [
         "株式の分布状況", "所有者別株式分布",
         "発行済株式総数", "流通株式", "上場時発行済株式数",
@@ -177,21 +181,18 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
       ], 2500);
       if (s7) sections["株式分布"] = s7;
 
-      // ⑨ 資金使途
       const s8 = extractSection(text, [
         "調達資金の使途", "資金の使途", "調達する資金",
         "手取金の使途", "調達資金"
       ], 2000);
       if (s8) sections["資金使途"] = s8;
 
-      // ⑩ 経営陣
       const s9 = extractSection(text, [
         "役員の状況", "取締役", "経営者の概要",
         "役員一覧", "代表取締役"
       ], 2000);
       if (s9) sections["経営陣"] = s9;
 
-      // フォールバック：セクションが少ない場合は均等取得
       if (Object.keys(sections).length < 3) {
         const plain = cleanText(text);
         const total = plain.length;
@@ -209,7 +210,7 @@ async function fetchProspectusText(docId: string): Promise<Record<string, string
     }
   }
 
-  return sections;
+  return { sections, coverCompanyName };
 }
 
 export async function POST(req: NextRequest) {
@@ -227,19 +228,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sections = await fetchProspectusText(docId);
+    const { sections, coverCompanyName } = await fetchProspectusText(docId);
     const sectionCount = Object.keys(sections).length;
-    console.log(`EDINET ${docId}: ${sectionCount}sections`, Object.keys(sections));
+    console.log(`EDINET ${docId}: ${sectionCount}sections, cover="${coverCompanyName}"`, Object.keys(sections));
 
-    // 🛡 安全チェック：取得した書類本文に、本当に指定企業名が含まれているか検証
+    // 🛡 安全チェック：表紙の【会社名】が、指定企業名と一致するか検証
     if (sectionCount > 0 && company_name) {
-      const allText = Object.values(sections).join(" ");
       const nameCore = company_name.replace(/株式会社|㈱/g, "").trim();
-      if (nameCore && !allText.includes(nameCore)) {
-        return NextResponse.json({
-          error: `取得した書類（docID: ${docId}）の本文に企業名「${company_name}」が見つかりませんでした。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。書類IDを確認のうえ、手動で正しいdocIDを入力してください。`,
-          doc_id: docId,
-        }, { status: 422 });
+      if (coverCompanyName) {
+        // 表紙情報が取れた場合は、これを最優先で照合
+        if (nameCore && !coverCompanyName.includes(nameCore)) {
+          return NextResponse.json({
+            error: `取得した書類（docID: ${docId}）の表紙に記載された会社名「${coverCompanyName}」が、指定企業「${company_name}」と一致しません。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。`,
+            doc_id: docId,
+          }, { status: 422 });
+        }
+      } else {
+        // 表紙情報が取れなかった場合のみ、本文全体からの照合にフォールバック
+        const allText = Object.values(sections).join(" ");
+        if (nameCore && !allText.includes(nameCore)) {
+          return NextResponse.json({
+            error: `取得した書類（docID: ${docId}）の本文に企業名「${company_name}」が見つかりませんでした。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。書類IDを確認のうえ、手動で正しいdocIDを入力してください。`,
+            doc_id: docId,
+          }, { status: 422 });
+        }
       }
     }
 
