@@ -150,7 +150,7 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
   const W=600,H=300,padL=58,padR=150,padT=24,padB=40;
   const chartW=W-padL-padR,chartH=H-padT-padB;
   const x0=padL,x1=padL+chartW;
-  const xMid=x0+chartW*0.25; // 上場直後(全体の25%地点)
+  const xMid=x0+chartW*0.06; // 上場直後(約5営業日≒全体の6%地点)
   const yFor=(v:number)=>padT+chartH-((v-minV)/range)*chartH;
   const y100=yFor(100);
 
