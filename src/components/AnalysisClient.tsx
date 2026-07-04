@@ -138,16 +138,6 @@ function parseScenarioRange(vsIpo:string):[number,number] {
   return[90,110];
 }
 
-function parseScenarioRange(vsIpo:string):[number,number] {
-  const pm=vsIpo.match(/±\s*(\d+(\.\d+)?)\s*%/);
-  if(pm){const d=parseFloat(pm[1]);return[100-d,100+d];}
-  const bai=vsIpo.match(/(\d+(\.\d+)?)\s*倍/);
-  if(bai){const c=parseFloat(bai[1])*100;return[c-10,c+10];}
-  const pct=vsIpo.match(/([+-]?\d+(\.\d+)?)\s*%/);
-  if(pct){const c=100+parseFloat(pct[1]);return[c-10,c+10];}
-  return[90,110];
-}
-
 function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario[];periodLabel?:string;isLong?:boolean}) {
   if(!scenarios||scenarios.length===0) return null;
   const colorFor=(v:string)=>v==="強気"?"#22c55e":v==="弱気"?"#f87171":"#f59e0b";
