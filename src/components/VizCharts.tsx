@@ -1,5 +1,5 @@
 "use client";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine, Cell as RCell } from "recharts";
 
 const C = { teal: "#66c3c6", nav: "#0d4f52", bg: "#f0fafa" };
 
@@ -303,8 +303,8 @@ export default function VizCharts({ vizData }: { vizData: any }) {
         </div>
       )}
 
-      {/* ⑤ 直近の同業種IPO 初値パフォーマンス */}
-      {recentIpoVisible && (
+     {/* ⑤ 直近の同業種IPO 初値パフォーマンス */}
+     {recentIpoVisible && (
         <div style={{ backgroundColor: "white", borderRadius: 12, padding: "20px", border: "1px solid #d0f0f0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>🚀</span>
@@ -314,37 +314,43 @@ export default function VizCharts({ vizData }: { vizData: any }) {
             <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 4 }}>📄 {recent_ipo_chart.citation}</p>
           )}
           <p style={{ fontSize: 10, color: "#94a3b8", marginBottom: 12 }}>
-            棒の起点(中央線)が各社の公募価格。右に伸びるほど公募価格を上回った初値、左に伸びるほど下回った初値を示します。
+            棒の起点(0%)が各社の公募価格。上に伸びるほど初値上昇、下に伸びるほど公募割れを示します。
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, paddingLeft: 118 }}>
-            <div style={{ flex: 1, position: "relative", fontSize: 9, color: "#94a3b8" }}>
-              <span style={{ position: "absolute", left: 0 }}>← 公募割れ</span>
-              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>公募価格 0%</span>
-              <span style={{ position: "absolute", right: 0 }}>初値上昇 →</span>
-            </div>
-            <span style={{ width: 48 }} />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-            {recentIpoData.filter((d: any) => typeof d.performance === "number").map((d: any, i: number) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, color: "#082b2e", width: 110, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
-                <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: C.bg, position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: "#cbd5e1", left: "50%" }} />
-                  <div style={{
-                    position: "absolute", top: 0, height: "100%", borderRadius: 4,
-                    ...(d.performance >= 0 ? { left: "50%" } : { right: "50%" }),
-                    width: `${Math.min(50, (Math.abs(d.performance) / maxAbsPerf) * 50)}%`,
-                    backgroundColor: d.performance >= 0 ? "#22c55e" : "#f87171",
-                  }} />
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: d.performance >= 0 ? "#15803d" : "#b91c1c", width: 48, textAlign: "right" }}>
-                  {d.performance >= 0 ? "+" : ""}{d.performance}%
-                </span>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              data={recentIpoData.filter((d: any) => typeof d.performance === "number")}
+              margin={{ top: 16, right: 16, left: 8, bottom: 48 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0f0f0" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: "#082b2e" }}
+                angle={-35}
+                textAnchor="end"
+                interval={0}
+                height={60}
+              />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                tickFormatter={(v) => `${v > 0 ? "+" : ""}${v}%`}
+                domain={[
+                  Math.min(-10, ...recentIpoData.map((d: any) => d.performance ?? 0)) - 10,
+                  Math.max(10, ...recentIpoData.map((d: any) => d.performance ?? 0)) + 10,
+                ]}
+              />
+              <Tooltip formatter={(value: any) => [`${value > 0 ? "+" : ""}${value}%`, "初値騰落率"]} />
+              <ReferenceLine y={0} stroke="#475569" strokeWidth={1.5} label={{ value: "公募価格", position: "insideTopLeft", fontSize: 9, fill: "#475569" }} />
+              <Bar dataKey="performance" radius={[4, 4, 0, 0]}>
+                {recentIpoData
+                  .filter((d: any) => typeof d.performance === "number")
+                  .map((d: any, i: number) => (
+                    <Cell key={i} fill={d.performance >= 0 ? "#22c55e" : "#f87171"} />
+                  ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      )}
+      )} 
 
     </div>
   );
