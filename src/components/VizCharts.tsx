@@ -311,9 +311,20 @@ export default function VizCharts({ vizData }: { vizData: any }) {
             <h3 style={{ fontSize: 14, fontWeight: 900, color: C.nav, margin: 0 }}>{recent_ipo_chart.title ?? "直近の同業種IPO 初値パフォーマンス"}</h3>
           </div>
           {recent_ipo_chart.citation && (
-            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {recent_ipo_chart.citation}</p>
+            <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 4 }}>📄 {recent_ipo_chart.citation}</p>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <p style={{ fontSize: 10, color: "#94a3b8", marginBottom: 12 }}>
+            棒の起点(中央線)が各社の公募価格。右に伸びるほど公募価格を上回った初値、左に伸びるほど下回った初値を示します。
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, paddingLeft: 118 }}>
+            <div style={{ flex: 1, position: "relative", fontSize: 9, color: "#94a3b8" }}>
+              <span style={{ position: "absolute", left: 0 }}>← 公募割れ</span>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>公募価格 0%</span>
+              <span style={{ position: "absolute", right: 0 }}>初値上昇 →</span>
+            </div>
+            <span style={{ width: 48 }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
             {recentIpoData.filter((d: any) => typeof d.performance === "number").map((d: any, i: number) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 11, color: "#082b2e", width: 110, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>

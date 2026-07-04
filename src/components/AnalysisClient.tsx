@@ -128,44 +128,53 @@ function avg(nums:number[]):number {
   return nums.reduce((a,b)=>a+b,0)/nums.length;
 }
 
-function parseReturnPercent(vsIpo:string):number {
+function parseScenarioRange(vsIpo:string):[number,number] {
+  const pm=vsIpo.match(/±\s*(\d+(\.\d+)?)\s*%/);
+  if(pm){const d=parseFloat(pm[1]);return[100-d,100+d];}
   const bai=vsIpo.match(/(\d+(\.\d+)?)\s*倍/);
-  if(bai) return (parseFloat(bai[1])-1)*100;
-  const pm=vsIpo.match(/±/);
-  if(pm) return 0;
+  if(bai){const c=parseFloat(bai[1])*100;return[c-10,c+10];}
   const pct=vsIpo.match(/([+-]?\d+(\.\d+)?)\s*%/);
-  if(pct) return parseFloat(pct[1]);
-  return 0;
+  if(pct){const c=100+parseFloat(pct[1]);return[c-10,c+10];}
+  return[90,110];
 }
 
-function ScenarioCompareChart({scenarios}:{scenarios:Scenario[]}) {
+function ScenarioCompareChart({scenarios,periodLabel}:{scenarios:Scenario[];periodLabel?:string}) {
   if(!scenarios||scenarios.length===0) return null;
-  const colorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
-  const rows=scenarios.map(s=>({...s,retPct:parseReturnPercent(s.vsIpo)}));
-  const vals=rows.map(r=>r.retPct);
-  const min=Math.min(0,...vals)-15;
-  const max=Math.max(0,...vals)+15;
-  const range=max-min||1;
-  const posPct=(v:number)=>((v-min)/range)*100;
-
+  const colorFor=(v:string)=>v==="強気"?"#22c55e":v==="弱気"?"#f87171":"#f59e0b";
+  const textColorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
+  const rows=scenarios.map(s=>{const[lo,hi]=parseScenarioRange(s.vsIpo);return{...s,lo,hi};});
+  const allVals=rows.flatMap(r=>[r.lo,r.hi,100]);
+  const minV=Math.min(...allVals)-8,maxV=Math.max(...allVals)+8,range=(maxV-minV)||1;
+  const W=600,H=240,padL=46,padR=140,padT=20,padB=30;
+  const chartW=W-padL-padR,chartH=H-padT-padB,x0=padL,x1=padL+chartW;
+  const yFor=(v:number)=>padT+chartH-((v-minV)/range)*chartH;
+  const y100=yFor(100);
   return (
-    <div style={{padding:"28px 8px 56px",position:"relative",marginBottom:14}}>
-      <div style={{position:"relative",height:4,backgroundColor:"#e2e8f0",borderRadius:2,margin:"0 40px"}}>
-        <div style={{position:"absolute",left:`${posPct(0)}%`,top:-6,bottom:-6,width:1,backgroundColor:"#94a3b8"}}/>
-        <div style={{position:"absolute",left:`${posPct(0)}%`,top:10,transform:"translateX(-50%)",fontSize:9,color:"#94a3b8",whiteSpace:"nowrap"}}>公募価格</div>
-        {rows.map((r,i)=>(
-          <div key={r.id} style={{position:"absolute",left:`${posPct(r.retPct)}%`,top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}>
-            <div style={{width:16,height:16,borderRadius:"50%",backgroundColor:colorFor(r.verdict),border:"3px solid white",boxShadow:"0 1px 4px rgba(0,0,0,0.25)"}}/>
-          </div>
+    <div style={{width:"100%",overflowX:"auto",marginBottom:14}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,minWidth:480}}>
+        <line x1={x0} y1={y100} x2={x1} y2={y100} stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1}/>
+        <text x={x0-6} y={y100+3} textAnchor="end" fontSize={9} fill="#64748b">公募価格</text>
+        <circle cx={x0} cy={y100} r={4} fill="#0d4f52"/>
+        {rows.map(r=>(
+          <polygon key={r.id} points={`${x0},${y100} ${x1},${yFor(r.hi)} ${x1},${yFor(r.lo)}`}
+            fill={colorFor(r.verdict)} fillOpacity={0.18} stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.7}/>
         ))}
-      </div>
-      {rows.map((r,i)=>(
-        <div key={r.id} style={{position:"absolute",left:`calc(40px + ${posPct(r.retPct)}% * (100% - 80px) / 100%)`,top:36,transform:"translateX(-50%)",textAlign:"center",width:100}}>
-          <div style={{fontSize:10,fontWeight:900,color:colorFor(r.verdict)}}>{r.verdict}</div>
-          <div style={{fontSize:12,fontWeight:900,color:"#1e293b",marginTop:2}}>{r.vsIpo}</div>
-          <div style={{fontSize:9,color:"#94a3b8",marginTop:2}}>確率 {r.prob}</div>
-        </div>
-      ))}
+        <text x={x1} y={H-8} textAnchor="end" fontSize={9} fill="#64748b">{periodLabel||"期間終了時点"}</text>
+        <text x={x0} y={H-8} textAnchor="start" fontSize={9} fill="#64748b">上場日</text>
+        {rows.map(r=>{
+          const midY=(yFor(r.lo)+yFor(r.hi))/2;
+          return (
+            <g key={r.id}>
+              <line x1={x1} y1={yFor(r.hi)} x2={x1+6} y2={yFor(r.hi)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
+              <line x1={x1} y1={yFor(r.lo)} x2={x1+6} y2={yFor(r.lo)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
+              <text x={x1+10} y={midY-6} fontSize={10} fontWeight={900} fill={textColorFor(r.verdict)}>{r.verdict}</text>
+              <text x={x1+10} y={midY+7} fontSize={9} fill="#475569">{Math.round(r.lo)}%〜{Math.round(r.hi)}%</text>
+              <text x={x1+10} y={midY+18} fontSize={8} fill="#94a3b8">確率{r.prob}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <p style={{fontSize:9,color:"#cbd5e1",marginTop:2}}>※ 表示中の幅は目安レンジです（AI試算の中心値に対し前後10%を仮定）</p>
     </div>
   );
 }
@@ -619,7 +628,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </button>
             ))}
           </div>
-          <ScenarioCompareChart scenarios={scenTab==="short"?scenarios_short:scenarios_long}/>
+          <ScenarioCompareChart scenarios={scenTab==="short"?scenarios_short:scenarios_long} periodLabel={scenTab==="short"?"6ヶ月後":"5〜10年後"}/>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {scenTab==="short"?(
   scenarios_short.length>0
