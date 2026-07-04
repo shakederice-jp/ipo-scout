@@ -144,32 +144,69 @@ function ScenarioCompareChart({scenarios,periodLabel}:{scenarios:Scenario[];peri
   const textColorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
   const rows=scenarios.map(s=>{const[lo,hi]=parseScenarioRange(s.vsIpo);return{...s,lo,hi};});
   const allVals=rows.flatMap(r=>[r.lo,r.hi,100]);
-  const minV=Math.min(...allVals)-8,maxV=Math.max(...allVals)+8,range=(maxV-minV)||1;
-  const W=600,H=240,padL=46,padR=140,padT=20,padB=30;
-  const chartW=W-padL-padR,chartH=H-padT-padB,x0=padL,x1=padL+chartW;
+  const minV=Math.floor((Math.min(...allVals)-15)/10)*10;
+  const maxV=Math.ceil((Math.max(...allVals)+15)/10)*10;
+  const range=(maxV-minV)||1;
+  const W=600,H=300,padL=58,padR=150,padT=24,padB=40;
+  const chartW=W-padL-padR,chartH=H-padT-padB;
+  const x0=padL,x1=padL+chartW;
   const yFor=(v:number)=>padT+chartH-((v-minV)/range)*chartH;
   const y100=yFor(100);
+  // 目盛り生成(10%刻み、倍率表示)
+  const ticks:number[]=[];
+  for(let v=minV;v<=maxV;v+=10) ticks.push(v);
+
   return (
     <div style={{width:"100%",overflowX:"auto",marginBottom:14}}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,minWidth:480}}>
-        <line x1={x0} y1={y100} x2={x1} y2={y100} stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1}/>
-        <text x={x0-6} y={y100+3} textAnchor="end" fontSize={9} fill="#64748b">公募価格</text>
-        <circle cx={x0} cy={y100} r={4} fill="#0d4f52"/>
-        {rows.map(r=>(
-          <polygon key={r.id} points={`${x0},${y100} ${x1},${yFor(r.hi)} ${x1},${yFor(r.lo)}`}
-            fill={colorFor(r.verdict)} fillOpacity={0.18} stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.7}/>
+        {/* グリッド線 */}
+        {ticks.map(v=>(
+          <g key={v}>
+            <line x1={x0} y1={yFor(v)} x2={x1} y2={yFor(v)}
+              stroke={v===100?"#475569":"#e2e8f0"}
+              strokeWidth={v===100?1.5:0.8}
+              strokeDasharray={v===100?"5 3":"none"}/>
+            <text x={x0-6} y={yFor(v)+4} textAnchor="end" fontSize={8} fill={v===100?"#475569":"#94a3b8"}>
+              {(v/100).toFixed(1)}倍
+            </text>
+          </g>
         ))}
-        <text x={x1} y={H-8} textAnchor="end" fontSize={9} fill="#64748b">{periodLabel||"期間終了時点"}</text>
-        <text x={x0} y={H-8} textAnchor="start" fontSize={9} fill="#64748b">上場日</text>
+        {/* 縦軸 */}
+        <line x1={x0} y1={padT} x2={x0} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
+        {/* 横軸 */}
+        <line x1={x0} y1={padT+chartH} x2={x1} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
+        {/* 公募価格の起点マーカー */}
+        <circle cx={x0} cy={y100} r={5} fill="#0d4f52" stroke="white" strokeWidth={2}/>
+        <text x={x0+8} y={y100-6} fontSize={9} fontWeight={900} fill="#0d4f52">公募価格</text>
+        {/* シナリオ帯(弱気→中立→強気の順に描画し、強気が前面に) */}
+        {[...rows].reverse().map(r=>(
+          <polygon key={r.id}
+            points={`${x0},${y100} ${x1},${yFor(r.hi)} ${x1},${yFor(r.lo)}`}
+            fill={colorFor(r.verdict)} fillOpacity={0.15}
+            stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.8}/>
+        ))}
+        {/* 各シナリオの中心線(破線) */}
+        {rows.map(r=>(
+          <line key={r.id+"-mid"}
+            x1={x0} y1={y100}
+            x2={x1} y2={yFor((r.lo+r.hi)/2)}
+            stroke={colorFor(r.verdict)} strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.6}/>
+        ))}
+        {/* 横軸ラベル */}
+        <text x={x0} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">上場日</text>
+        <text x={x1} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">{periodLabel||"期間終了"}</text>
+        {/* 右側のシナリオラベル */}
         {rows.map(r=>{
           const midY=(yFor(r.lo)+yFor(r.hi))/2;
           return (
-            <g key={r.id}>
+            <g key={r.id+"-label"}>
               <line x1={x1} y1={yFor(r.hi)} x2={x1+6} y2={yFor(r.hi)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
               <line x1={x1} y1={yFor(r.lo)} x2={x1+6} y2={yFor(r.lo)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
-              <text x={x1+10} y={midY-6} fontSize={10} fontWeight={900} fill={textColorFor(r.verdict)}>{r.verdict}</text>
-              <text x={x1+10} y={midY+7} fontSize={9} fill="#475569">{Math.round(r.lo)}%〜{Math.round(r.hi)}%</text>
-              <text x={x1+10} y={midY+18} fontSize={8} fill="#94a3b8">確率{r.prob}</text>
+              <text x={x1+10} y={midY-7} fontSize={10} fontWeight={900} fill={textColorFor(r.verdict)}>{r.verdict}</text>
+              <text x={x1+10} y={midY+5} fontSize={9} fill="#475569">
+                {(r.lo/100).toFixed(2)}〜{(r.hi/100).toFixed(2)}倍
+              </text>
+              <text x={x1+10} y={midY+17} fontSize={8} fill="#94a3b8">確率{r.prob}</text>
             </g>
           );
         })}
