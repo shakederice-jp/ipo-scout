@@ -138,70 +138,115 @@ function parseScenarioRange(vsIpo:string):[number,number] {
   return[90,110];
 }
 
-function ScenarioCompareChart({scenarios,periodLabel}:{scenarios:Scenario[];periodLabel?:string}) {
+function parseScenarioRange(vsIpo:string):[number,number] {
+  const pm=vsIpo.match(/±\s*(\d+(\.\d+)?)\s*%/);
+  if(pm){const d=parseFloat(pm[1]);return[100-d,100+d];}
+  const bai=vsIpo.match(/(\d+(\.\d+)?)\s*倍/);
+  if(bai){const c=parseFloat(bai[1])*100;return[c-10,c+10];}
+  const pct=vsIpo.match(/([+-]?\d+(\.\d+)?)\s*%/);
+  if(pct){const c=100+parseFloat(pct[1]);return[c-10,c+10];}
+  return[90,110];
+}
+
+function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario[];periodLabel?:string;isLong?:boolean}) {
   if(!scenarios||scenarios.length===0) return null;
   const colorFor=(v:string)=>v==="強気"?"#22c55e":v==="弱気"?"#f87171":"#f59e0b";
   const textColorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
   const rows=scenarios.map(s=>{const[lo,hi]=parseScenarioRange(s.vsIpo);return{...s,lo,hi};});
   const allVals=rows.flatMap(r=>[r.lo,r.hi,100]);
-  const minV=Math.floor((Math.min(...allVals)-15)/10)*10;
-  const maxV=Math.ceil((Math.max(...allVals)+15)/10)*10;
+  const minV=Math.floor((Math.min(...allVals)-20)/10)*10;
+  const maxV=Math.ceil((Math.max(...allVals)+20)/10)*10;
   const range=(maxV-minV)||1;
   const W=600,H=300,padL=58,padR=150,padT=24,padB=40;
   const chartW=W-padL-padR,chartH=H-padT-padB;
   const x0=padL,x1=padL+chartW;
+  const xMid=x0+chartW*0.25; // 上場直後(全体の25%地点)
   const yFor=(v:number)=>padT+chartH-((v-minV)/range)*chartH;
   const y100=yFor(100);
-  // 目盛り生成(10%刻み、倍率表示)
+
+  // 目盛り刻み幅をデータ範囲に応じて自動決定
+  const rawRange=maxV-minV;
+  const tickStep=rawRange>300?100:rawRange>150?50:rawRange>60?20:10;
   const ticks:number[]=[];
-  for(let v=minV;v<=maxV;v+=10) ticks.push(v);
+  for(let v=Math.ceil(minV/tickStep)*tickStep;v<=maxV;v+=tickStep) ticks.push(v);
+
+  // 各シナリオの制御点を計算
+  // xMid地点: 公募価格から一気に動く(上場直後の急騰・急落を表現)
+  // 帯の幅: xMid地点で広く、x1地点で短期は狭く・長期は広く
+  const getPoints=(lo:number,hi:number,verdict:string)=>{
+    const mid=(lo+hi)/2;
+    // 上場直後の急激な動き(xMid地点)
+    const earlySpread=isLong?25:30; // 上場直後の不確実性(帯の広さ)
+    const earlyMidOffset=verdict==="強気"?15:verdict==="弱気"?-15:0;
+    const earlyMid=100+earlyMidOffset;
+    const earlyHi=earlyMid+earlySpread;
+    const earlyLo=earlyMid-earlySpread;
+    // 期間終了時点
+    const lateSpread=isLong?(hi-lo)*1.3:(hi-lo)*0.7; // 長期は不確実性拡大、短期は収束
+    const lateHi=mid+lateSpread/2;
+    const lateLo=mid-lateSpread/2;
+    return {earlyHi,earlyLo,lateHi,lateLo};
+  };
 
   return (
     <div style={{width:"100%",overflowX:"auto",marginBottom:14}}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,minWidth:480}}>
-        {/* グリッド線 */}
+        {/* グリッド線と目盛り */}
         {ticks.map(v=>(
           <g key={v}>
             <line x1={x0} y1={yFor(v)} x2={x1} y2={yFor(v)}
               stroke={v===100?"#475569":"#e2e8f0"}
               strokeWidth={v===100?1.5:0.8}
               strokeDasharray={v===100?"5 3":"none"}/>
-            <text x={x0-6} y={yFor(v)+4} textAnchor="end" fontSize={8} fill={v===100?"#475569":"#94a3b8"}>
-              {(v/100).toFixed(1)}倍
+            <text x={x0-6} y={yFor(v)+4} textAnchor="end" fontSize={8}
+              fill={v===100?"#475569":"#94a3b8"}>
+              {(v/100).toFixed(v%100===0&&rawRange>60?1:2)}倍
             </text>
           </g>
         ))}
-        {/* 縦軸 */}
+        {/* 縦軸・横軸 */}
         <line x1={x0} y1={padT} x2={x0} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
-        {/* 横軸 */}
         <line x1={x0} y1={padT+chartH} x2={x1} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
-        {/* 公募価格の起点マーカー */}
+        {/* 上場直後フェーズの区切り線 */}
+        <line x1={xMid} y1={padT} x2={xMid} y2={padT+chartH}
+          stroke="#cbd5e1" strokeWidth={0.8} strokeDasharray="3 3"/>
+        <text x={xMid} y={padT-6} textAnchor="middle" fontSize={8} fill="#94a3b8">上場直後</text>
+        {/* シナリオ帯(2段階の折れ線帯) */}
+        {[...rows].reverse().map(r=>{
+          const{earlyHi,earlyLo,lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
+          return (
+            <polygon key={r.id}
+              points={`${x0},${y100} ${xMid},${yFor(earlyHi)} ${x1},${yFor(lateHi)} ${x1},${yFor(lateLo)} ${xMid},${yFor(earlyLo)}`}
+              fill={colorFor(r.verdict)} fillOpacity={0.15}
+              stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.8}/>
+          );
+        })}
+        {/* 各シナリオの中心線 */}
+        {rows.map(r=>{
+          const{earlyHi,earlyLo,lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
+          const earlyMid=(earlyHi+earlyLo)/2;
+          const lateMid=(lateHi+lateLo)/2;
+          return (
+            <polyline key={r.id+"-mid"}
+              points={`${x0},${y100} ${xMid},${yFor(earlyMid)} ${x1},${yFor(lateMid)}`}
+              fill="none" stroke={colorFor(r.verdict)}
+              strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.7}/>
+          );
+        })}
+        {/* 起点マーカー */}
         <circle cx={x0} cy={y100} r={5} fill="#0d4f52" stroke="white" strokeWidth={2}/>
-        <text x={x0+8} y={y100-6} fontSize={9} fontWeight={900} fill="#0d4f52">公募価格</text>
-        {/* シナリオ帯(弱気→中立→強気の順に描画し、強気が前面に) */}
-        {[...rows].reverse().map(r=>(
-          <polygon key={r.id}
-            points={`${x0},${y100} ${x1},${yFor(r.hi)} ${x1},${yFor(r.lo)}`}
-            fill={colorFor(r.verdict)} fillOpacity={0.15}
-            stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.8}/>
-        ))}
-        {/* 各シナリオの中心線(破線) */}
-        {rows.map(r=>(
-          <line key={r.id+"-mid"}
-            x1={x0} y1={y100}
-            x2={x1} y2={yFor((r.lo+r.hi)/2)}
-            stroke={colorFor(r.verdict)} strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.6}/>
-        ))}
+        <text x={x0+8} y={y100-7} fontSize={9} fontWeight={900} fill="#0d4f52">公募価格</text>
         {/* 横軸ラベル */}
         <text x={x0} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">上場日</text>
         <text x={x1} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">{periodLabel||"期間終了"}</text>
-        {/* 右側のシナリオラベル */}
+        {/* 右側ラベル */}
         {rows.map(r=>{
-          const midY=(yFor(r.lo)+yFor(r.hi))/2;
+          const{lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
+          const midY=(yFor(lateLo)+yFor(lateHi))/2;
           return (
             <g key={r.id+"-label"}>
-              <line x1={x1} y1={yFor(r.hi)} x2={x1+6} y2={yFor(r.hi)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
-              <line x1={x1} y1={yFor(r.lo)} x2={x1+6} y2={yFor(r.lo)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
+              <line x1={x1} y1={yFor(lateHi)} x2={x1+6} y2={yFor(lateHi)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
+              <line x1={x1} y1={yFor(lateLo)} x2={x1+6} y2={yFor(lateLo)} stroke={colorFor(r.verdict)} strokeWidth={1.5}/>
               <text x={x1+10} y={midY-7} fontSize={10} fontWeight={900} fill={textColorFor(r.verdict)}>{r.verdict}</text>
               <text x={x1+10} y={midY+5} fontSize={9} fill="#475569">
                 {(r.lo/100).toFixed(2)}〜{(r.hi/100).toFixed(2)}倍
@@ -211,7 +256,9 @@ function ScenarioCompareChart({scenarios,periodLabel}:{scenarios:Scenario[];peri
           );
         })}
       </svg>
-      <p style={{fontSize:9,color:"#cbd5e1",marginTop:2}}>※ 表示中の幅は目安レンジです（AI試算の中心値に対し前後10%を仮定）</p>
+      <p style={{fontSize:9,color:"#cbd5e1",marginTop:2}}>
+        ※ 上場直後の急激な価格変動を考慮した目安レンジです（AI試算の中心値に対し前後10%を仮定）
+      </p>
     </div>
   );
 }
@@ -665,7 +712,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </button>
             ))}
           </div>
-          <ScenarioCompareChart scenarios={scenTab==="short"?scenarios_short:scenarios_long} periodLabel={scenTab==="short"?"6ヶ月後":"5〜10年後"}/>
+          <ScenarioCompareChart scenarios={scenTab==="short"?scenarios_short:scenarios_long} periodLabel={scenTab==="short"?"6ヶ月後":"5〜10年後"} isLong={scenTab==="long"}/>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {scenTab==="short"?(
   scenarios_short.length>0
