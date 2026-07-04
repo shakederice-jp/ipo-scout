@@ -128,43 +128,42 @@ function avg(nums:number[]):number {
   return nums.reduce((a,b)=>a+b,0)/nums.length;
 }
 
+function parseReturnPercent(vsIpo:string):number {
+  const bai=vsIpo.match(/(\d+(\.\d+)?)\s*倍/);
+  if(bai) return (parseFloat(bai[1])-1)*100;
+  const pm=vsIpo.match(/±/);
+  if(pm) return 0;
+  const pct=vsIpo.match(/([+-]?\d+(\.\d+)?)\s*%/);
+  if(pct) return parseFloat(pct[1]);
+  return 0;
+}
+
 function ScenarioCompareChart({scenarios}:{scenarios:Scenario[]}) {
   if(!scenarios||scenarios.length===0) return null;
-  const rows=scenarios.map(s=>{
-    const probVal=Math.max(0,Math.min(100,avg(parseNumbers(s.prob))));
-    const retVal=avg(parseNumbers(s.vsIpo));
-    return {...s,probVal,retVal};
-  });
-  const maxAbsRet=Math.max(10,...rows.map(r=>Math.abs(r.retVal)));
   const colorFor=(v:string)=>v==="強気"?"#15803d":v==="弱気"?"#b91c1c":"#92400e";
-  const bgFor=(v:string)=>v==="強気"?"#f0fdf4":v==="弱気"?"#fef2f2":"#fffbeb";
-  const borderFor=(v:string)=>v==="強気"?"#bbf7d0":v==="弱気"?"#fecaca":"#fde68a";
+  const rows=scenarios.map(s=>({...s,retPct:parseReturnPercent(s.vsIpo)}));
+  const vals=rows.map(r=>r.retPct);
+  const min=Math.min(0,...vals)-15;
+  const max=Math.max(0,...vals)+15;
+  const range=max-min||1;
+  const posPct=(v:number)=>((v-min)/range)*100;
+
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
-      {rows.map(r=>(
-        <div key={r.id} style={{backgroundColor:bgFor(r.verdict),border:`1px solid ${borderFor(r.verdict)}`,borderRadius:10,padding:"8px 10px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-            <span style={{fontWeight:900,fontSize:10,padding:"1px 8px",borderRadius:20,backgroundColor:"white",color:colorFor(r.verdict),border:`1px solid ${borderFor(r.verdict)}`}}>{r.verdict}</span>
-            <span style={{fontWeight:900,fontSize:11,color:DARK}}>{r.name||r.verdict}</span>
+    <div style={{padding:"28px 8px 56px",position:"relative",marginBottom:14}}>
+      <div style={{position:"relative",height:4,backgroundColor:"#e2e8f0",borderRadius:2,margin:"0 40px"}}>
+        <div style={{position:"absolute",left:`${posPct(0)}%`,top:-6,bottom:-6,width:1,backgroundColor:"#94a3b8"}}/>
+        <div style={{position:"absolute",left:`${posPct(0)}%`,top:10,transform:"translateX(-50%)",fontSize:9,color:"#94a3b8",whiteSpace:"nowrap"}}>公募価格</div>
+        {rows.map((r,i)=>(
+          <div key={r.id} style={{position:"absolute",left:`${posPct(r.retPct)}%`,top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}>
+            <div style={{width:16,height:16,borderRadius:"50%",backgroundColor:colorFor(r.verdict),border:"3px solid white",boxShadow:"0 1px 4px rgba(0,0,0,0.25)"}}/>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-            <span style={{fontSize:9,color:"#94a3b8",width:60,flexShrink:0}}>確率</span>
-            <div style={{flex:1,height:6,borderRadius:3,backgroundColor:"#ffffff",overflow:"hidden"}}>
-              <div style={{height:"100%",borderRadius:3,width:`${r.probVal}%`,backgroundColor:PRIMARY}}/>
-            </div>
-            <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:44,textAlign:"right"}}>{r.prob}</span>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <span style={{fontSize:9,color:"#94a3b8",width:60,flexShrink:0}}>期待リターン</span>
-            <div style={{flex:1,height:6,borderRadius:3,backgroundColor:"#ffffff",position:"relative",overflow:"hidden"}}>
-              <div style={{position:"absolute",top:0,bottom:0,width:1,backgroundColor:"#cbd5e1",left:"50%"}}/>
-              <div style={{position:"absolute",top:0,height:"100%",borderRadius:3,
-                ...(r.retVal>=0?{left:"50%"}:{right:"50%"}),
-                width:`${Math.min(50,(Math.abs(r.retVal)/maxAbsRet)*50)}%`,
-                backgroundColor:r.retVal>=0?"#22c55e":"#f87171"}}/>
-            </div>
-            <span style={{fontSize:10,fontWeight:900,color:"#1e293b",width:44,textAlign:"right"}}>{r.vsIpo}</span>
-          </div>
+        ))}
+      </div>
+      {rows.map((r,i)=>(
+        <div key={r.id} style={{position:"absolute",left:`calc(40px + ${posPct(r.retPct)}% * (100% - 80px) / 100%)`,top:36,transform:"translateX(-50%)",textAlign:"center",width:100}}>
+          <div style={{fontSize:10,fontWeight:900,color:colorFor(r.verdict)}}>{r.verdict}</div>
+          <div style={{fontSize:12,fontWeight:900,color:"#1e293b",marginTop:2}}>{r.vsIpo}</div>
+          <div style={{fontSize:9,color:"#94a3b8",marginTop:2}}>確率 {r.prob}</div>
         </div>
       ))}
     </div>

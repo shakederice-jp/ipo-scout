@@ -254,10 +254,37 @@ export default function VizCharts({ vizData }: { vizData: any }) {
           {share_structure_chart.citation && (
             <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {share_structure_chart.citation}</p>
           )}
-          <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", marginBottom: 12 }}>
-            {structureData.map((d: any, i: number) => (
-              <div key={i} style={{ width: `${d.ratio ?? 0}%`, backgroundColor: COLORS[i % COLORS.length] }} title={d.label} />
-            ))}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", marginBottom: 12 }}>
+            <ResponsiveContainer width={180} height={180}>
+              <PieChart>
+                <Pie
+                  data={structureData}
+                  dataKey="ratio"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={80}
+                  labelLine={false}
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>
+                        {`${value}%`}
+                      </text>
+                    );
+                  }}
+                >
+                  {structureData.map((_: any, i: number) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: any) => [`${v}%`]} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {structureData.map((d: any, i: number) => (
