@@ -4,6 +4,7 @@ import CalendarClient from "@/components/CalendarClient";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Zap, Crown, AlertCircle, User } from "lucide-react";
+import NewsSection from "@/components/NewsSection";
 
 export const metadata: Metadata = {
   title: "IPO企業情報AI分析レポート｜大手町調査室九課",
@@ -136,6 +137,11 @@ export default async function Home({
 
           <RefferalSection userId={userId ?? "test"} />
         </aside>
+      </div>
+
+{/* ニュースセクション */}
+<div style={{ maxWidth:1200, margin:"0 auto", padding:"0 16px 40px" }}>
+        <NewsSection />
       </div>
 
       {/* フッター */}
