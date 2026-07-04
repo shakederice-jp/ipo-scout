@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [ipoPriceInput, setIpoPriceInput] = useState("");
   const [ipoPriceLoading, setIpoPriceLoading] = useState(false);
   const [ipoPriceResult, setIpoPriceResult] = useState<string | null>(null);
+  const [allAxesLoading, setAllAxesLoading] = useState(false);
   const [edinetSearchLoading, setEdinetSearchLoading] = useState(false);
   const [edinetSearchResult, setEdinetSearchResult] = useState<string | null>(null);
 
