@@ -31,7 +31,8 @@ export default function AdminPage() {
   const [ipoPriceInput, setIpoPriceInput] = useState("");
   const [ipoPriceLoading, setIpoPriceLoading] = useState(false);
   const [ipoPriceResult, setIpoPriceResult] = useState<string | null>(null);
-  const [allAxesLoading, setAllAxesLoading] = useState(false);
+  const [edinetSearchLoading, setEdinetSearchLoading] = useState(false);
+  const [edinetSearchResult, setEdinetSearchResult] = useState<string | null>(null);
 
   // グループC
   const [compLoading, setCompLoading] = useState(false);
@@ -478,7 +479,30 @@ export default function AdminPage() {
               {/* EDINET書類ID */}
               <div style={{ marginBottom:14 }}>
                 <label style={labelStyle}>EDINET書類ID（任意・空白で自動検索）</label>
-                <input value={edinetDocId} onChange={e => setEdinetDocId(e.target.value)} placeholder="例：S100XLWF" style={inputStyle}/>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input value={edinetDocId} onChange={e => setEdinetDocId(e.target.value)}
+                    placeholder="例：S100XLWF" style={{ ...inputStyle, flex:1 }}/>
+                  <button
+                    onClick={async () => {
+                      if (!selectedCompany) return;
+                      setEdinetSearchLoading(true); setEdinetSearchResult(null);
+                      try {
+                        const res = await fetch("/api/admin/find-edinet-doc", {
+                          method: "POST", headers: {"Content-Type": "application/json"},
+                          body: JSON.stringify({ company_name: selectedCompany.name }),
+                        });
+                        const data = await res.json();
+                        if (data.error) setEdinetSearchResult(`❌ ${data.error}`);
+                        else { setEdinetDocId(data.doc_id); setEdinetSearchResult(`✅ 見つかりました: ${data.doc_id}`); }
+                      } catch { setEdinetSearchResult("❌ 通信エラー"); }
+                      setEdinetSearchLoading(false);
+                    }}
+                    disabled={edinetSearchLoading}
+                    style={{ padding:"8px 12px", backgroundColor:edinetSearchLoading?"#94a3b8":"#475569", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, whiteSpace:"nowrap" }}>
+                    {edinetSearchLoading ? "検索中..." : "🔍 検索"}
+                  </button>
+                </div>
+                {edinetSearchResult && <p style={{ marginTop:6, fontSize:11, color:edinetSearchResult.startsWith("❌")?"#dc2626":"#166534" }}>{edinetSearchResult}</p>}
               </div>
 
               <StepRow num="1" color="#3b82f6" title="① EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
