@@ -533,7 +533,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             const grade = analysis?.grade ?? "B";
             const score = analysis?.total_score ?? 0;
             const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\nAI総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
-            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo-jp.vercel.app/analysis/${company.id}`)}`;
+            const shareId = company.ticker ?? company.id;
+            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo-jp.vercel.app/analysis/${shareId}`)}`;
             window.open(url, "_blank");
           }}
           style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:6,backgroundColor:"#000000",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}

@@ -1,9 +1,25 @@
-import { fetchIpoCompanyById, fetchIpoCompanies } from "@/lib/supabase/server";
+import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient } from "@/lib/supabase/server";
 import AnalysisClient from "@/components/AnalysisClient";
 import { notFound } from "next/navigation";
+
+async function fetchCompany(id: string) {
+  // ハイフンを含む場合はUUID、そうでなければティッカーコードとして検索
+  if (id.includes("-")) {
+    return fetchIpoCompanyById(id);
+  }
+  const supabase = createSupabaseServerClient();
+  if (!supabase) return { data: null, error: new Error("no client") };
+  const { data, error } = await supabase
+    .from("ipo_companies")
+    .select("*")
+    .eq("ticker", id.toUpperCase())
+    .single();
+  return { data, error };
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data } = await fetchIpoCompanyById(id);
+  const { data } = await fetchCompany(id);
   if (!data) return { title: "銘柄分析レポート" };
   const co = data as any;
   const summary = co.analysis_summary?.summary ?? `${data.name}のIPO分析レポート。スコア・シナリオ・詳細分析を掲載。`;
@@ -13,15 +29,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     ? `総合スコア${score}/100（${grade}評価）。${summary.slice(0, 120)}`
     : summary.slice(0, 150);
   const title = `${data.name} IPO分析レポート｜大手町調査室九課`;
-  const url = `https://ipo-jp.vercel.app/analysis/${id}`;
+  // ティッカーがあればティッカーURLを正規URLとして使用
+  const ticker = (data as any).ticker;
+  const canonicalId = ticker ?? data.id;
+  const url = `https://ipo-jp.vercel.app/analysis/${canonicalId}`;
   return {
     title,
     description,
-    keywords: [`${data.name}`, "IPO分析", "IPOスコア", "目論見書", "初値予測", data.sector ?? ""].filter(Boolean),
+    keywords: [`${data.name}`, "IPO分析", "IPOスコア", "目論見書", "初値予測", (data as any).sector ?? ""].filter(Boolean),
     openGraph: {
-      title,
-      description,
-      url,
+      title, description, url,
       siteName: "大手町調査室九課",
       locale: "ja_JP",
       type: "article",
@@ -29,44 +46,32 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      description,
+      title, description,
       images: ["https://ipo-jp.vercel.app/ogp.png"],
     },
-    alternates: {
-      canonical: url,
-    },
+    alternates: { canonical: url },
   };
 }
 
-
-export default async function AnalysisPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [{ data: company, error }, { data: allCompanies }] = await Promise.all([
-    fetchIpoCompanyById(id),
+  const [{ data: company }, { data: allCompanies }] = await Promise.all([
+    fetchCompany(id),
     fetchIpoCompanies(),
   ]);
 
   if (!company) notFound();
 
   const co = company as any;
-
-  // analysis_summaryがあれば新形式、なければanalysis_detailにフォールバック
   const analysisSummary = co.analysis_summary ?? null;
   const axesShort = co.analysis_axes_short ?? null;
   const axesMid = co.analysis_axes_mid ?? null;
   const axesLong = co.analysis_axes_long ?? null;
   const analysisMarket = co.analysis_market ?? null;
   const visualizationData = co.visualization_data ?? null;
-  // 旧形式との互換性を保ちつつ新形式データを統合
-  let initialAnalysis: any = null;
 
+  let initialAnalysis: any = null;
   if (analysisSummary) {
-    // 新7ステップ形式
     initialAnalysis = {
       ...analysisSummary,
       axes: {
@@ -78,12 +83,11 @@ export default async function AnalysisPage({
       is_new_format: true,
     };
   } else if (co.analysis_detail) {
-    // 旧形式フォールバック
-    initialAnalysis = {
-      ...co.analysis_detail,
-      is_new_format: false,
-    };
+    initialAnalysis = { ...co.analysis_detail, is_new_format: false };
   }
+
+  const ticker = co.ticker;
+  const canonicalId = ticker ?? company.id;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -99,16 +103,13 @@ export default async function AnalysisPage({
     "dateModified": new Date().toISOString(),
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://ipo-jp.vercel.app/analysis/${company.id}`,
+      "@id": `https://ipo-jp.vercel.app/analysis/${canonicalId}`,
     },
   };
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <AnalysisClient
         company={company as any}
         initialAnalysis={initialAnalysis}
