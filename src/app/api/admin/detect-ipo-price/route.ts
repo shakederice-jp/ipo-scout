@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import JSZip from "jszip";
 
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
@@ -30,9 +31,8 @@ function extractPrice(text: string): number | null {
 }
 
 async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
-  try {
-    const JSZip = (await import("jszip")).default;
-    const zip = await JSZip.loadAsync(buffer);
+    try {
+      const zip = await JSZip.loadAsync(buffer);
     let allText = "";
     const files = Object.keys(zip.files).filter(
       (f) => f.endsWith(".htm") || f.endsWith(".html") || f.endsWith(".xhtml")
@@ -44,7 +44,8 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
       } catch { continue; }
     }
     return allText;
-  } catch {
+} catch (e: any) {
+    console.error("ZIP解析エラー:", e?.message);
     return "";
   }
 }
