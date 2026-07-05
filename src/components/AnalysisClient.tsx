@@ -734,6 +734,119 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
     <strong>下部の「詳細分析 深掘りレポート」</strong>に9軸で体系的に整理しています。
   </p>
 </div>
+{/* 投資シミュレーション */}
+{(()=>{
+            const ipoPrice = (company as any).ipo_price;
+            const scenarios = scenTab==="short" ? scenarios_short : scenarios_long;
+            const periodLabel = scenTab==="short" ? "6ヶ月後" : "5〜10年後";
+
+            return (
+              <div style={{marginTop:16,borderRadius:12,overflow:"hidden",border:"1px solid #d0f0f0"}}>
+                <div style={{backgroundColor:"#0d4f52",padding:"12px 16px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:16}}>💰</span>
+                  <div>
+                    <div style={{fontWeight:900,fontSize:14,color:"white"}}>投資シミュレーション（100株購入の場合）</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>公募価格が決定した場合の試算</div>
+                  </div>
+                </div>
+
+                {!ipoPrice ? (
+                  <div style={{backgroundColor:"white",padding:"20px 16px",textAlign:"center"}}>
+                    <div style={{fontSize:28,marginBottom:8}}>📅</div>
+                    <div style={{fontWeight:900,fontSize:14,color:"#082b2e",marginBottom:8}}>公募価格確定後に自動表示されます</div>
+                    <p style={{fontSize:12,color:"#64748b",lineHeight:1.8,marginBottom:16}}>
+                      {company.name}（{(company as any).ticker ?? ""}）の公募価格はブックビルディング期間終了後に決定されます。<br/>
+                      価格決定後は当サイトに再度ご訪問いただくと、具体的な投資金額シミュレーションをご確認いただけます。
+                    </p>
+                    <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px",backgroundColor:"#f0fafa",borderRadius:20,border:"1px solid #b3e8ea"}}>
+                      <span style={{fontSize:12}}>🔔</span>
+                      <span style={{fontSize:11,color:"#0d4f52",fontWeight:700}}>通知設定をすると公募価格確定時にお知らせします</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{backgroundColor:"white",padding:"16px"}}>
+                    <div style={{display:"flex",gap:12,marginBottom:16,padding:"10px 14px",backgroundColor:"#f0fafa",borderRadius:10}}>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:10,color:"#6b9ea0"}}>公募価格</div>
+                        <div style={{fontWeight:900,fontSize:18,color:"#082b2e"}}>¥{ipoPrice.toLocaleString()}</div>
+                      </div>
+                      <div style={{width:1,backgroundColor:"#d0f0f0"}}/>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:10,color:"#6b9ea0"}}>最小投資額（100株）</div>
+                        <div style={{fontWeight:900,fontSize:18,color:"#082b2e"}}>¥{(ipoPrice*100).toLocaleString()}</div>
+                      </div>
+                    </div>
+
+                    <div style={{fontSize:11,fontWeight:700,color:"#0d4f52",marginBottom:8}}>{periodLabel}のシナリオ別試算</div>
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                        <thead>
+                          <tr style={{backgroundColor:"#f0fafa"}}>
+                            <th style={{padding:"8px 10px",textAlign:"left",color:"#6b9ea0",fontWeight:700,borderBottom:"1px solid #d0f0f0"}}>シナリオ</th>
+                            <th style={{padding:"8px 10px",textAlign:"right",color:"#6b9ea0",fontWeight:700,borderBottom:"1px solid #d0f0f0"}}>株価レンジ</th>
+                            <th style={{padding:"8px 10px",textAlign:"right",color:"#6b9ea0",fontWeight:700,borderBottom:"1px solid #d0f0f0"}}>評価額(100株)</th>
+                            <th style={{padding:"8px 10px",textAlign:"right",color:"#6b9ea0",fontWeight:700,borderBottom:"1px solid #d0f0f0"}}>損益</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {scenarios.map((s:any)=>{
+                            const isUp=s.verdict==="強気",isDown=s.verdict==="弱気";
+                            const bg=isUp?"#f0fdf4":isDown?"#fef2f2":"#fffbeb";
+                            const col=isUp?"#15803d":isDown?"#b91c1c":"#92400e";
+                            const icon=isUp?"🟢":isDown?"🔴":"🟡";
+                            const nums=s.vsIpo.match(/[\d.]+/g)?.map(Number)??[];
+                            let loPrice=0,hiPrice=0,loVal=0,hiVal=0,loPnl=0,hiPnl=0;
+                            const base=ipoPrice*100;
+                            if(s.vsIpo.includes("倍")&&nums.length>=1){
+                              const lo=nums[0],hi=nums[1]??nums[0];
+                              loPrice=Math.round(ipoPrice*lo);
+                              hiPrice=Math.round(ipoPrice*hi);
+                              loVal=loPrice*100; hiVal=hiPrice*100;
+                              loPnl=loVal-base; hiPnl=hiVal-base;
+                            } else if(s.vsIpo.includes("%")&&nums.length>=1){
+                              const lo=1+(nums[0]/100)*(s.vsIpo.includes("-")?-1:1);
+                              const hi=nums[1]?1+(nums[1]/100):lo;
+                              loPrice=Math.round(ipoPrice*lo);
+                              hiPrice=Math.round(ipoPrice*hi);
+                              loVal=loPrice*100; hiVal=hiPrice*100;
+                              loPnl=loVal-base; hiPnl=hiVal-base;
+                            }
+                            const samePrice=loPrice===hiPrice;
+                            const samePnl=loPnl===hiPnl;
+                            const pnlStr=(v:number)=>`${v>=0?"+":""}¥${Math.abs(v).toLocaleString()}`;
+                            return (
+                              <tr key={s.id} style={{backgroundColor:bg,borderBottom:"1px solid #f0fafa"}}>
+                                <td style={{padding:"10px 10px",fontWeight:900,color:col}}>
+                                  {icon} {s.verdict}<br/>
+                                  <span style={{fontSize:9,fontWeight:400,color:"#94a3b8"}}>確率{s.prob}</span>
+                                </td>
+                                <td style={{padding:"10px 10px",textAlign:"right",color:"#082b2e",fontWeight:700}}>
+                                  {loPrice>0?(samePrice?`¥${loPrice.toLocaleString()}`:`¥${loPrice.toLocaleString()}〜¥${hiPrice.toLocaleString()}`):"計算中"}
+                                </td>
+                                <td style={{padding:"10px 10px",textAlign:"right",color:"#082b2e",fontWeight:700}}>
+                                  {loVal>0?(loVal===hiVal?`¥${loVal.toLocaleString()}`:`¥${loVal.toLocaleString()}〜¥${hiVal.toLocaleString()}`):"計算中"}
+                                </td>
+                                <td style={{padding:"10px 10px",textAlign:"right",fontWeight:900,color:loPnl>=0?"#15803d":"#b91c1c"}}>
+                                  {loPnl!==0?(samePnl?pnlStr(loPnl):`${pnlStr(loPnl)}〜${pnlStr(hiPnl)}`):"計算中"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 免責文言 */}
+                    <div style={{marginTop:12,padding:"10px 12px",backgroundColor:"#fffbeb",borderRadius:8,border:"1px solid #fde68a"}}>
+                      <p style={{fontSize:10,color:"#92400e",lineHeight:1.8,margin:0}}>
+                        ⚠️ 【重要】本シミュレーションは、IPO企業が金融庁に提出した目論見書をAIが分析した結果に基づく試算値であり、実際の株価を保証するものではありません。実際の株価は市場環境・需給・業績等により大きく影響を受け、試算値より大幅に乖離することがあります。想定外の値動きが生じた場合は、ご自身の判断で躊躇なく損切り等の対応をご検討ください。投資判断および結果に対する責任は当サービスでは負いかねます。
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </Card>
 
         <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
