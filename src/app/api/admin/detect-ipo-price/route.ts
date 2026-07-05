@@ -54,19 +54,28 @@ export async function POST(req: NextRequest) {
     const { doc_id } = await req.json();
     if (!doc_id) return NextResponse.json({ error: "doc_id required" }, { status: 400 });
 
-    const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${doc_id}?type=1`;
-    const res = await fetch(url, {
-      headers: { "Subscription-Key": EDINET_KEY },
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!res.ok) {
-      return NextResponse.json({ success: false, message: `EDINET取得失敗 status=${res.status}` });
+    let text = "";
+    let lastStatus = 0;
+
+    for (const docType of [1, 5]) {
+      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${doc_id}?type=${docType}`;
+      const res = await fetch(url, {
+        headers: { "Subscription-Key": EDINET_KEY },
+        signal: AbortSignal.timeout(25000),
+      });
+      lastStatus = res.status;
+      if (!res.ok) continue;
+
+      const buffer = await res.arrayBuffer();
+      const extracted = await extractTextFromZip(buffer);
+      if (extracted.length >= 100) {
+        text = extracted;
+        break;
+      }
     }
 
-    const buffer = await res.arrayBuffer();
-    const text = await extractTextFromZip(buffer);
     if (text.length < 100) {
-      return NextResponse.json({ success: false, message: "本文抽出に失敗しました" });
+      return NextResponse.json({ success: false, message: `本文抽出に失敗しました (status=${lastStatus})` });
     }
 
     const price = extractPrice(text);
