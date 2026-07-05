@@ -611,6 +611,22 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           )}
         </Card>
+        {/* 通知促進バナー */}
+        {!userId && (
+          <div style={{borderRadius:12,padding:"14px 16px",backgroundColor:"#fffbeb",border:"1px solid #fde68a",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:20}}>🔔</span>
+              <div>
+                <div style={{fontWeight:900,fontSize:13,color:"#082b2e"}}>BB開始・上場日・公募価格確定をお知らせ</div>
+                <div style={{fontSize:11,color:"#92400e",marginTop:2}}>通知プランで前週金曜18時に自動配信</div>
+              </div>
+            </div>
+            <button onClick={() => setShowNotify(true)}
+              style={{padding:"8px 18px",backgroundColor:"#f59e0b",color:"white",border:"none",borderRadius:20,cursor:"pointer",fontWeight:900,fontSize:12,whiteSpace:"nowrap",flexShrink:0}}>
+              無料で通知設定 →
+            </button>
+          </div>
+        )}
         {visualizationData && <VizCharts vizData={visualizationData} />}
         {visualizationData && <VizTables vizData={visualizationData} section="top" />}
         {insights.length>0&&(
@@ -758,10 +774,12 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                       {company.name}（{(company as any).ticker ?? ""}）の公募価格はブックビルディング期間終了後に決定されます。<br/>
                       価格決定後は当サイトに再度ご訪問いただくと、具体的な投資金額シミュレーションをご確認いただけます。
                     </p>
-                    <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px",backgroundColor:"#f0fafa",borderRadius:20,border:"1px solid #b3e8ea"}}>
-                      <span style={{fontSize:12}}>🔔</span>
-                      <span style={{fontSize:11,color:"#0d4f52",fontWeight:700}}>通知設定をすると公募価格確定時にお知らせします</span>
-                    </div>
+                    <button
+                      onClick={() => setShowNotify(true)}
+                      style={{display:"inline-flex",alignItems:"center",gap:6,padding:"10px 20px",backgroundColor:"#66c3c6",borderRadius:20,border:"none",cursor:"pointer",boxShadow:"0 2px 8px rgba(102,195,198,0.3)"}}>
+                      <span style={{fontSize:14}}>🔔</span>
+                      <span style={{fontSize:12,color:"white",fontWeight:900}}>通知設定をする（無料）</span>
+                    </button>
                   </div>
                 ) : (
                   <div style={{backgroundColor:"white",padding:"16px"}}>
