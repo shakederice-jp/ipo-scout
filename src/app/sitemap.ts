@@ -8,7 +8,7 @@ export default async function sitemap() {
 
   const { data: companies } = await supabase
     .from("ipo_companies")
-    .select("id, listing_date")
+    .select("id, ticker, listing_date")
     .order("listing_date", { ascending: false });
 
   const baseUrl = "https://ipo-jp.vercel.app";
@@ -22,7 +22,7 @@ export default async function sitemap() {
   ];
 
   const companyPages = (companies ?? []).map(c => ({
-    url: `${baseUrl}/analysis/${c.id}`,
+    url: `${baseUrl}/analysis/${(c as any).ticker ?? c.id}`,
     lastModified: new Date(c.listing_date ?? new Date()),
     changeFrequency: "weekly" as const,
     priority: 0.9,
