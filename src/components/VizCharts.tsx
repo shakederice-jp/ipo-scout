@@ -148,6 +148,8 @@ export default function VizCharts({ vizData }: { vizData: any }) {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
+                    startAngle={90}
+                    endAngle={-270}
                     labelLine={false}
                     label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
                       const RADIAN = Math.PI / 180;
@@ -265,6 +267,8 @@ export default function VizCharts({ vizData }: { vizData: any }) {
                   cy="50%"
                   innerRadius={45}
                   outerRadius={80}
+                  startAngle={90}
+                  endAngle={-270}
                   labelLine={false}
                   label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
                     const RADIAN = Math.PI / 180;
