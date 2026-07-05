@@ -742,11 +742,11 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
 
             return (
               <div style={{marginTop:16,borderRadius:12,overflow:"hidden",border:"1px solid #d0f0f0"}}>
-                <div style={{backgroundColor:"#0d4f52",padding:"12px 16px",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{backgroundColor:"white",padding:"12px 16px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid #d0f0f0"}}>
                   <span style={{fontSize:16}}>💰</span>
                   <div>
-                    <div style={{fontWeight:900,fontSize:14,color:"white"}}>投資シミュレーション（100株購入の場合）</div>
-                    <div style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>公募価格が決定した場合の試算</div>
+                  <div style={{fontWeight:900,fontSize:14,color:"#082b2e"}}>投資シミュレーション（100株購入の場合）</div>
+                  <div style={{fontSize:10,color:"#6b9ea0"}}>公募価格が決定した場合の試算</div>
                   </div>
                 </div>
 
