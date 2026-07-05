@@ -19,7 +19,12 @@ export default function VizCharts({ vizData }: { vizData: any }) {
   const shareholderData: any[] = shareholders_chart?.data ?? [];
   const hasShareholders = shareholderData.length > 0;
   const hasRatios = shareholderData.some((s) => typeof s.ratio === "number");
-  const pieData = shareholderData.filter((s) => typeof s.ratio === "number");
+  const knownShareholders = shareholderData.filter((s) => typeof s.ratio === "number");
+  const knownRatioSum = knownShareholders.reduce((sum, s) => sum + s.ratio, 0);
+  const unknownRatio = Math.max(0, 100 - knownRatioSum);
+  const pieData = unknownRatio > 0.5
+    ? [...knownShareholders, { name: "その他・不明", ratio: unknownRatio, isUnknown: true }]
+    : knownShareholders;
 
   const valHasContent = valuation_table && [
     valuation_table.ipo_price,
@@ -163,8 +168,8 @@ export default function VizCharts({ vizData }: { vizData: any }) {
                       );
                     }}
                   >
-                    {pieData.map((_: any, i: number) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    {pieData.map((d: any, i: number) => (
+                      <Cell key={i} fill={d.isUnknown ? "#cbd5e1" : COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(v: any) => [`${v}%`]} />
