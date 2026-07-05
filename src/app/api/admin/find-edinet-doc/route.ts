@@ -28,9 +28,18 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split("T")[0];
     try {
-      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) continue;
+      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2`;
+      const res = await fetch(url, {
+        headers: { "Subscription-Key": EDINET_KEY },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        if (i === 0) {
+          const errText = await res.text();
+          console.error(`[EDINET検索] ${dateStr} エラー status=${res.status} body=${errText.slice(0, 300)}`);
+        }
+        continue;
+      }
       const json = await res.json();
       const docs = json?.results || [];
       // 完全一致を最優先
