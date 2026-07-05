@@ -146,6 +146,48 @@ export async function GET(req: NextRequest) {
     }
   }
 
+// ③ 公募価格がまだ未確定の銘柄について、訂正届出書から価格を自動取得
+const { data: pendingPriceList } = await supabase
+.from("ipo_companies")
+.select("id, name")
+.is("ipo_price", null);
+
+if (pendingPriceList && pendingPriceList.length > 0) {
+for (const date of dates) {
+  const docs = await fetchEdinetDocuments(date);
+  const corrections = docs.filter((d: any) =>
+    d.ordinanceCode === "010" && d.formCode === "030001"
+  );
+
+  for (const doc of corrections) {
+    const companyName = doc.filerName;
+    const matched = pendingPriceList.find((c) => isNameMatch(companyName, c.name));
+    if (!matched) continue;
+
+    try {
+      const priceRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/detect-ipo-price`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_id: doc.docID }),
+      });
+      const priceData = await priceRes.json();
+
+      if (priceData.success && priceData.price) {
+        await supabase
+          .from("ipo_companies")
+          .update({ ipo_price: priceData.price })
+          .eq("id", matched.id);
+        results.push(`💰 公募価格自動設定: ${matched.name} → ${priceData.price}円`);
+      } else {
+        results.push(`⚠️ 公募価格未検出: ${matched.name}（${priceData.message ?? "不明"}）`);
+      }
+    } catch {
+      results.push(`❌ 公募価格取得通信エラー: ${matched.name}`);
+    }
+  }
+}
+}
+
   const errors = results.filter(r => r.startsWith("❌"));
   if (errors.length > 0) {
     await notifyAdmin(
