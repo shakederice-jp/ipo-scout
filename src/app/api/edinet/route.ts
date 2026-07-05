@@ -119,9 +119,8 @@ async function fetchProspectusText(docId: string): Promise<{ sections: Record<st
         text = new TextDecoder("utf-8").decode(buffer);
       }
 
+      console.log(`type=${docType}: got ${text.length} chars, content="${text.slice(0, 300)}"`);
       if (text.length < 100) continue;
-      console.log(`type=${docType}: got ${text.length} chars`);
-
       if (!coverCompanyName) {
         coverCompanyName = extractCoverCompanyName(text);
       }
