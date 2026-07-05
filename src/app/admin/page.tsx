@@ -34,6 +34,8 @@ export default function AdminPage() {
   const [allAxesLoading, setAllAxesLoading] = useState(false);
   const [edinetSearchLoading, setEdinetSearchLoading] = useState(false);
   const [edinetSearchResult, setEdinetSearchResult] = useState<string | null>(null);
+  const [bulkEdinetLoading, setBulkEdinetLoading] = useState(false);
+  const [bulkEdinetResult, setBulkEdinetResult] = useState<string | null>(null);
 
   // グループC
   const [compLoading, setCompLoading] = useState(false);
@@ -228,6 +230,35 @@ export default function AdminPage() {
       setIpoPriceResult(data.error ? `❌ ${data.error}` : "✅ 保存しました");
     } catch { setIpoPriceResult("❌ 通信エラー"); }
     setIpoPriceLoading(false);
+  };
+
+  const handleBulkEdinetSearch = async () => {
+    setBulkEdinetLoading(true); setBulkEdinetResult(null);
+    const targets = companies.filter(c => !c.edinet_doc_id);
+    if (targets.length === 0) { setBulkEdinetResult("✅ 全銘柄の書類IDが設定済みです"); setBulkEdinetLoading(false); return; }
+    const results: string[] = [];
+    for (const c of targets) {
+      try {
+        const res = await fetch("/api/admin/find-edinet-doc", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ company_name: c.name }),
+        });
+        const data = await res.json();
+        if (data.error) { results.push(`❌ ${c.name}: ${data.error}`); }
+        else {
+          // DBに保存
+          await fetch("/api/admin/set-edinet-doc-id", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ company_id: c.id, edinet_doc_id: data.doc_id }),
+          });
+          results.push(`✅ ${c.name}: ${data.doc_id}`);
+        }
+      } catch { results.push(`❌ ${c.name}: 通信エラー`); }
+    }
+    setBulkEdinetResult(results.join("\n"));
+    // 一覧を再取得
+    fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+    setBulkEdinetLoading(false);
   };
 
   const handleCompetitor = async () => {
@@ -447,6 +478,25 @@ export default function AdminPage() {
         <div style={sectionStyle}>
           <h2 style={{ fontSize:"15px", fontWeight:900, color:"#082b2e", marginBottom:4 }}>🔬 銘柄分析</h2>
           <p style={{ fontSize:11, color:"#64748b", marginBottom:16 }}>①→⑦→②→③→④⑤⑥一括→視覚化の順に実行してください。</p>
+
+{/* 一括EDINET書類ID取得 */}
+<div style={{ marginBottom:14, padding:"12px 14px", backgroundColor:"#f0fafa", borderRadius:10, border:"1px solid #b3e8ea" }}>
+            <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:6 }}>
+              📋 書類ID未設定銘柄を一括検索
+              <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>
+                ({companies.filter(c => !c.edinet_doc_id).length}件が未設定)
+              </span>
+            </div>
+            <button onClick={handleBulkEdinetSearch} disabled={bulkEdinetLoading}
+              style={{ padding:"8px 14px", backgroundColor:bulkEdinetLoading?"#94a3b8":"#0369a1", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12 }}>
+              {bulkEdinetLoading ? "検索中...（しばらくお待ちください）" : "🔍 一括でEDINET書類IDを検索・保存"}
+            </button>
+            {bulkEdinetResult && (
+              <div style={{ marginTop:8, fontSize:11, lineHeight:1.8, padding:"8px 10px", backgroundColor:"white", borderRadius:8, border:"1px solid #e2e8f0", whiteSpace:"pre-wrap", maxHeight:120, overflowY:"auto" }}>
+                {bulkEdinetResult}
+              </div>
+            )}
+          </div>
 
           {/* 銘柄選択 */}
           <div style={{ marginBottom:14 }}>
