@@ -67,7 +67,15 @@ export async function POST(req: NextRequest) {
       lastStatus = res.status;
       if (!res.ok) continue;
 
+      const contentType = res.headers.get("content-type") || "";
       const buffer = await res.arrayBuffer();
+
+      // データが小さすぎる場合は、ZIPではなくエラーメッセージ(JSON)の可能性が高いので飛ばす
+      if (buffer.byteLength < 1000) {
+        console.error(`type=${docType}: レスポンスが小さすぎます (${buffer.byteLength} bytes) content-type=${contentType}`);
+        continue;
+      }
+
       const extracted = await extractTextFromZip(buffer);
       if (extracted.length >= 100) {
         text = extracted;
