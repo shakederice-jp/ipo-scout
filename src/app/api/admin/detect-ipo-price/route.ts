@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
 
     for (const docType of [1, 5]) {
       const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${doc_id}?type=${docType}`;
-      const res = await fetch(url, {
-        headers: { "Subscription-Key": EDINET_KEY },
+      const urlWithKey = `${url}&Subscription-Key=${EDINET_KEY}`;
+      const res = await fetch(urlWithKey, {
         signal: AbortSignal.timeout(25000),
       });
       lastStatus = res.status;
