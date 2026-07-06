@@ -197,5 +197,20 @@ for (const date of dates) {
     );
   }
 
+// ④ ニュース取得(毎日実行)
+try {
+  const newsRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-fetch`, {
+    headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
+  });
+  const newsData = await newsRes.json();
+  if (newsData.success) {
+    results.push(`✅ ニュース取得完了`);
+  } else {
+    results.push(`⚠️ ニュース取得失敗`);
+  }
+} catch {
+  results.push(`❌ ニュース取得通信エラー`);
+}
+
   return NextResponse.json({ success: true, results, scanned_dates: dates });
 }
