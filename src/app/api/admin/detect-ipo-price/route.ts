@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
 
       // データが小さすぎる場合は、ZIPではなくエラーメッセージ(JSON)の可能性が高いので飛ばす
       if (buffer.byteLength < 1000) {
-        const smallText = new TextDecoder("utf-8").decode(buffer);
-        console.error(`type=${docType}: レスポンスが小さすぎます (${buffer.byteLength} bytes) content-type=${contentType} content="${smallText}"`);
+        const errText = new TextDecoder("utf-8").decode(buffer);
+        console.error(`type=${docType}: レスポンスが小さすぎます (${buffer.byteLength} bytes) content="${errText}"`);
         continue;
       }
 
