@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
     if (rows.length === 0) continue;
 
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'IPO分析レポート <noreply@ipo-jp.vercel.app>',
         to: email,
         subject: `【IPO週次通知】翌週（${fromDate}〜${toDate}）のIPOイベント`,
@@ -150,6 +150,16 @@ export async function GET(req: NextRequest) {
           </div>
         `,
       });
+
+      if (error) {
+        console.error(`Resend APIエラー: ${email}`, error);
+        await notifyAdmin(
+          `週次通知メール送信失敗（Resend APIエラー）`,
+          `送信先: ${email}\nエラー: ${JSON.stringify(error)}`,
+          'error'
+        );
+        continue;
+      }
 
       await supabase.from('notification_logs').insert({
         user_id: setting.user_id,
