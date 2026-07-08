@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: 'IPO分析レポート <noreply@ipo-jp.vercel.app>',
+        from: 'IPO分析レポート <noreply@finance-tower.com>',
         to: email,
         subject: `【IPO週次通知】翌週（${fromDate}〜${toDate}）のIPOイベント`,
         html: `
