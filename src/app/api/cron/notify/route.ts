@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const fromDate = nextMonday.toISOString().slice(0, 10);
   const toDate   = nextSunday.toISOString().slice(0, 10);
 
-  const selectFields = 'id,name,ticker,bb_start_date,apply_start_date,listing_date,offer_price,ai_summary,analysis_summary';
+  const selectFields = 'id,name,ticker,bb_start_date,apply_start_date,listing_date,ai_summary,analysis_summary,structured_data';
 
   const [{ data: bbList }, { data: applyList }, { data: listingList }] = await Promise.all([
     supabase.from('ipo_companies').select(selectFields).gte('bb_start_date', fromDate).lte('bb_start_date', toDate),
@@ -122,7 +122,9 @@ export async function GET(req: NextRequest) {
       const shortGrade = c.analysis_summary?.short_grade ?? null;
       const longGrade = c.analysis_summary?.long_grade ?? null;
       const aiSummary = c.ai_summary ?? null;
-      const offerPrice = c.offer_price ? `¥${Number(c.offer_price).toLocaleString()}` : null;
+      const offerPrice = c.structured_data?.ipo_details?.offer_price 
+  ? `¥${Number(c.structured_data.ipo_details.offer_price).toLocaleString()}` 
+  : null;
       const ticker = c.ticker ?? null;
       const analysisUrl = ticker ? `${SITE_URL}/analysis/${ticker}` : SITE_URL;
 
