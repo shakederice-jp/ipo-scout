@@ -13,6 +13,26 @@ const getSupabase = () => createClient(
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const SITE_URL = 'https://ipo-jp.vercel.app';
+
+const gradeColor: Record<string, string> = {
+  A: '#15803d', B: '#0369a1', C: '#d97706', D: '#dc2626', E: '#7c3aed'
+};
+const gradeBg: Record<string, string> = {
+  A: '#dcfce7', B: '#dbeafe', C: '#fef3c7', D: '#fee2e2', E: '#ede9fe'
+};
+const gradeLabel: Record<string, string> = {
+  A: '強気', B: 'やや強気', C: '中立', D: 'やや弱気', E: '弱気'
+};
+
+function gradeTag(grade: string | null | undefined): string {
+  const g = grade ?? 'C';
+  const color = gradeColor[g] ?? '#64748b';
+  const bg = gradeBg[g] ?? '#f1f5f9';
+  const label = gradeLabel[g] ?? '中立';
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:${bg};color:${color};font-weight:800;font-size:13px;border:1px solid ${color}">評価 ${g}（${label}）</span>`;
+}
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization');
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -23,7 +43,6 @@ export async function GET(req: NextRequest) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 翌週月曜〜日曜の範囲を計算
   const dow = today.getDay();
   const daysUntilMonday = dow === 0 ? 1 : 8 - dow;
   const nextMonday = new Date(today);
@@ -34,11 +53,12 @@ export async function GET(req: NextRequest) {
   const fromDate = nextMonday.toISOString().slice(0, 10);
   const toDate   = nextSunday.toISOString().slice(0, 10);
 
-  // 翌週のBB開始・申込開始・上場銘柄を取得
+  const selectFields = 'id,name,ticker,bb_start_date,apply_start_date,listing_date,offer_price,ai_summary,analysis_summary';
+
   const [{ data: bbList }, { data: applyList }, { data: listingList }] = await Promise.all([
-    supabase.from('ipo_companies').select('id,name,ticker,bb_start_date').gte('bb_start_date', fromDate).lte('bb_start_date', toDate),
-    supabase.from('ipo_companies').select('id,name,ticker,apply_start_date').gte('apply_start_date', fromDate).lte('apply_start_date', toDate),
-    supabase.from('ipo_companies').select('id,name,ticker,listing_date').gte('listing_date', fromDate).lte('listing_date', toDate),
+    supabase.from('ipo_companies').select(selectFields).gte('bb_start_date', fromDate).lte('bb_start_date', toDate),
+    supabase.from('ipo_companies').select(selectFields).gte('apply_start_date', fromDate).lte('apply_start_date', toDate),
+    supabase.from('ipo_companies').select(selectFields).gte('listing_date', fromDate).lte('listing_date', toDate),
   ]);
 
   const hasAny = (bbList?.length ?? 0) + (applyList?.length ?? 0) + (listingList?.length ?? 0) > 0;
@@ -52,17 +72,20 @@ export async function GET(req: NextRequest) {
     return `${dt.getMonth()+1}/${dt.getDate()}（${dow}）`;
   };
 
+  // 注目銘柄を選出（グレード優先: A>B>C>D>E）
+  const gradeOrder: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, E: 1 };
+  const allCompanies = [...(listingList ?? []), ...(bbList ?? []), ...(applyList ?? [])];
+  const featured = allCompanies.reduce((best: any, c: any) => {
+    const cGrade = gradeOrder[c.analysis_summary?.grade ?? 'C'] ?? 3;
+    const bGrade = gradeOrder[best?.analysis_summary?.grade ?? 'C'] ?? 3;
+    return cGrade > bGrade ? c : best;
+  }, allCompanies[0]);
+
   // X（旧Twitter）への自動投稿
   const xLines: string[] = [];
-  if (listingList?.length) {
-    listingList.forEach(c => xLines.push(`▶ ${formatDate(c.listing_date)} ${c.name} 上場`));
-  }
-  if (bbList?.length) {
-    bbList.forEach(c => xLines.push(`▶ ${formatDate(c.bb_start_date)} ${c.name} BB開始`));
-  }
-  if (applyList?.length) {
-    applyList.forEach(c => xLines.push(`▶ ${formatDate(c.apply_start_date)} ${c.name} 申込開始`));
-  }
+  if (listingList?.length) listingList.forEach((c: any) => xLines.push(`▶ ${formatDate(c.listing_date)} ${c.name} 上場`));
+  if (bbList?.length) bbList.forEach((c: any) => xLines.push(`▶ ${formatDate(c.bb_start_date)} ${c.name} BB開始`));
+  if (applyList?.length) applyList.forEach((c: any) => xLines.push(`▶ ${formatDate(c.apply_start_date)} ${c.name} 申込開始`));
 
   if (xLines.length > 0) {
     const xText = `📊【今週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はプロフィールのリンクから👇\n\n#IPO #新規上場 #IPO投資`;
@@ -82,36 +105,77 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: '通知ユーザーなし', sent: 0 });
   }
 
-  // auth.usersからメールアドレス取得
   const { data: { users } } = await supabase.auth.admin.listUsers();
   const emailMap: Record<string, string> = {};
-  users.forEach(u => { if (u.email) emailMap[u.id] = u.email; });
+  users.forEach((u: any) => { if (u.email) emailMap[u.id] = u.email; });
 
-    let sentCount = 0;
+  let sentCount = 0;
 
   for (const setting of settings) {
     const email = emailMap[setting.user_id];
     if (!email) continue;
 
-    const rows: string[] = [];
+    // 銘柄カードを生成する関数
+    const buildCard = (c: any, eventLabel: string, eventColor: string, dateStr: string) => {
+      const grade = c.analysis_summary?.grade ?? null;
+      const ultraGrade = c.analysis_summary?.ultra_short_grade ?? null;
+      const shortGrade = c.analysis_summary?.short_grade ?? null;
+      const longGrade = c.analysis_summary?.long_grade ?? null;
+      const aiSummary = c.ai_summary ?? null;
+      const offerPrice = c.offer_price ? `¥${Number(c.offer_price).toLocaleString()}` : null;
+      const ticker = c.ticker ?? null;
+      const analysisUrl = ticker ? `${SITE_URL}/analysis/${ticker}` : SITE_URL;
 
+      return `
+        <div style="background:white;border:1px solid #b3e8ea;border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+            <div>
+              <span style="font-size:16px;font-weight:800;color:#082b2e">${c.name}</span>
+              ${ticker ? `<span style="font-size:12px;color:#64748b;margin-left:8px">${ticker}</span>` : ''}
+            </div>
+            <span style="background:${eventColor}15;color:${eventColor};font-weight:700;font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid ${eventColor};white-space:nowrap">${eventLabel}</span>
+          </div>
+          <div style="font-size:13px;color:#475569;margin-bottom:12px">
+            📅 <strong>${dateStr}</strong>
+            ${offerPrice ? `　💴 公募価格 <strong>${offerPrice}</strong>` : ''}
+          </div>
+          ${grade ? `
+          <div style="margin-bottom:12px">
+            ${gradeTag(grade)}
+            ${ultraGrade ? `<span style="font-size:11px;color:#64748b;margin-left:8px">超短期:${ultraGrade} / 短期:${shortGrade ?? '-'} / 長期:${longGrade ?? '-'}</span>` : ''}
+          </div>` : ''}
+          ${aiSummary ? `<p style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.6">${aiSummary}</p>` : ''}
+          ${ticker ? `<a href="${analysisUrl}" style="display:inline-block;padding:8px 18px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">詳細レポートを見る →</a>` : ''}
+        </div>
+      `;
+    };
+
+    const sections: string[] = [];
+
+    if (setting.notify_listing && listingList?.length) {
+      sections.push(`<h3 style="color:#15803d;font-size:14px;margin:20px 0 8px">🟢 上場銘柄</h3>`);
+      listingList.forEach((c: any) => sections.push(buildCard(c, '上場日', '#15803d', formatDate(c.listing_date))));
+    }
     if (setting.notify_bb && bbList?.length) {
-      bbList.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0369a1;font-weight:700">BB開始</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.bb_start_date)}</td></tr>`);
-      });
+      sections.push(`<h3 style="color:#0369a1;font-size:14px;margin:20px 0 8px">🔵 BB開始銘柄</h3>`);
+      bbList.forEach((c: any) => sections.push(buildCard(c, 'BB開始', '#0369a1', formatDate(c.bb_start_date))));
     }
     if (setting.notify_apply && applyList?.length) {
-      applyList.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#d97706;font-weight:700">申込開始</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.apply_start_date)}</td></tr>`);
-      });
-    }
-    if (setting.notify_listing && listingList?.length) {
-      listingList.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#15803d;font-weight:700">上場日</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.listing_date)}</td></tr>`);
-      });
+      sections.push(`<h3 style="color:#d97706;font-size:14px;margin:20px 0 8px">🟡 申込開始銘柄</h3>`);
+      applyList.forEach((c: any) => sections.push(buildCard(c, '申込開始', '#d97706', formatDate(c.apply_start_date))));
     }
 
-    if (rows.length === 0) continue;
+    if (sections.length === 0) continue;
+
+    // 注目銘柄バナー
+    const featuredGrade = featured?.analysis_summary?.grade ?? null;
+    const featuredBanner = featured ? `
+      <div style="background:linear-gradient(135deg,#0d4f52,#2a7a7e);border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <p style="color:#a0d4d6;font-size:11px;margin:0 0 4px;font-weight:700">✨ 今週の注目銘柄</p>
+        <p style="color:white;font-size:16px;font-weight:800;margin:0 0 6px">${featured.name}${featured.ticker ? ` (${featured.ticker})` : ''}</p>
+        ${featuredGrade ? `<span style="background:white;color:#0d4f52;font-size:12px;font-weight:800;padding:2px 10px;border-radius:20px">総合評価 ${featuredGrade}（${gradeLabel[featuredGrade] ?? ''}）</span>` : ''}
+      </div>
+    ` : '';
 
     try {
       const { data, error } = await resend.emails.send({
@@ -124,24 +188,17 @@ export async function GET(req: NextRequest) {
               <h2 style="color:white;margin:0;font-size:16px">📊 IPO企業情報AI分析レポート</h2>
               <p style="color:#a0d4d6;margin:4px 0 0;font-size:12px">担当：大手町調査室九課</p>
             </div>
-            <div style="background:white;padding:24px;border-radius:0 0 12px 12px;border:1px solid #b3e8ea">
-              <p style="color:#082b2e;font-size:14px;margin-bottom:16px">
+            <div style="background:#f4fbfc;padding:20px 24px">
+              <p style="color:#082b2e;font-size:14px;margin:0 0 16px">
                 翌週（<strong>${fromDate}〜${toDate}</strong>）のIPOイベントをお知らせします。
               </p>
-              <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-                <thead>
-                  <tr style="background:#f4fbfc">
-                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">銘柄</th>
-                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">イベント</th>
-                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">日付</th>
-                  </tr>
-                </thead>
-                <tbody>${rows.join("")}</tbody>
-              </table>
-              <a href="https://ipo-jp.vercel.app"
-                style="display:inline-block;padding:12px 24px;background:#66c3c6;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:20px;font-size:14px">
-                分析レポートを確認する →
-              </a>
+              ${featuredBanner}
+              ${sections.join('')}
+              <div style="text-align:center;margin-top:24px">
+                <a href="${SITE_URL}" style="display:inline-block;padding:14px 32px;background:#66c3c6;color:white;text-decoration:none;border-radius:8px;font-weight:800;font-size:14px">
+                  全銘柄の分析レポートを見る →
+                </a>
+              </div>
               <p style="margin-top:24px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px">
                 このメールは毎週金曜日18時に通知設定を有効にしているユーザーへ送信されます。<br/>
                 © 大手町調査室九課
