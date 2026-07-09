@@ -12,16 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run DB Check
-        run: curl -X GET https://ipo-jp.vercel.app/api/cron/db-check -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+        run: "curl -X GET https://ipo-jp.vercel.app/api/cron/db-check -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   edinet-scan:
     runs-on: ubuntu-latest
     steps:
       - name: Run EDINET Scan
-        run: curl -X GET https://ipo-jp.vercel.app/api/cron/edinet-scan -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+        run: "curl -X GET https://ipo-jp.vercel.app/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   news-fetch:
     runs-on: ubuntu-latest
     steps:
       - name: Run News Fetch
-        run: curl -X GET https://ipo-jp.vercel.app/api/cron/news-fetch -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+        run: "curl -X GET https://ipo-jp.vercel.app/api/cron/news-fetch -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
