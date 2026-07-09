@@ -1,0 +1,36 @@
+name: IPO Scout Cron Jobs
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # 毎週月曜 日本時間18時(UTC9時) → db-check
+    - cron: '0 10 * * *'  # 毎日 日本時間19時(UTC10時) → edinet-scan
+    - cron: '0 11 * * *'  # 毎日 日本時間20時(UTC11時) → news-fetch
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  db-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 9 * * 1'
+    steps:
+      - name: Run DB Check
+        run: |
+          curl -X GET https://ipo-jp.vercel.app/api/cron/db-check \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+  edinet-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 10 * * *'
+    steps:
+      - name: Run EDINET Scan
+        run: |
+          curl -X GET https://ipo-jp.vercel.app/api/cron/edinet-scan \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+  news-fetch:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 11 * * *'
+    steps:
+      - name: Run News Fetch
+        run: |
+          curl -X GET https://ipo-jp.vercel.app/api/cron/news-fetch \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
