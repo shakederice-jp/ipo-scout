@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
   for (const src of NEWS_SOURCES) {
     const items = await fetchRSS(src.url, src.name);
     for (const item of items) {
-      if (!allItems.find(a => a.title === item.title)) {
+      if (!allItems.find(a => a.title === item.title || a.url === item.url)) {
         allItems.push(item);
       }
     }
