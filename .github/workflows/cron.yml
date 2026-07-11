@@ -4,7 +4,9 @@ on:
   schedule:
     - cron: '0 9 * * 1'
     - cron: '0 10 * * *'
-    - cron: '0 11 * * *'
+    - cron: '0 21 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 jobs:
@@ -20,8 +22,16 @@ jobs:
       - name: Run EDINET Scan
         run: "curl -X GET https://ipo-jp.vercel.app/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
-  news-fetch:
+  news-fetch-with-newsapi:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 21 * * *' || github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Run News Fetch
-        run: "curl -X GET https://ipo-jp.vercel.app/api/cron/news-fetch -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+      - name: Run News Fetch with News API
+        run: "curl -X GET 'https://ipo-jp.vercel.app/api/cron/news-fetch?newsapi=true' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  news-fetch-pr-only:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 9 * * *'
+    steps:
+      - name: Run News Fetch PR Times only
+        run: "curl -X GET 'https://ipo-jp.vercel.app/api/cron/news-fetch?newsapi=false' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
