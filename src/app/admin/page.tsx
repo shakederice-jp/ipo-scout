@@ -34,7 +34,6 @@ export default function AdminPage() {
   const [edinetSearchResult, setEdinetSearchResult] = useState<string | null>(null);
   const [bulkEdinetLoading, setBulkEdinetLoading] = useState(false);
   const [bulkEdinetResult, setBulkEdinetResult] = useState<string | null>(null);
-
   const [compLoading, setCompLoading] = useState(false);
   const [compResult, setCompResult] = useState<string | null>(null);
   const [edinetResult, setEdinetResult] = useState("");
@@ -72,10 +71,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("1", true);
     try {
-      const res = await fetch("/api/edinet", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: selectedCompany.id, company_name: selectedCompany.name, edinet_doc_id: edinetDocId || undefined }),
-      });
+      const res = await fetch("/api/edinet", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, company_name:selectedCompany.name, edinet_doc_id:edinetDocId||undefined }) });
       const data = await res.json();
       setStep("1", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
     } catch { setStep("1", false, "❌ 通信エラー"); }
@@ -85,12 +81,9 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("7", true);
     try {
-      const res = await fetch("/api/market", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ companyId: selectedCompany.id }),
-      });
+      const res = await fetch("/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
       const data = await res.json();
-      setStep("7", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter ?? "不明"}・競合${data.data?.competitors?.length ?? 0}社`);
+      setStep("7", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社`);
     } catch { setStep("7", false, "❌ 通信エラー"); }
   };
 
@@ -98,10 +91,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("2", true);
     try {
-      const res = await fetch("/api/structure", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: selectedCompany.id }),
-      });
+      const res = await fetch("/api/structure", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
       const data = await res.json();
       setStep("2", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
     } catch { setStep("2", false, "❌ 通信エラー"); }
@@ -111,102 +101,71 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("3", true);
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ id: selectedCompany.id }),
-      });
+      const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id }) });
       const data = await res.json();
       setStep("3", false, data.error ? `❌ ${data.error}` : `✅ スコア: ${data.total_score}/100・${data.grade}ランク`);
     } catch { setStep("3", false, "❌ 通信エラー"); }
   };
 
   const runAxes = async (period: string, label: string, stepNum: string) => {
-    const axisMap: Record<string, string[]> = {
-      ultra_short: ["float", "lockup", "timing"],
-      short: ["valuation", "vc_sell", "growth"],
-      long: ["management", "unit_econ", "competitor"],
-    };
+    const axisMap: Record<string, string[]> = { ultra_short:["float","lockup","timing"], short:["valuation","vc_sell","growth"], long:["management","unit_econ","competitor"] };
     const axes = axisMap[period];
-    const totalSteps = axes.length * 2;
     const allResults: any[] = [];
     for (let i = 0; i < axes.length; i++) {
       const axisId = axes[i];
       let combinedText = "";
       let axisLabel = "", axisScore = 0, axisGrade = "C";
       for (let part = 1; part <= 2; part++) {
-        const stepIndex = i * 2 + part;
-        setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${stepIndex}/${totalSteps}・${axisId}（${part}/2）分析中...`}));
+        setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i*2+part}/${axes.length*2}・${axisId}（${part}/2）分析中...`}));
         try {
-          const res = await fetch("/api/axes", {
-            method: "POST", headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ company_id: selectedCompany.id, period, single_axis: axisId, part }),
-          });
+          const res = await fetch("/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, part }) });
           const data = await res.json();
           if (data.error) { setStep(stepNum, false, `❌ ${axisId}: ${data.error}`); return false; }
-          combinedText += (part === 2 ? "\n\n" : "") + (data.text ?? "");
-          axisLabel = data.label; axisScore = data.score; axisGrade = data.grade;
+          combinedText += (part===2?"\n\n":"") + (data.text??"");
+          axisLabel=data.label; axisScore=data.score; axisGrade=data.grade;
         } catch { setStep(stepNum, false, `❌ ${axisId} 通信エラー`); return false; }
       }
-      allResults.push({ id: axisId, label: axisLabel, score: axisScore, grade: axisGrade, report: combinedText.trim() });
+      allResults.push({ id:axisId, label:axisLabel, score:axisScore, grade:axisGrade, report:combinedText.trim() });
     }
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
-      const saveRes = await fetch("/api/axes", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: selectedCompany.id, period, save_results: allResults }),
-      });
+      const saveRes = await fetch("/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return false; }
     } catch { setStep(stepNum, false, "❌ 保存通信エラー"); return false; }
-    const preview = allResults.map((a: any) => `${a.id}:${a.grade}`).join("/");
-    setStep(stepNum, false, `✅ ${label} 完了（${preview}）`);
+    setStep(stepNum, false, `✅ ${label} 完了（${allResults.map((a:any)=>`${a.id}:${a.grade}`).join("/")}）`);
     return true;
   };
 
   const handleAllAxes = async () => {
     if (!selectedCompany) return;
     setAllAxesLoading(true);
-    setStep("4", true); setStep("5", true); setStep("6", true);
-    const ok4 = await runAxes("ultra_short", "超短期3軸", "4");
-    if (!ok4) { setAllAxesLoading(false); return; }
-    const ok5 = await runAxes("short", "短期3軸", "5");
-    if (!ok5) { setAllAxesLoading(false); return; }
-    await runAxes("long", "長期3軸", "6");
+    setStep("4",true); setStep("5",true); setStep("6",true);
+    const ok4 = await runAxes("ultra_short","超短期3軸","4"); if (!ok4) { setAllAxesLoading(false); return; }
+    const ok5 = await runAxes("short","短期3軸","5"); if (!ok5) { setAllAxesLoading(false); return; }
+    await runAxes("long","長期3軸","6");
     setAllAxesLoading(false);
   };
 
   const handleVisualize = async () => {
     if (!selectedCompany) return;
     setVizLoading(true);
-    const chartTypes = [
-      "revenue_chart","shareholders_chart","valuation_table","market_structure_chart",
-      "ipo_summary_table","use_of_proceeds_table","risk_table","shareholders_lockup_table","key_metrics_table",
-    ];
-    const labels: Record<string,string> = {
-      revenue_chart:"売上・利益", shareholders_chart:"株主構成", valuation_table:"IPO概要",
-      market_structure_chart:"株式構成・市場比較", ipo_summary_table:"IPO条件", use_of_proceeds_table:"資金使途",
-      risk_table:"リスク表", shareholders_lockup_table:"大株主・LU", key_metrics_table:"主要経営指標",
-    };
-    const merged: Record<string, any> = {};
+    const chartTypes = ["revenue_chart","shareholders_chart","valuation_table","market_structure_chart","ipo_summary_table","use_of_proceeds_table","risk_table","shareholders_lockup_table","key_metrics_table"];
+    const labels: Record<string,string> = { revenue_chart:"売上・利益", shareholders_chart:"株主構成", valuation_table:"IPO概要", market_structure_chart:"株式構成・市場比較", ipo_summary_table:"IPO条件", use_of_proceeds_table:"資金使途", risk_table:"リスク表", shareholders_lockup_table:"大株主・LU", key_metrics_table:"主要経営指標" };
+    const merged: Record<string,any> = {};
     for (let i = 0; i < chartTypes.length; i++) {
       const type = chartTypes[i];
       setVizResult(`⏳ ${labels[type]} 生成中 (${i+1}/${chartTypes.length})...`);
       try {
-        const res = await fetch("/api/visualize", {
-          method: "POST", headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ companyId: selectedCompany.id, chart_type: type }),
-        });
+        const res = await fetch("/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, chart_type:type }) });
         const data = await res.json();
         if (data.error) { setVizResult(`❌ ${labels[type]}: ${data.error}`); setVizLoading(false); return; }
         Object.assign(merged, data.data);
-      } catch { setVizResult(`❌ 通信エラー`); setVizLoading(false); return; }
+      } catch { setVizResult("❌ 通信エラー"); setVizLoading(false); return; }
     }
     setVizResult("⏳ 保存中...");
     try {
-      const saveRes = await fetch("/api/visualize", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ companyId: selectedCompany.id, save_results: merged }),
-      });
+      const saveRes = await fetch("/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
       setVizResult(saveData.success ? "✅ 視覚化データ生成完了" : `❌ 保存エラー: ${saveData.error}`);
     } catch { setVizResult("❌ 保存通信エラー"); }
@@ -217,10 +176,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setIpoPriceLoading(true); setIpoPriceResult(null);
     try {
-      const res = await fetch("/api/admin/set-ipo-price", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: selectedCompany.id, ipo_price: ipoPriceInput }),
-      });
+      const res = await fetch("/api/admin/set-ipo-price", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ipo_price:ipoPriceInput }) });
       const data = await res.json();
       setIpoPriceResult(data.error ? `❌ ${data.error}` : "✅ 保存しました");
     } catch { setIpoPriceResult("❌ 通信エラー"); }
@@ -230,27 +186,21 @@ export default function AdminPage() {
   const handleBulkEdinetSearch = async () => {
     setBulkEdinetLoading(true); setBulkEdinetResult(null);
     const targets = companies.filter(c => !c.edinet_doc_id);
-    if (targets.length === 0) { setBulkEdinetResult("✅ 全銘柄の書類IDが設定済みです"); setBulkEdinetLoading(false); return; }
+    if (targets.length===0) { setBulkEdinetResult("✅ 全銘柄の書類IDが設定済みです"); setBulkEdinetLoading(false); return; }
     const results: string[] = [];
     for (const c of targets) {
       try {
-        const res = await fetch("/api/admin/find-edinet-doc", {
-          method: "POST", headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ company_name: c.name }),
-        });
+        const res = await fetch("/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:c.name }) });
         const data = await res.json();
-        if (data.error) { results.push(`❌ ${c.name}: ${data.error}`); }
+        if (data.error) results.push(`❌ ${c.name}: ${data.error}`);
         else {
-          await fetch("/api/admin/set-edinet-doc-id", {
-            method: "POST", headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ company_id: c.id, edinet_doc_id: data.doc_id }),
-          });
+          await fetch("/api/admin/set-edinet-doc-id", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:c.id, edinet_doc_id:data.doc_id }) });
           results.push(`✅ ${c.name}: ${data.doc_id}`);
         }
       } catch { results.push(`❌ ${c.name}: 通信エラー`); }
     }
     setBulkEdinetResult(results.join("\n"));
-    fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+    fetch("/api/admin/companies").then(r=>r.json()).then(setCompanies).catch(()=>{});
     setBulkEdinetLoading(false);
   };
 
@@ -258,15 +208,10 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setCompLoading(true); setCompResult(null);
     try {
-      const res = await fetch("/api/competitor", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ company_id: selectedCompany.id }),
-      });
+      const res = await fetch("/api/competitor", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
       const data = await res.json();
       if (data.error) setCompResult(`❌ ${data.error}`);
-      else setCompResult(data.results.map((r: any) =>
-        r.error ? `❌ ${r.name}: ${r.error}` : `✅ ${r.name}: 売上${r.revenue}億`
-      ).join("\n"));
+      else setCompResult(data.results.map((r:any)=>r.error?`❌ ${r.name}: ${r.error}`:`✅ ${r.name}: 売上${r.revenue}億`).join("\n"));
     } catch { setCompResult("❌ 通信エラー"); }
     setCompLoading(false);
   };
@@ -274,7 +219,7 @@ export default function AdminPage() {
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
     try {
-      const res = await fetch("/api/admin/auto-fetch", { method: "POST" });
+      const res = await fetch("/api/admin/auto-fetch", { method:"POST" });
       const data = await res.json();
       setAutoResult(data.error ? `❌ ${data.error}` : `✅ ${data.added}件追加・${data.skipped}件スキップ`);
     } catch { setAutoResult("❌ 通信エラー"); }
@@ -284,7 +229,7 @@ export default function AdminPage() {
   const handleTestNotify = async () => {
     setNotifyLoading(true); setNotifyResult(null);
     try {
-      const res = await fetch("/api/admin/send-notify", { method: "POST" });
+      const res = await fetch("/api/admin/send-notify", { method:"POST" });
       const data = await res.json();
       setNotifyResult(data.error ? `❌ ${data.error}` : `✅ 送信完了・${data.sent}件`);
     } catch { setNotifyResult("❌ 通信エラー"); }
@@ -294,18 +239,18 @@ export default function AdminPage() {
   const handleHealthCheck = async () => {
     setHealthLoading(true); setHealthResult(null);
     try {
-      const res = await fetch("/api/admin/health", { headers: { "x-admin-password": "otemachi9" } });
+      const res = await fetch("/api/admin/health", { headers:{"x-admin-password":"otemachi9"} });
       setHealthResult(await res.json());
-    } catch (e) { setHealthResult({ ok: false, error: String(e) }); }
+    } catch(e) { setHealthResult({ ok:false, error:String(e) }); }
     setHealthLoading(false);
   };
 
   const handleDbCheck = async () => {
     setDbCheckLoading(true); setDbCheckResult(null);
     try {
-      const res = await fetch("/api/cron/db-check", { headers: { authorization: `Bearer otemachi9cron` } });
+      const res = await fetch("/api/cron/db-check", { headers:{authorization:"Bearer otemachi9cron"} });
       setDbCheckResult(await res.json());
-    } catch (e) { setDbCheckResult({ ok: false, error: String(e) }); }
+    } catch(e) { setDbCheckResult({ ok:false, error:String(e) }); }
     setDbCheckLoading(false);
   };
 
@@ -315,19 +260,15 @@ export default function AdminPage() {
   };
 
   const handleAddEconEvent = async () => {
-    if (!econDate || !econType) return;
+    if (!econDate||!econType) return;
     setEconLoading(true); setEconResult(null);
     try {
-      const res = await fetch("/api/admin/economic-events", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ event_date: econDate, event_type: econType, label: econLabel || null }),
-      });
+      const res = await fetch("/api/admin/economic-events", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ event_date:econDate, event_type:econType, label:econLabel||null }) });
       const data = await res.json();
       if (data.error) setEconResult(`❌ ${data.error}`);
       else {
-        setEconResult("✅ 追加しました");
-        setEconDate(""); setEconLabel("");
-        const updated = await fetch("/api/admin/economic-events").then(r => r.json());
+        setEconResult("✅ 追加しました"); setEconDate(""); setEconLabel("");
+        const updated = await fetch("/api/admin/economic-events").then(r=>r.json());
         if (Array.isArray(updated)) setEconEvents(updated);
       }
     } catch { setEconResult("❌ 通信エラー"); }
@@ -337,21 +278,15 @@ export default function AdminPage() {
   const handleDeleteEconEvent = async (id: string) => {
     if (!confirm("このイベントを削除しますか？")) return;
     try {
-      await fetch("/api/admin/economic-events", {
-        method: "DELETE", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ id }),
-      });
-      setEconEvents(prev => prev.filter(e => e.id !== id));
+      await fetch("/api/admin/economic-events", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id }) });
+      setEconEvents(prev=>prev.filter(e=>e.id!==id));
     } catch {}
   };
 
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
   const labelStyle = { fontSize:"11px", fontWeight:"700" as const, color:"#2a7a7e", marginBottom:"4px", display:"block" as const };
   const sectionStyle = { background:"white", borderRadius:"12px", padding:"20px", marginBottom:"12px", border:"1px solid #d1f5f7" };
-  const btnStyle = (color: string, disabled: boolean) => ({
-    padding:"9px 16px", backgroundColor:disabled?"#94a3b8":color, color:"white", border:"none",
-    borderRadius:"8px", cursor:disabled?"default":"pointer", fontWeight:700 as const, fontSize:"13px", width:"100%"
-  });
+  const btnStyle = (color: string, disabled: boolean) => ({ padding:"9px 16px", backgroundColor:disabled?"#94a3b8":color, color:"white", border:"none", borderRadius:"8px", cursor:disabled?"default":"pointer" as const, fontWeight:700 as const, fontSize:"13px", width:"100%" });
 
   const StepRow = ({ num, color, title, desc, btnLabel, onClick, disabled }: any) => {
     const isLoading = stepLoading[num];
@@ -359,16 +294,13 @@ export default function AdminPage() {
     const isErr = res?.startsWith("❌");
     const isDone = res?.startsWith("✅");
     return (
-      <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10,
-        border:`1px solid ${isErr?"#fecaca":isDone?"#bbf7d0":"#e2e8f0"}`,
-        background:isErr?"#fef2f2":isDone?"#f0fdf4":"#f8fafc" }}>
+      <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${isErr?"#fecaca":isDone?"#bbf7d0":"#e2e8f0"}`, background:isErr?"#fef2f2":isDone?"#f0fdf4":"#f8fafc" }}>
         <div style={{ fontWeight:900, color, fontSize:13, marginBottom:3 }}>{title}</div>
         <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>{desc}</p>
-        <button onClick={onClick} disabled={isLoading || disabled} style={btnStyle(color, isLoading||disabled)}>
-          {isLoading ? "⏳ 処理中..." : isDone ? `✅ 完了（再実行）` : btnLabel}
+        <button onClick={onClick} disabled={isLoading||disabled} style={btnStyle(color, isLoading||disabled)}>
+          {isLoading?"⏳ 処理中...":isDone?"✅ 完了（再実行）":btnLabel}
         </button>
-        {res && <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"6px 8px", borderRadius:6,
-          background:isErr?"#fef2f2":"#f0fdf4", color:isErr?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>{res}</div>}
+        {res && <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"6px 8px", borderRadius:6, background:isErr?"#fef2f2":"#f0fdf4", color:isErr?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>{res}</div>}
       </div>
     );
   };
@@ -377,10 +309,10 @@ export default function AdminPage() {
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh", backgroundColor:"#f4fbfc" }}>
       <div style={{ background:"white", padding:"32px", borderRadius:"16px", border:"1px solid #b3e8ea", minWidth:"300px" }}>
         <h2 style={{ margin:"0 0 16px", fontSize:"16px", color:"#082b2e" }}>⚙️ 管理画面</h2>
-        <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && (password === ADMIN_PASSWORD ? setAuthed(true) : alert("パスワードが違います"))}
+        <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&(password===ADMIN_PASSWORD?setAuthed(true):alert("パスワードが違います"))}
           placeholder="パスワードを入力" style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", marginBottom:"12px", boxSizing:"border-box" }}/>
-        <button onClick={() => password === ADMIN_PASSWORD ? setAuthed(true) : alert("パスワードが違います")}
+        <button onClick={()=>password===ADMIN_PASSWORD?setAuthed(true):alert("パスワードが違います")}
           style={{ width:"100%", padding:"10px", backgroundColor:"#66c3c6", color:"white", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:"700" }}>
           ログイン
         </button>
@@ -390,354 +322,289 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight:"100vh", backgroundColor:"#f4fbfc", padding:"24px" }}>
-      <div style={{ maxWidth:"560px", margin:"0 auto" }}>
+      <div style={{ maxWidth:"1200px", margin:"0 auto" }}>
         <h1 style={{ fontSize:"18px", fontWeight:900, color:"#082b2e", marginBottom:"20px" }}>⚙️ 管理画面</h1>
+        <style>{`
+          @media (max-width: 768px) {
+            .admin-layout { flex-direction: column !important; }
+            .admin-col { width: 100% !important; }
+          }
+        `}</style>
 
-        {/* ═══ 週次ルーティン ═══ */}
-        <div style={{ ...sectionStyle, background:"#0d4f52", border:"none", marginBottom:16 }}>
-          <h2 style={{ fontSize:"13px", fontWeight:900, color:"white", margin:"0 0 12px" }}>📅 週次ルーティン</h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {[
-              { day:"毎日", label:"EDINET取得・ニュース収集", auto:true },
-              { day:"月曜", label:"DB整合性チェック結果をメールで確認", auto:true },
-              { day:"随時", label:"新規IPO銘柄を登録 → AI分析を生成", auto:false },
-              { day:"随時", label:"公募価格が決定したら入力", auto:false },
-              { day:"木曜", label:"翌週分の銘柄データが揃っているか確認", auto:false },
-              { day:"金曜", label:"週次通知メールが送信されたか確認", auto:true },
-            ].map((item, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8,
-                background:item.auto?"rgba(255,255,255,0.08)":"rgba(102,195,198,0.2)" }}>
-                <span style={{ fontSize:10, fontWeight:800, color:item.auto?"#a0d4d6":"#66c3c6", minWidth:40 }}>{item.day}</span>
-                <span style={{ fontSize:12, color:"white", flex:1 }}>{item.label}</span>
-                <span style={{ fontSize:10, padding:"2px 8px", borderRadius:20,
-                  background:item.auto?"rgba(255,255,255,0.15)":"#66c3c6",
-                  color:"white", fontWeight:700, whiteSpace:"nowrap" as const }}>
-                  {item.auto ? "🤖 自動" : "✋ 手動"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="admin-layout" style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
 
-        {/* ═══ メイン: 銘柄分析（手動作業） ═══ */}
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize:"15px", fontWeight:900, color:"#082b2e", marginBottom:4 }}>🔬 銘柄分析（手動作業）</h2>
-          <p style={{ fontSize:11, color:"#64748b", marginBottom:16 }}>
-            新規IPO銘柄が出たら、以下の順番で実行してください。<br/>
-            <strong>① → ⑦ → ② → ③ → ④⑤⑥一括 → 視覚化</strong>
-          </p>
+          {/* ═══ 左カラム ═══ */}
+          <div className="admin-col" style={{ width:"50%", display:"flex", flexDirection:"column", gap:12 }}>
 
-          {/* 書類ID一括検索 */}
-          <div style={{ marginBottom:14, padding:"12px 14px", backgroundColor:"#f0fafa", borderRadius:10, border:"1px solid #b3e8ea" }}>
-            <div style={{ fontWeight:700, fontSize:12, color:"#082b2e", marginBottom:6 }}>
-              📋 EDINET書類ID未設定銘柄を一括検索
-              <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>({companies.filter(c => !c.edinet_doc_id).length}件が未設定)</span>
-            </div>
-            <button onClick={handleBulkEdinetSearch} disabled={bulkEdinetLoading} style={btnStyle("#0369a1", bulkEdinetLoading)}>
-              {bulkEdinetLoading ? "⏳ 検索中..." : "🔍 一括でEDINET書類IDを検索・保存"}
-            </button>
-            {bulkEdinetResult && (
-              <div style={{ marginTop:8, fontSize:11, lineHeight:1.8, padding:"8px 10px", backgroundColor:"white", borderRadius:8, border:"1px solid #e2e8f0", whiteSpace:"pre-wrap", maxHeight:120, overflowY:"auto" }}>
-                {bulkEdinetResult}
-              </div>
-            )}
-          </div>
-
-          {/* 銘柄選択 */}
-          <div style={{ marginBottom:14 }}>
-            <label style={labelStyle}>📌 分析する銘柄を選択 *</label>
-            <select onChange={e => { const c = companies.find(x => x.id === e.target.value); if (c) handleSelectCompany(c); }}
-              style={inputStyle} value={selectedCompany?.id ?? ""}>
-              <option value="">-- 銘柄を選択してください --</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>)}
-            </select>
-          </div>
-
-          {selectedCompany && (
-            <>
-              <div style={{ background:"#f0fdf4", borderRadius:8, padding:"8px 12px", marginBottom:14, fontSize:12, color:"#166534" }}>
-                ✅ 選択中：<strong>{selectedCompany.name}</strong>
-              </div>
-
-              {/* 公募価格 */}
-              <div style={{ background:"#fffbeb", borderRadius:8, padding:12, marginBottom:14, border:"1px solid #fde68a" }}>
-                <label style={{ ...labelStyle, color:"#92400e" }}>
-                  💴 公募価格（円）※価格決定後に入力
-                </label>
-                <div style={{ display:"flex", gap:8 }}>
-                  <input type="number" value={ipoPriceInput} onChange={e => setIpoPriceInput(e.target.value)}
-                    placeholder="例：1290" style={{ ...inputStyle, flex:1 }}/>
-                  <button onClick={handleSetIpoPrice} disabled={ipoPriceLoading}
-                    style={{ padding:"8px 14px", backgroundColor:ipoPriceLoading?"#94a3b8":"#d97706", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, whiteSpace:"nowrap" }}>
-                    {ipoPriceLoading ? "保存中..." : "保存"}
-                  </button>
-                </div>
-                {ipoPriceResult && <p style={{ marginTop:6, fontSize:11, color:ipoPriceResult.startsWith("❌")?"#dc2626":"#166534" }}>{ipoPriceResult}</p>}
-              </div>
-
-              {/* EDINET書類ID */}
-              <div style={{ marginBottom:14 }}>
-                <label style={labelStyle}>EDINET書類ID（空白で自動検索）</label>
-                <div style={{ display:"flex", gap:8 }}>
-                  <input value={edinetDocId} onChange={e => setEdinetDocId(e.target.value)}
-                    placeholder="例：S100XLWF" style={{ ...inputStyle, flex:1 }}/>
-                  <button onClick={async () => {
-                    if (!selectedCompany) return;
-                    setEdinetSearchLoading(true); setEdinetSearchResult(null);
-                    try {
-                      const res = await fetch("/api/admin/find-edinet-doc", {
-                        method: "POST", headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({ company_name: selectedCompany.name }),
-                      });
-                      const data = await res.json();
-                      if (data.error) setEdinetSearchResult(`❌ ${data.error}`);
-                      else { setEdinetDocId(data.doc_id); setEdinetSearchResult(`✅ ${data.doc_id}`); }
-                    } catch { setEdinetSearchResult("❌ 通信エラー"); }
-                    setEdinetSearchLoading(false);
-                  }} disabled={edinetSearchLoading}
-                    style={{ padding:"8px 12px", backgroundColor:edinetSearchLoading?"#94a3b8":"#475569", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, whiteSpace:"nowrap" }}>
-                    {edinetSearchLoading ? "検索中..." : "🔍"}
-                  </button>
-                </div>
-                {edinetSearchResult && <p style={{ marginTop:4, fontSize:11, color:edinetSearchResult.startsWith("❌")?"#dc2626":"#166534" }}>{edinetSearchResult}</p>}
-              </div>
-
-              {/* 分析ステップ */}
-              <div style={{ borderTop:"2px dashed #b3e8ea", paddingTop:14, marginBottom:4 }}>
-                <p style={{ fontSize:11, fontWeight:700, color:"#2a7a7e", marginBottom:10 }}>▼ 以下の順番で実行してください</p>
-              </div>
-
-              <StepRow num="1" color="#3b82f6" title="STEP 1｜EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
-              <StepRow num="7" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="⑦ 市場・競合情報を収集する" onClick={handleStep7}/>
-              <StepRow num="2" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="② 財務データを構造化する" onClick={handleStep2}/>
-              <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc="総合スコア・A〜E判定・株価シナリオを生成します（約30〜40秒）" btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
-
-              {/* ④⑤⑥一括 */}
-              <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10,
-                border:`1px solid ${(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fecaca":stepResult["6"]?"#bbf7d0":"#e2e8f0"}`,
-                background:(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fef2f2":stepResult["6"]?"#f0fdf4":"#f8fafc" }}>
-                <div style={{ fontWeight:900, color:"#7c3aed", fontSize:13, marginBottom:3 }}>STEP 5｜9軸 詳細分析（一括実行）</div>
-                <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>超短期・短期・長期の9軸をすべて自動で順番に分析します（約2〜4分）</p>
-                <button onClick={handleAllAxes} disabled={allAxesLoading} style={btnStyle("#7c3aed", allAxesLoading)}>
-                  {allAxesLoading ? "⏳ 分析中（しばらくお待ちください）..." : "④⑤⑥ 9軸を一括分析する"}
-                </button>
-                {["4","5","6"].map(n => stepResult[n] && (
-                  <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6,
-                    background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4",
-                    color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
-                    {stepResult[n]}
+            {/* 週次ルーティン */}
+            <div style={{ ...sectionStyle, background:"#0d4f52", border:"none" }}>
+              <h2 style={{ fontSize:"13px", fontWeight:900, color:"white", margin:"0 0 12px" }}>📅 週次ルーティン</h2>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {[
+                  { day:"毎日", label:"EDINET取得・ニュース収集", auto:true },
+                  { day:"月曜", label:"DB整合性チェック結果をメールで確認", auto:true },
+                  { day:"随時", label:"新規IPO銘柄を登録 → AI分析を生成", auto:false },
+                  { day:"随時", label:"公募価格が決定したら入力", auto:false },
+                  { day:"木曜", label:"翌週分の銘柄データが揃っているか確認", auto:false },
+                  { day:"金曜", label:"週次通知メールが送信されたか確認", auto:true },
+                ].map((item, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8, background:item.auto?"rgba(255,255,255,0.08)":"rgba(102,195,198,0.2)" }}>
+                    <span style={{ fontSize:10, fontWeight:800, color:item.auto?"#a0d4d6":"#66c3c6", minWidth:40 }}>{item.day}</span>
+                    <span style={{ fontSize:12, color:"white", flex:1 }}>{item.label}</span>
+                    <span style={{ fontSize:10, padding:"2px 8px", borderRadius:20, background:item.auto?"rgba(255,255,255,0.15)":"#66c3c6", color:"white", fontWeight:700, whiteSpace:"nowrap" as const }}>
+                      {item.auto?"🤖 自動":"✋ 手動"}
+                    </span>
                   </div>
                 ))}
               </div>
-
-              {/* 視覚化 */}
-              <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10,
-                border:`1px solid ${vizResult?.startsWith("❌")?"#fecaca":vizResult?.includes("完了")?"#bbf7d0":"#e2e8f0"}`,
-                background:vizResult?.startsWith("❌")?"#fef2f2":vizResult?.includes("完了")?"#f0fdf4":"#f8fafc" }}>
-                <div style={{ fontWeight:900, color:"#0d4f52", fontSize:13, marginBottom:3 }}>STEP 6｜視覚化データ生成</div>
-                <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>グラフ・表データをまとめて生成します（約30〜60秒）</p>
-                <button onClick={handleVisualize} disabled={vizLoading} style={btnStyle("#0d4f52", vizLoading)}>
-                  {vizLoading ? "⏳ 生成中..." : "📊 視覚化データを生成"}
-                </button>
-                {vizResult && <div style={{ marginTop:6, fontSize:11, padding:"4px 8px", borderRadius:6,
-                  background:vizResult.startsWith("❌")?"#fef2f2":"#f0fdf4",
-                  color:vizResult.startsWith("❌")?"#dc2626":"#166534" }}>{vizResult}</div>}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ═══ 手動実行ツール（折りたたみ） ═══ */}
-        <div style={{ ...sectionStyle, padding:0, overflow:"hidden" }}>
-          <button onClick={() => setManualOpen(v => !v)}
-            style={{ width:"100%", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center",
-              background:"#475569", border:"none", cursor:"pointer", borderRadius:manualOpen?"12px 12px 0 0":"12px" }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:14, color:"white" }}>🛠 手動実行ツール</div>
-              <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:2 }}>通常は自動実行されます。緊急時や確認用</div>
             </div>
-            <span style={{ color:"white", fontSize:12, transform:manualOpen?"rotate(180deg)":"none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
-          </button>
-          {manualOpen && (
-            <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:14 }}>
 
-              {/* ヘルスチェック */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🩺 システムヘルスチェック</div>
-                <button onClick={handleHealthCheck} disabled={healthLoading} style={btnStyle("#0d4f52", healthLoading)}>
-                  {healthLoading ? "確認中..." : "ヘルスチェックを実行"}
+            {/* 手動実行ツール */}
+            <div style={{ ...sectionStyle, padding:0, overflow:"hidden" }}>
+              <button onClick={()=>setManualOpen(v=>!v)}
+                style={{ width:"100%", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#475569", border:"none", cursor:"pointer", borderRadius:manualOpen?"12px 12px 0 0":"12px" }}>
+                <div>
+                  <div style={{ fontWeight:900, fontSize:14, color:"white" }}>🛠 手動実行ツール</div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:2 }}>通常は自動実行されます。緊急時や確認用</div>
+                </div>
+                <span style={{ color:"white", fontSize:12, transform:manualOpen?"rotate(180deg)":"none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
+              </button>
+              {manualOpen && (
+                <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:14 }}>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🩺 システムヘルスチェック</div>
+                    <button onClick={handleHealthCheck} disabled={healthLoading} style={btnStyle("#0d4f52", healthLoading)}>
+                      {healthLoading?"確認中...":"ヘルスチェックを実行"}
+                    </button>
+                    {healthResult && (
+                      <div style={{ marginTop:8, fontSize:11, color:healthResult.ok?"#166534":"#b91c1c" }}>
+                        {healthResult.ok?"✅ 全システム正常":"⚠️ 一部に問題があります"}
+                        {healthResult.results && Object.entries(healthResult.results).map(([key,val]:[string,any])=>(
+                          <div key={key} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:val.ok?"#f0fdf4":"#fef2f2" }}>
+                            {val.ok?"✅":"❌"} {{"supabase":"Supabase DB","claude":"Claude API","edinet":"EDINET API","last_cron":"直近Cron"}[key]??key}: {val.detail}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔍 DB整合性チェック <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎週月曜に自動実行）</span></div>
+                    <button onClick={handleDbCheck} disabled={dbCheckLoading} style={btnStyle("#7c3aed", dbCheckLoading)}>
+                      {dbCheckLoading?"確認中...":"整合性チェックを今すぐ実行"}
+                    </button>
+                    {dbCheckResult && (
+                      <div style={{ marginTop:8, fontSize:11 }}>
+                        <div style={{ color:(dbCheckResult.issues?.length??0)===0?"#166534":"#d97706", fontWeight:700 }}>
+                          {(dbCheckResult.issues?.length??0)===0?"✅ 問題なし":`⚠️ ${dbCheckResult.issues?.length}件の問題を検出`}
+                        </div>
+                        {dbCheckResult.issues?.map((issue:string,i:number)=>(
+                          <div key={i} style={{ marginTop:4, padding:"4px 8px", background:"#fffbeb", borderRadius:6, color:"#374151", whiteSpace:"pre-wrap" }}>{issue}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>📡 IPO情報自動取得 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎日自動実行）</span></div>
+                    <button onClick={handleAutoFetch} disabled={autoLoading} style={btnStyle("#9b59b6", autoLoading)}>
+                      {autoLoading?"取得中...":"今すぐ自動取得を実行"}
+                    </button>
+                    {autoResult && <p style={{ marginTop:6, fontSize:11, color:"#2a7a7e" }}>{autoResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>📧 週次通知メール送信 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎週金曜18時に自動送信）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>翌週にBB開始・申込開始・上場がある場合のみ送信されます</p>
+                    <button onClick={handleTestNotify} disabled={notifyLoading} style={btnStyle("#0369a1", notifyLoading)}>
+                      {notifyLoading?"送信中...":"通知メールを今すぐ送信"}
+                    </button>
+                    {notifyResult && <p style={{ marginTop:6, fontSize:11, color:notifyResult.startsWith("❌")?"#dc2626":"#166534" }}>{notifyResult}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* マスタ管理 */}
+            <div style={{ ...sectionStyle, padding:0, overflow:"hidden" }}>
+              <button onClick={()=>setMasterOpen(v=>!v)}
+                style={{ width:"100%", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#334155", border:"none", cursor:"pointer", borderRadius:masterOpen?"12px 12px 0 0":"12px" }}>
+                <div>
+                  <div style={{ fontWeight:900, fontSize:14, color:"white" }}>🗂 マスタ管理</div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:2 }}>競合財務・EDINETコード・初値・経済指標カレンダー</div>
+                </div>
+                <span style={{ color:"white", fontSize:12, transform:masterOpen?"rotate(180deg)":"none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
+              </button>
+              {masterOpen && (
+                <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:16 }}>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🏢 競合他社財務データ取得</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>⑦で収集した競合企業の財務データを取得します</p>
+                    {!selectedCompany
+                      ? <p style={{ fontSize:11, color:"#94a3b8" }}>※ 右の「銘柄分析」で銘柄を選択してください</p>
+                      : <>
+                        <button onClick={handleCompetitor} disabled={compLoading} style={btnStyle("#0f766e", compLoading)}>
+                          {compLoading?"取得中...":"競合財務データを取得する"}
+                        </button>
+                        {compResult && <div style={{ marginTop:8, fontSize:11, lineHeight:1.7, padding:"6px 8px", borderRadius:6, background:"#f0fdf4", color:"#166534", whiteSpace:"pre-wrap" }}>{compResult}</div>}
+                      </>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>📥 EDINETコードリスト取得 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（数ヶ月に1回）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>EDINETからCSVをダウンロードし、edinet_companiesテーブルにインポートします。</p>
+                    <button onClick={handleEdinetCodes} style={btnStyle("#0369a1", false)}>EDINETダウンロードページを開く</button>
+                    {edinetResult && <p style={{ marginTop:8, fontSize:11, color:"#0d4f52" }}>{edinetResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:8 }}>📝 初値・騰落率入力</div>
+                    <InitialPriceForm />
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🌐 経済指標カレンダー登録 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（年に数回）</span></div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
+                      <div><label style={labelStyle}>日付 *</label><input type="date" value={econDate} onChange={e=>setEconDate(e.target.value)} style={inputStyle}/></div>
+                      <div>
+                        <label style={labelStyle}>イベント種別 *</label>
+                        <select value={econType} onChange={e=>setEconType(e.target.value)} style={inputStyle}>
+                          <option value="FOMC">🇺🇸 FOMC</option>
+                          <option value="日銀">🇯🇵 日銀金融政策決定会合</option>
+                          <option value="NFP">📊 米雇用統計（NFP）</option>
+                          <option value="CPI">📈 米CPI</option>
+                        </select>
+                      </div>
+                      <div><label style={labelStyle}>メモ（任意）</label><input value={econLabel} onChange={e=>setEconLabel(e.target.value)} placeholder="例：結果発表23:00" style={inputStyle}/></div>
+                      <button onClick={handleAddEconEvent} disabled={econLoading||!econDate} style={btnStyle("#0369a1", econLoading||!econDate)}>
+                        {econLoading?"追加中...":"➕ 追加する"}
+                      </button>
+                      {econResult && <p style={{ fontSize:11, color:econResult.startsWith("❌")?"#dc2626":"#166534" }}>{econResult}</p>}
+                    </div>
+                    {econEvents.length>0 && (
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:"#2a7a7e", marginBottom:6 }}>登録済みイベント（{econEvents.length}件）</div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
+                          {econEvents.map(e=>(
+                            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 10px", background:"#f8fafc", borderRadius:8, border:"1px solid #e2e8f0" }}>
+                              <div>
+                                <span style={{ fontSize:12, fontWeight:700, color:"#082b2e" }}>{e.event_date}</span>
+                                <span style={{ fontSize:11, color:"#2a7a7e", marginLeft:8 }}>{e.event_type}</span>
+                                {e.label && <span style={{ fontSize:11, color:"#64748b", marginLeft:6 }}>（{e.label}）</span>}
+                              </div>
+                              <button onClick={()=>handleDeleteEconEvent(e.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:"2px 6px" }}>×</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>{/* 左カラム終わり */}
+
+          {/* ═══ 右カラム ═══ */}
+          <div className="admin-col" style={{ width:"50%", display:"flex", flexDirection:"column", gap:12 }}>
+
+            {/* 銘柄分析 */}
+            <div style={sectionStyle}>
+              <h2 style={{ fontSize:"15px", fontWeight:900, color:"#082b2e", marginBottom:4 }}>🔬 銘柄分析（手動作業）</h2>
+              <p style={{ fontSize:11, color:"#64748b", marginBottom:16 }}>新規IPO銘柄が出たら、以下の順番で実行してください。<br/><strong>① → ⑦ → ② → ③ → ④⑤⑥一括 → 視覚化</strong></p>
+
+              <div style={{ marginBottom:14, padding:"12px 14px", backgroundColor:"#f0fafa", borderRadius:10, border:"1px solid #b3e8ea" }}>
+                <div style={{ fontWeight:700, fontSize:12, color:"#082b2e", marginBottom:6 }}>
+                  📋 EDINET書類ID未設定銘柄を一括検索
+                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>({companies.filter(c=>!c.edinet_doc_id).length}件が未設定)</span>
+                </div>
+                <button onClick={handleBulkEdinetSearch} disabled={bulkEdinetLoading} style={btnStyle("#0369a1", bulkEdinetLoading)}>
+                  {bulkEdinetLoading?"⏳ 検索中...":"🔍 一括でEDINET書類IDを検索・保存"}
                 </button>
-                {healthResult && (
-                  <div style={{ marginTop:8, fontSize:11, color:healthResult.ok?"#166534":"#b91c1c" }}>
-                    {healthResult.ok ? "✅ 全システム正常" : "⚠️ 一部に問題があります"}
-                    {healthResult.results && Object.entries(healthResult.results).map(([key, val]: [string, any]) => (
-                      <div key={key} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:val.ok?"#f0fdf4":"#fef2f2" }}>
-                        {val.ok?"✅":"❌"} {{"supabase":"Supabase DB","claude":"Claude API","edinet":"EDINET API","last_cron":"直近Cron"}[key]??key}: {val.detail}
+                {bulkEdinetResult && (
+                  <div style={{ marginTop:8, fontSize:11, lineHeight:1.8, padding:"8px 10px", backgroundColor:"white", borderRadius:8, border:"1px solid #e2e8f0", whiteSpace:"pre-wrap", maxHeight:120, overflowY:"auto" }}>
+                    {bulkEdinetResult}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom:14 }}>
+                <label style={labelStyle}>📌 分析する銘柄を選択 *</label>
+                <select onChange={e=>{ const c=companies.find(x=>x.id===e.target.value); if(c) handleSelectCompany(c); }} style={inputStyle} value={selectedCompany?.id??""}>
+                  <option value="">-- 銘柄を選択してください --</option>
+                  {companies.map(c=><option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>)}
+                </select>
+              </div>
+
+              {selectedCompany && (
+                <>
+                  <div style={{ background:"#f0fdf4", borderRadius:8, padding:"8px 12px", marginBottom:14, fontSize:12, color:"#166534" }}>
+                    ✅ 選択中：<strong>{selectedCompany.name}</strong>
+                  </div>
+                  <div style={{ background:"#fffbeb", borderRadius:8, padding:12, marginBottom:14, border:"1px solid #fde68a" }}>
+                    <label style={{ ...labelStyle, color:"#92400e" }}>💴 公募価格（円）※価格決定後に入力</label>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <input type="number" value={ipoPriceInput} onChange={e=>setIpoPriceInput(e.target.value)} placeholder="例：1290" style={{ ...inputStyle, flex:1 }}/>
+                      <button onClick={handleSetIpoPrice} disabled={ipoPriceLoading} style={{ padding:"8px 14px", backgroundColor:ipoPriceLoading?"#94a3b8":"#d97706", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, whiteSpace:"nowrap" }}>
+                        {ipoPriceLoading?"保存中...":"保存"}
+                      </button>
+                    </div>
+                    {ipoPriceResult && <p style={{ marginTop:6, fontSize:11, color:ipoPriceResult.startsWith("❌")?"#dc2626":"#166534" }}>{ipoPriceResult}</p>}
+                  </div>
+                  <div style={{ marginBottom:14 }}>
+                    <label style={labelStyle}>EDINET書類ID（空白で自動検索）</label>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <input value={edinetDocId} onChange={e=>setEdinetDocId(e.target.value)} placeholder="例：S100XLWF" style={{ ...inputStyle, flex:1 }}/>
+                      <button onClick={async()=>{
+                        if(!selectedCompany) return;
+                        setEdinetSearchLoading(true); setEdinetSearchResult(null);
+                        try {
+                          const res = await fetch("/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:selectedCompany.name }) });
+                          const data = await res.json();
+                          if(data.error) setEdinetSearchResult(`❌ ${data.error}`);
+                          else { setEdinetDocId(data.doc_id); setEdinetSearchResult(`✅ ${data.doc_id}`); }
+                        } catch { setEdinetSearchResult("❌ 通信エラー"); }
+                        setEdinetSearchLoading(false);
+                      }} disabled={edinetSearchLoading} style={{ padding:"8px 12px", backgroundColor:edinetSearchLoading?"#94a3b8":"#475569", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, whiteSpace:"nowrap" }}>
+                        {edinetSearchLoading?"検索中...":"🔍"}
+                      </button>
+                    </div>
+                    {edinetSearchResult && <p style={{ marginTop:4, fontSize:11, color:edinetSearchResult.startsWith("❌")?"#dc2626":"#166534" }}>{edinetSearchResult}</p>}
+                  </div>
+                  <div style={{ borderTop:"2px dashed #b3e8ea", paddingTop:14, marginBottom:4 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:"#2a7a7e", marginBottom:10 }}>▼ 以下の順番で実行してください</p>
+                  </div>
+                  <StepRow num="1" color="#3b82f6" title="STEP 1｜EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
+                  <StepRow num="7" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="⑦ 市場・競合情報を収集する" onClick={handleStep7}/>
+                  <StepRow num="2" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="② 財務データを構造化する" onClick={handleStep2}/>
+                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc="総合スコア・A〜E判定・株価シナリオを生成します（約30〜40秒）" btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fecaca":stepResult["6"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fef2f2":stepResult["6"]?"#f0fdf4":"#f8fafc" }}>
+                    <div style={{ fontWeight:900, color:"#7c3aed", fontSize:13, marginBottom:3 }}>STEP 5｜9軸 詳細分析（一括実行）</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>超短期・短期・長期の9軸をすべて自動で順番に分析します（約2〜4分）</p>
+                    <button onClick={handleAllAxes} disabled={allAxesLoading} style={btnStyle("#7c3aed", allAxesLoading)}>
+                      {allAxesLoading?"⏳ 分析中（しばらくお待ちください）...":"④⑤⑥ 9軸を一括分析する"}
+                    </button>
+                    {["4","5","6"].map(n=>stepResult[n]&&(
+                      <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
+                        {stepResult[n]}
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* DB整合性 */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>
-                  🔍 DB整合性チェック
-                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎週月曜に自動実行）</span>
-                </div>
-                <button onClick={handleDbCheck} disabled={dbCheckLoading} style={btnStyle("#7c3aed", dbCheckLoading)}>
-                  {dbCheckLoading ? "確認中..." : "整合性チェックを今すぐ実行"}
-                </button>
-                {dbCheckResult && (
-                  <div style={{ marginTop:8, fontSize:11 }}>
-                    <div style={{ color:(dbCheckResult.issues?.length??0)===0?"#166534":"#d97706", fontWeight:700 }}>
-                      {(dbCheckResult.issues?.length??0)===0 ? "✅ 問題なし" : `⚠️ ${dbCheckResult.issues?.length}件の問題を検出`}
-                    </div>
-                    {dbCheckResult.issues?.map((issue: string, i: number) => (
-                      <div key={i} style={{ marginTop:4, padding:"4px 8px", background:"#fffbeb", borderRadius:6, color:"#374151", whiteSpace:"pre-wrap" }}>{issue}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* IPO自動取得 */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>
-                  📡 IPO情報自動取得
-                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎日自動実行）</span>
-                </div>
-                <button onClick={handleAutoFetch} disabled={autoLoading} style={btnStyle("#9b59b6", autoLoading)}>
-                  {autoLoading ? "取得中..." : "今すぐ自動取得を実行"}
-                </button>
-                {autoResult && <p style={{ marginTop:6, fontSize:11, color:"#2a7a7e" }}>{autoResult}</p>}
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* メール通知 */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>
-                  📧 週次通知メール送信
-                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（通常: 毎週金曜18時に自動送信）</span>
-                </div>
-                <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>翌週にBB開始・申込開始・上場がある場合のみ送信されます</p>
-                <button onClick={handleTestNotify} disabled={notifyLoading} style={btnStyle("#0369a1", notifyLoading)}>
-                  {notifyLoading ? "送信中..." : "通知メールを今すぐ送信"}
-                </button>
-                {notifyResult && <p style={{ marginTop:6, fontSize:11, color:notifyResult.startsWith("❌")?"#dc2626":"#166534" }}>{notifyResult}</p>}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ═══ マスタ管理（折りたたみ） ═══ */}
-        <div style={{ ...sectionStyle, padding:0, overflow:"hidden" }}>
-          <button onClick={() => setMasterOpen(v => !v)}
-            style={{ width:"100%", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center",
-              background:"#334155", border:"none", cursor:"pointer", borderRadius:masterOpen?"12px 12px 0 0":"12px" }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:14, color:"white" }}>🗂 マスタ管理</div>
-              <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:2 }}>競合財務・EDINETコード・初値・経済指標カレンダー</div>
-            </div>
-            <span style={{ color:"white", fontSize:12, transform:masterOpen?"rotate(180deg)":"none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
-          </button>
-          {masterOpen && (
-            <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:16 }}>
-
-              {/* 競合財務 */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🏢 競合他社財務データ取得</div>
-                <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>⑦で収集した競合企業の財務データを取得します（約30〜60秒）</p>
-                {!selectedCompany
-                  ? <p style={{ fontSize:11, color:"#94a3b8" }}>※ 上の「銘柄分析」で銘柄を選択してください</p>
-                  : <>
-                    <button onClick={handleCompetitor} disabled={compLoading} style={btnStyle("#0f766e", compLoading)}>
-                      {compLoading ? "取得中..." : "競合財務データを取得する"}
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${vizResult?.startsWith("❌")?"#fecaca":vizResult?.includes("完了")?"#bbf7d0":"#e2e8f0"}`, background:vizResult?.startsWith("❌")?"#fef2f2":vizResult?.includes("完了")?"#f0fdf4":"#f8fafc" }}>
+                    <div style={{ fontWeight:900, color:"#0d4f52", fontSize:13, marginBottom:3 }}>STEP 6｜視覚化データ生成</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>グラフ・表データをまとめて生成します（約30〜60秒）</p>
+                    <button onClick={handleVisualize} disabled={vizLoading} style={btnStyle("#0d4f52", vizLoading)}>
+                      {vizLoading?"⏳ 生成中...":"📊 視覚化データを生成"}
                     </button>
-                    {compResult && <div style={{ marginTop:8, fontSize:11, lineHeight:1.7, padding:"6px 8px", borderRadius:6, background:"#f0fdf4", color:"#166534", whiteSpace:"pre-wrap" }}>{compResult}</div>}
-                  </>}
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* EDINETコード */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>
-                  📥 EDINETコードリスト取得
-                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（数ヶ月に1回）</span>
-                </div>
-                <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>EDINETからCSVをダウンロードし、edinet_companiesテーブルにインポートします。</p>
-                <button onClick={handleEdinetCodes} style={btnStyle("#0369a1", false)}>
-                  EDINETダウンロードページを開く
-                </button>
-                {edinetResult && <p style={{ marginTop:8, fontSize:11, color:"#0d4f52" }}>{edinetResult}</p>}
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* 初値・騰落率 */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:8 }}>📝 初値・騰落率入力</div>
-                <InitialPriceForm />
-              </div>
-
-              <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
-
-              {/* 経済指標カレンダー */}
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>
-                  🌐 経済指標カレンダー登録
-                  <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（年に数回）</span>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
-                  <div>
-                    <label style={labelStyle}>日付 *</label>
-                    <input type="date" value={econDate} onChange={e => setEconDate(e.target.value)} style={inputStyle}/>
+                    {vizResult && <div style={{ marginTop:6, fontSize:11, padding:"4px 8px", borderRadius:6, background:vizResult.startsWith("❌")?"#fef2f2":"#f0fdf4", color:vizResult.startsWith("❌")?"#dc2626":"#166534" }}>{vizResult}</div>}
                   </div>
-                  <div>
-                    <label style={labelStyle}>イベント種別 *</label>
-                    <select value={econType} onChange={e => setEconType(e.target.value)} style={inputStyle}>
-                      <option value="FOMC">🇺🇸 FOMC</option>
-                      <option value="日銀">🇯🇵 日銀金融政策決定会合</option>
-                      <option value="NFP">📊 米雇用統計（NFP）</option>
-                      <option value="CPI">📈 米CPI</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>メモ（任意）</label>
-                    <input value={econLabel} onChange={e => setEconLabel(e.target.value)} placeholder="例：結果発表23:00" style={inputStyle}/>
-                  </div>
-                  <button onClick={handleAddEconEvent} disabled={econLoading || !econDate} style={btnStyle("#0369a1", econLoading||!econDate)}>
-                    {econLoading ? "追加中..." : "➕ 追加する"}
-                  </button>
-                  {econResult && <p style={{ fontSize:11, color:econResult.startsWith("❌")?"#dc2626":"#166534" }}>{econResult}</p>}
-                </div>
-                {econEvents.length > 0 && (
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#2a7a7e", marginBottom:6 }}>登録済みイベント（{econEvents.length}件）</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
-                      {econEvents.map(e => (
-                        <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 10px", background:"#f8fafc", borderRadius:8, border:"1px solid #e2e8f0" }}>
-                          <div>
-                            <span style={{ fontSize:12, fontWeight:700, color:"#082b2e" }}>{e.event_date}</span>
-                            <span style={{ fontSize:11, color:"#2a7a7e", marginLeft:8 }}>{e.event_type}</span>
-                            {e.label && <span style={{ fontSize:11, color:"#64748b", marginLeft:6 }}>（{e.label}）</span>}
-                          </div>
-                          <button onClick={() => handleDeleteEconEvent(e.id)}
-                            style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:"2px 6px" }}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
-          )}
-        </div>
+
+          </div>{/* 右カラム終わり */}
+
+        </div>{/* admin-layout終わり */}
       </div>
     </div>
   );
