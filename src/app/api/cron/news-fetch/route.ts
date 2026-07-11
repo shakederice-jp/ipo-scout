@@ -115,7 +115,9 @@ ${items.map((item, i) => `${i + 1}. [${item.source}] ${item.title}`).join("\n")}
       messages: [{ role: "user", content: prompt }],
     });
     const text = (msg.content[0] as any).text ?? "";
-    const clean = text.split("json").join("").split("```").join("").trim();
+    const jsonStart = text.indexOf("{");
+    const jsonEnd = text.lastIndexOf("}");
+    const clean = jsonStart >= 0 && jsonEnd >= 0 ? text.slice(jsonStart, jsonEnd + 1) : text;
     const parsed = JSON.parse(clean);
     return parsed.results ?? [];
   } catch {
