@@ -100,9 +100,9 @@ export default function TrendsPage() {
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {topSectors.map((s, i) => (
-                <div key={s.sector} style={{ display: "flex", alignItems: "center", gap: 10 }}
-                  onClick={() => setActiveSector(activeSector === s.sector ? "all" : s.sector)}
-                  role="button" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+                <div key={s.sector}
+                onClick={() => setActiveSector(activeSector === s.sector ? "all" : s.sector)}
+                role="button" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 16, fontWeight: 900, color: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#64748b", minWidth: 20 }}>
                     {i + 1}
                   </span>
