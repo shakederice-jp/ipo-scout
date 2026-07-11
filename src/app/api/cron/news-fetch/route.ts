@@ -115,7 +115,7 @@ ${items.map((item, i) => `${i + 1}. [${item.source}] ${item.title}`).join("\n")}
       messages: [{ role: "user", content: prompt }],
     });
     const text = (msg.content[0] as any).text ?? "";
-    const clean = text.replace(/```json|```/g, "").trim();
+    const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(clean);
     return parsed.results ?? [];
   } catch {
