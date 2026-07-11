@@ -58,20 +58,24 @@ export default function InitialPriceForm() {
   const handleSave = async () => {
     if (!selected) { setMsg("❌ 銘柄を選択してください"); return; }
     setSaving(true); setMsg("");
-    const r = await fetch("/api/admin/initial-price", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        stockId: selected,
-        initialPrice: initPrice || null,
-        priceChangeRate: changeRate || null,
-        status: status || null,
-      }),
-    });
-    const d = await r.json();
-    setMsg(d.success ? "✅ 保存しました" : `❌ ${d.error}`);
-    setSaving(false);
-    loadCompanies();
+    try {
+      const r = await fetch("/api/admin/initial-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stockId: selected,
+          initialPrice: initPrice || null,
+          priceChangeRate: changeRate || null,
+          status: status || null,
+        }),
+      });
+      const d = await r.json();
+      setMsg(d.success ? "✅ 保存しました" : `❌ ${d.error}`);
+    } catch (e) {
+      setMsg(`❌ 通信エラー: ${String(e)}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = {
