@@ -99,6 +99,7 @@ ${items.map((item, i) => `${i + 1}. [${item.source}] ${item.title}${item.summary
       "sector_score": 1〜10,
       "ai_comment": "20字以内でポイントを端的に",
       "is_featured": true/false,
+     "title_ja": "英語タイトルの場合は日本語に自然に翻訳。日本語タイトルはそのまま",
       "tweet": "X投稿用140文字以内のツイート本文。日本語で。絵文字1〜2個・ハッシュタグ2個・末尾にURLプレースホルダー[URL]を含める。URL込みで140文字に収まるよう本文は110文字以内にすること"
     }
   ]
@@ -164,7 +165,7 @@ export async function GET(req: NextRequest) {
 
     inserts.push({
       source: item.source,
-      title: item.title,
+      title: analysis?.title_ja ?? item.title,
       url: item.url,
       summary: item.summary ?? null,
       sector: analysis?.sector ?? "その他",
