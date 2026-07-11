@@ -14,12 +14,23 @@ const ADMIN_EMAIL = "shakederice@gmail.com";
 
 // 情報源定義
 export const NEWS_SOURCES = [
+  // PR TIMES（資金調達・IPO・スタートアップ）
   { name: "PR TIMES", url: "https://prtimes.jp/rss20.aspx?keyword=%E8%B3%87%E9%87%91%E8%AA%BF%E9%81%94", category: "資金調達" },
   { name: "PR TIMES", url: "https://prtimes.jp/rss20.aspx?keyword=%E6%96%B0%E8%A6%8F%E4%B8%8A%E5%A0%B4", category: "新規上場" },
   { name: "PR TIMES", url: "https://prtimes.jp/rss20.aspx?keyword=%E3%82%B9%E3%82%BF%E3%83%BC%E3%83%88%E3%82%A2%E3%83%83%E3%83%97", category: "スタートアップ" },
+  { name: "PR TIMES", url: "https://prtimes.jp/rss20.aspx?keyword=%E3%83%99%E3%83%B3%E3%83%81%E3%83%A3%E3%83%BC%E3%82%AD%E3%83%A3%E3%83%94%E3%82%BF%E3%83%AB", category: "VC" },
+  // ロイター日本語版（マーケット・規制・政策）
   { name: "ロイター日本語版", url: "https://feeds.reuters.com/reuters/JPBusinessNews", category: "ビジネス" },
-  { name: "東洋経済オンライン", url: "https://toyokeizai.net/list/feed/rss", category: "産業トレンド" },
+  { name: "ロイター日本語版", url: "https://feeds.reuters.com/reuters/JPTechnologyNews", category: "テクノロジー" },
+  // 東洋経済オンライン（カテゴリ別）
+  { name: "東洋経済オンライン", url: "https://toyokeizai.net/list/feed/rss?category=business", category: "ビジネス" },
+  { name: "東洋経済オンライン", url: "https://toyokeizai.net/list/feed/rss?category=technology", category: "テクノロジー" },
+  // みんかぶ（株式・IPO）
   { name: "みんかぶ", url: "https://minkabu.jp/rss/news", category: "株式・IPO" },
+  // BRIDGE（スタートアップ・VC専門）
+  { name: "THE BRIDGE", url: "https://thebridge.jp/feed", category: "スタートアップ" },
+  // ダイヤモンド・オンライン（経済・政策）
+  { name: "ダイヤモンド・オンライン", url: "https://diamond.jp/feed/top", category: "経済・政策" },
 ];
 
 // RSS取得
@@ -71,19 +82,31 @@ async function analyzeWithClaude(items: { title: string; source: string }[]): Pr
 【ニュース一覧】
 ${items.map((item, i) => `${i + 1}. [${item.source}] ${item.title}`).join("\n")}
 
-投資家・IPO投資家の視点で各記事を評価してください:
+投資家・IPO投資家の視点で各記事を評価してください。
+
+【重要】以下のテーマに関係しない記事は "exclude": true を設定して除外してください:
+- IPO・新規上場・株式市場
+- スタートアップ・資金調達・VC・PEファンド
+- 規制・金融庁・経産省・政府の経済政策
+- AI・半導体・バイオ・量子・宇宙などの技術トレンド
+- 決算・業績・企業買収・M&A
+- 金融・投資・経済動向
+
+料理・レシピ・ライフスタイル・スポーツ・芸能など投資と無関係な記事は必ず除外してください。
+
 {
   "results": [
     {
       "index": 1,
-      "sector": "AI・機械学習 / フィンテック / 半導体 / ヘルスケア / SaaS・クラウド / 小売・EC / 製造・ロボット / エネルギー / 不動産・建設 / その他",
-      "sector_score": 1〜10（投資家にとっての注目度。IPO・資金調達・成長性で判断）,
+      "exclude": false,
+      "sector": "AI・機械学習 / フィンテック / 半導体 / ヘルスケア / SaaS・クラウド / 小売・EC / 製造・ロボット / エネルギー / 規制・政策 / VC・PEファンド / 技術トレンド / 決算・M&A / その他",
+      "sector_score": 1〜10（投資家にとっての注目度。IPO・資金調達・成長性・政策影響度で判断）,
       "ai_comment": "投資家視点で25字以内のポイント",
-      "is_featured": true/false（sector_scoreが5以上の記事はtrue。積極的にtrueにすること。最低でも全体の30%はtrueにすること）,
+      "is_featured": true/false（sector_scoreが6以上はtrue。最低でも全体の40%はtrueにすること）,
       "tweet": "X投稿用ツイート。日本語140文字以内。絵文字1〜2個・#IPO #投資 などハッシュタグ2個・末尾に[URL]プレースホルダー。本文は100文字以内に収めること"
     }
   ]
-}`;
+}
 
   try {
     const msg = await claude.messages.create({
@@ -139,6 +162,10 @@ export async function GET(req: NextRequest) {
   for (let i = 0; i < allItems.length; i++) {
     const item = allItems[i];
     const analysis = analysisResults.find((r: any) => r.index === i + 1);
+
+    // 無関係な記事はスキップ
+    if (analysis?.exclude === true) continue;
+
     const shortUrl = await shortenUrl(item.url);
 
     inserts.push({
