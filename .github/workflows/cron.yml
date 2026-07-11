@@ -35,3 +35,9 @@ jobs:
     steps:
       - name: Run News Fetch PR Times only
         run: "curl -X GET 'https://ipo-jp.vercel.app/api/cron/news-fetch?newsapi=false' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  detect-ipo-price:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Detect IPO Price
+        run: "curl -X GET https://ipo-jp.vercel.app/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
