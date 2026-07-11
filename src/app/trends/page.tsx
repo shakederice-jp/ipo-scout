@@ -62,11 +62,10 @@ export default function TrendsPage() {
     .sort((a, b) => b.avg - a.avg)
     .slice(0, 5);
 
-  const filtered = trends.filter(t => {
-    if (activeTab === "featured" && !t.is_featured) return false;
-    if (activeSector !== "all" && t.sector !== activeSector) return false;
-    return true;
-  });
+    const filtered = trends.filter(t => {
+        if (activeSector !== "all" && t.sector !== activeSector) return false;
+        return true;
+      });
 
   const updatedAt = trends[0]?.fetched_at
     ? new Date(trends[0].fetched_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -119,20 +118,8 @@ export default function TrendsPage() {
           </div>
         )}
 
-        {/* タブ */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          {[
-            { key: "featured", label: "⭐ 注目ニュース" },
-            { key: "all", label: "📋 すべて" },
-          ].map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-              style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
-                backgroundColor: activeTab === tab.key ? "#0d4f52" : "white",
-                color: activeTab === tab.key ? "white" : "#64748b",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              {tab.label}
-            </button>
-          ))}
+       {/* セクターフィルター */}
+       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" as const }}>
           {activeSector !== "all" && (
             <button onClick={() => setActiveSector("all")}
               style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #66c3c6", cursor: "pointer", fontSize: 12,
