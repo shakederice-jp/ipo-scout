@@ -42,6 +42,11 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
               }}>A</button>
             ))}
           </div>
+          <Link href="/trends" style={{
+            fontSize: 11, fontWeight: 600, color: "#66c3c6",
+            backgroundColor: "rgba(102,195,198,0.15)", border: "1px solid rgba(102,195,198,0.3)",
+            borderRadius: 6, padding: "3px 8px", cursor: "pointer", textDecoration: "none",
+          }}>📡 トレンド</Link>
           <button onClick={() => setLang(lang === "ja" ? "en" : "ja")} style={{
             fontSize: 11, fontWeight: 600, color: C.teal,
             backgroundColor: "rgba(102,195,198,0.15)", border: "1px solid rgba(102,195,198,0.3)",
