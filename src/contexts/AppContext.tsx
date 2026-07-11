@@ -17,9 +17,9 @@ const AppContext = createContext<AppContextType>({
 });
 
 const ZOOM_MAP: Record<FontSize, string> = {
-  sm: "1",
-  md: "1.08",
-  lg: "1.15",
+  sm: "1.08",
+  md: "1.15",
+  lg: "1.23",
 };
 
 function applyFontSize(s: FontSize) {
