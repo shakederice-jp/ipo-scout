@@ -8,7 +8,7 @@ const supabase = createClient(
 
 // 初値・騰落率の更新
 export async function POST(req: NextRequest) {
-  const { stockId, initialPrice, priceChangeRate } = await req.json();
+  const { stockId, initialPrice, priceChangeRate, status } = await req.json();
 
   if (!stockId) {
     return NextResponse.json({ error: "stockId is required" }, { status: 400 });
@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase
     .from("ipo_companies")
     .update({
-      initial_price:      initialPrice      ? Number(initialPrice)      : null,
-      price_change_rate:  priceChangeRate   ? Number(priceChangeRate)   : null,
-      status:             "上場済",
-      updated_at:         new Date().toISOString(),
+      ...(initialPrice != null ? { initial_price: Number(initialPrice) } : {}),
+      ...(priceChangeRate != null ? { price_change_rate: Number(priceChangeRate) } : {}),
+      ...(status ? { status } : {}),
+      updated_at: new Date().toISOString(),
     })
     .eq("id", stockId);
 
