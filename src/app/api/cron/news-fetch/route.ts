@@ -79,7 +79,7 @@ ${items.map((item, i) => `${i + 1}. [${item.source}] ${item.title}`).join("\n")}
       "sector": "AI・機械学習 / フィンテック / 半導体 / ヘルスケア / SaaS・クラウド / 小売・EC / 製造・ロボット / エネルギー / 不動産・建設 / その他",
       "sector_score": 1〜10（投資家にとっての注目度。IPO・資金調達・成長性で判断）,
       "ai_comment": "投資家視点で25字以内のポイント",
-      "is_featured": true/false（sector_scoreが7以上かつIPO・資金調達・成長セクターに直結する記事のみtrue）,
+      "is_featured": true/false（sector_scoreが5以上の記事はtrue。積極的にtrueにすること。最低でも全体の30%はtrueにすること）,
       "tweet": "X投稿用ツイート。日本語140文字以内。絵文字1〜2個・#IPO #投資 などハッシュタグ2個・末尾に[URL]プレースホルダー。本文は100文字以内に収めること"
     }
   ]
