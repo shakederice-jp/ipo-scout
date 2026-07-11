@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import AppHeader from "@/components/AppHeader";
 import Link from "next/link";
 
 const supabase = createClient(
@@ -75,7 +74,6 @@ export default function TrendsPage() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f4fbfc" }}>
-      <AppHeader />
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* ヘッダー */}
