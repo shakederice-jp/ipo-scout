@@ -888,13 +888,17 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   <div key={g.key} style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:10,padding:"8px",textAlign:"center"}}>
                     <div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{g.icon}</div>
                     <div style={{fontWeight:900,fontSize:10,color:DARK}}>{g.label}</div>
-              <a href={"/ipo-guide#" + g.anchor} style={{fontSize:9,color:"#66c3c6",textDecoration:"none",fontWeight:700}}>投資法則を見る →</a>
                     <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>{avgScore}</div>
                     <div style={{fontSize:8,color:TTEXT}}>/100</div>
                   </div>
                 );
               })}
-            </div>
+           </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"center",padding:"8px 0 4px"}}>
+            <a href="/ipo-guide" style={{fontSize:12,color:"#66c3c6",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:4,padding:"6px 16px",borderRadius:20,border:"1px solid #66c3c6",background:"#f0fdf4"}}>
+              💡 超短期・短期・長期の投資法則を見る →
+            </a>
           </div>
           <div style={{backgroundColor:"white"}}>
             {GROUPS.map(g=>{
