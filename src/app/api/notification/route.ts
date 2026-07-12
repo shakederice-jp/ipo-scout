@@ -6,7 +6,6 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET: 通知設定を取得
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get('user_id');
@@ -21,15 +20,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data });
 }
 
-// POST: 通知設定を保存
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { user_id, company_id, notify_listing, notify_bb, notify_lockup_90, notify_lockup_180, method_email } = body;
-  if (!user_id || !company_id) return NextResponse.json({ error: 'user_id and company_id required' }, { status: 400 });
+  const { user_id, company_id, notify_listing, notify_bb, notify_apply, notify_daily_reminder, notify_lockup_90, notify_lockup_180, method_email } = body;
+  if (!user_id || company_id === undefined) return NextResponse.json({ error: 'user_id and company_id required' }, { status: 400 });
 
   const supabase = getSupabase();
 
-  // プランチェック
   const { data: profile } = await supabase.from('user_profiles').select('plan, email').eq('id', user_id).single();
   const allowedPlans = ['notify', 'report', 'complete'];
   if (!profile || !allowedPlans.includes(profile.plan ?? '')) {
@@ -40,6 +37,8 @@ export async function POST(req: NextRequest) {
     user_id, company_id,
     notify_listing: notify_listing ?? true,
     notify_bb: notify_bb ?? true,
+    notify_apply: notify_apply ?? true,
+    notify_daily_reminder: notify_daily_reminder ?? false,
     notify_lockup_90: notify_lockup_90 ?? false,
     notify_lockup_180: notify_lockup_180 ?? false,
     method_email: method_email ?? true,
@@ -50,7 +49,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
-// DELETE: 通知設定を削除
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get('user_id');

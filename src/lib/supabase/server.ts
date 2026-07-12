@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import type { IpoCompany } from "@/types/ipo";
 
 function getEnv() {
@@ -13,7 +15,27 @@ export function createSupabaseServerClient(): SupabaseClient | null {
   return createClient(url, key);
 }
 
-// トップページ用
+export async function createSupabaseRouteClient() {
+  const { url, key } = getEnv();
+  if (!url || !key) return null;
+  const cookieStore = await cookies();
+
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        } catch {}
+      },
+    },
+  });
+}
+
 export async function fetchIpoCompanies(): Promise<{
   data: IpoCompany[] | null;
   error: string | null;
@@ -35,11 +57,10 @@ export async function fetchIpoCompanies(): Promise<{
     return { data: null, error: error.message };
   }
 
-  // 月ごとに日付順で最初の3銘柄を無料にする
   const monthCount: Record<string, number> = {};
   const result = (data as IpoCompany[]).map((company) => {
     const monthKey = company.listing_date
-      ? company.listing_date.slice(0, 7) // "2026-06"
+      ? company.listing_date.slice(0, 7)
       : "unknown";
     monthCount[monthKey] = (monthCount[monthKey] ?? 0) + 1;
     return {
@@ -51,7 +72,6 @@ export async function fetchIpoCompanies(): Promise<{
   return { data: result, error: null };
 }
 
-// カレンダーページ用（全フィールド取得）
 export async function fetchIpoCompaniesForCalendar(): Promise<{
   data: IpoCompany[] | null;
   error: string | null;
@@ -75,7 +95,6 @@ export async function fetchIpoCompaniesForCalendar(): Promise<{
   return { data: data as IpoCompany[], error: null };
 }
 
-// 分析レポートページ用（1銘柄取得）
 export async function fetchIpoCompanyById(id: string): Promise<{
   data: IpoCompany | null;
   error: string | null;

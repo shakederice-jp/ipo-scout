@@ -48,7 +48,7 @@ export default function MyPage() {
     // 管理者プレビューモード（URLに?admin=1がある場合）
     const isAdminPreview = new URLSearchParams(window.location.search).get("admin") === "1";
     
-    fetch("/api/mypage")
+    fetch("/api/mypage", { cache: "no-store" })
       .then(r => r.json())
       .then(d => {
         if (d.error && isAdminPreview) {
@@ -67,6 +67,7 @@ export default function MyPage() {
             purchases: [],
             notifySettings: {
               notify_bb: true,
+              notify_daily_reminder: false,
               notify_apply: true,
               notify_listing: true,
               notify_lockup_90: false,
@@ -219,6 +220,7 @@ export default function MyPage() {
             { key: "notify_bb",      label: "🟦 BB開始日" },
             { key: "notify_apply",   label: "📝 申込開始日" },
             { key: "notify_listing", label: "🔴 上場日" },
+            { key: "notify_daily_reminder", label: "⏰ 前日リマインダー（毎日12時・翌日分のみ）" },
             { key: "notify_lockup_90",  label: "🔓 ロックアップ90日解除" },
             { key: "notify_lockup_180", label: "🔓 ロックアップ180日解除" },
             { key: "method_email",   label: "📧 メール通知" },
