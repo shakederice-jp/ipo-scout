@@ -98,10 +98,7 @@ export default async function Home({
             <span style={{ fontSize:16, color:"#22c55e" }}>→</span>
           </a>
 
-          {/* マイページ（冒頭） */}
-          <a href="/mypage"
-
-          {/* マイページ（冒頭） */}
+                   {/* マイページ（冒頭） */}
           <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", fontWeight:900, fontSize:14, color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
             <User size={16} color="white" />
             👤 マイページ・通知設定
