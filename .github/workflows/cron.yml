@@ -41,9 +41,10 @@ jobs:
     steps:
       - name: Run Detect IPO Price
         run: "curl -X GET https://ipo-jp.vercel.app/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
-        daily-reminder:
+
+  daily-reminder:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Run Daily Reminder (明日のBB開始・申込開始・上場をメール通知)
+      - name: Run Daily Reminder
         run: "curl -X GET https://ipo-jp.vercel.app/api/cron/daily-reminder -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
