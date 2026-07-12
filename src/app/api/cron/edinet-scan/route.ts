@@ -192,9 +192,24 @@ for (const date of dates) {
           const totalShares = structured?.ipo_details?.total_shares
             ? Number(String(structured.ipo_details.total_shares).replace(/[^0-9]/g, ""))
             : null;
-          const marketCap = totalShares && price
+            const marketCap = totalShares && price
             ? Math.round((totalShares * price) / 1000000)
             : null;
+          const rawFundraising = structured?.ipo_details?.fundraising_amount ?? null;
+          let fundraising = null;
+          if (rawFundraising) {
+            const str = String(rawFundraising);
+            const hyakumanMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*百万円/);
+            const okuMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*億円/);
+            if (hyakumanMatch) {
+              fundraising = Math.round(parseFloat(hyakumanMatch[1].replace(/,/g, "")));
+            } else if (okuMatch) {
+              fundraising = Math.round(parseFloat(okuMatch[1].replace(/,/g, "")) * 100);
+            } else {
+              const numMatch = str.match(/([0-9,]+)/);
+              if (numMatch) fundraising = Math.round(parseFloat(numMatch[1].replace(/,/g, "")));
+            }
+          }
           await supabase
             .from("ipo_companies")
             .update({
@@ -206,7 +221,7 @@ for (const date of dates) {
                   ipo_price: price,
                   market_cap: marketCap,
                   float_ratio: structured?.ipo_details?.float_ratio ?? null,
-                  fundraising: structured?.ipo_details?.fundraising_amount ?? null,
+                  fundraising: fundraising,
                   title: "バリュエーション指標",
                 },
               },

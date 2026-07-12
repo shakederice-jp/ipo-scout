@@ -40,8 +40,27 @@ export async function POST(req: NextRequest) {
           ? Number(String(structured.ipo_details.total_shares).replace(/[^0-9]/g, ""))
           : null;
         const floatRatio = structured?.ipo_details?.float_ratio ?? null;
-        const fundraising = structured?.ipo_details?.fundraising_amount ?? null;
-
+        // 調達額から数値のみ抽出(億円単位の場合は百万円に変換)
+        const rawFundraising = structured?.ipo_details?.fundraising_amount ?? null;
+        let fundraising = null;
+        if (rawFundraising) {
+          const str = String(rawFundraising);
+          // 「782百万円」「7.82億円」などから数値を抽出
+          const hyakumanMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*百万円/);
+          const okuMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*億円/);
+          const senmanMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*千万円/);
+          if (hyakumanMatch) {
+            fundraising = Math.round(parseFloat(hyakumanMatch[1].replace(/,/g, "")));
+          } else if (okuMatch) {
+            fundraising = Math.round(parseFloat(okuMatch[1].replace(/,/g, "")) * 100);
+          } else if (senmanMatch) {
+            fundraising = Math.round(parseFloat(senmanMatch[1].replace(/,/g, "")) * 10);
+          } else {
+            // 数字のみ抽出
+            const numMatch = str.match(/([0-9,]+)/);
+            if (numMatch) fundraising = Math.round(parseFloat(numMatch[1].replace(/,/g, "")));
+          }
+        }
         // 時価総額を計算(株数×公募価格 → 百万円単位)
         const marketCap = totalShares && price
           ? Math.round((totalShares * price) / 1000000)
