@@ -903,7 +903,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               const avgScore=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
               return (
                 <div key={g.key} style={{borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.border}`,padding:"12px 16px"}}>
+                  <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.color}`,padding:"12px 16px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <span style={{fontSize:20,lineHeight:1}}>{g.icon}</span>
                       <div style={{flex:1}}>
