@@ -506,9 +506,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   });
 
   const GROUPS=[
-    {key:"ultra_short" as const,label:"超短期",sub:"初値売り・当日トレード",icon:"⚡",color:"#ef4444",bg:"#fef2f2",border:"#fecaca"},
-    {key:"short"       as const,label:"短期",  sub:"数週間〜数ヶ月",        icon:"📈",color:"#d97706",bg:"#fffbeb",border:"#fde68a"},
-    {key:"long"        as const,label:"長期",  sub:"数年〜",                icon:"🏔",color:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe"},
+    {key:"ultra_short" as const,label:"超短期",sub:"初値売り・当日トレード",icon:"⚡",color:"#ef4444",bg:"#fee2e2",anchor:"ultra"},
+    {key:"short"       as const,label:"短期",  sub:"数週間〜数ヶ月",        icon:"📈",color:"#d97706",bg:"#fef3c7",anchor:"short"},
+    {key:"long"        as const,label:"長期",  sub:"数年〜",                icon:"🏛",color:"#7c3aed",bg:"#ede9fe",anchor:"long"},
   ];
 
   const wrap:React.CSSProperties={maxWidth:720,margin:"0 auto",padding:"0 16px"};
@@ -888,6 +888,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   <div key={g.key} style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:10,padding:"8px",textAlign:"center"}}>
                     <div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{g.icon}</div>
                     <div style={{fontWeight:900,fontSize:10,color:DARK}}>{g.label}</div>
+              <a href={"/ipo-guide#" + g.anchor} style={{fontSize:9,color:"#66c3c6",textDecoration:"none",fontWeight:700}}>投資法則を見る →</a>
                     <div style={{fontWeight:900,fontSize:22,color:g.color,lineHeight:1}}>{avgScore}</div>
                     <div style={{fontSize:8,color:TTEXT}}>/100</div>
                   </div>
