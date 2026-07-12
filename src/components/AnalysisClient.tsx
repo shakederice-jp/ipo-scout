@@ -896,8 +896,13 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
            </div>
           </div>
           <div style={{display:"flex",justifyContent:"center",padding:"8px 0 4px"}}>
-            <a href="/ipo-guide" style={{fontSize:12,color:"#66c3c6",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:4,padding:"6px 16px",borderRadius:20,border:"1px solid #66c3c6",background:"#f0fdf4"}}>
-              💡 超短期・短期・長期の投資法則を見る →
+            <a href="/ipo-guide" style={{fontSize:12,color:"#66c3c6",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:6,padding:"8px 20px",borderRadius:20,border:"1px solid #66c3c6",background:"#f0fdf4"}}>
+              <span style={{fontSize:16}}>💡</span>
+              <span style={{display:"flex",flexDirection:"column",lineHeight:1.5}}>
+                <span>IPO投資で資産を増やす</span>
+                <span>実践的法則（超短期・短期・長期別）</span>
+              </span>
+              <span>→</span>
             </a>
           </div>
           <div style={{backgroundColor:"white"}}>
