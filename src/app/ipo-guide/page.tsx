@@ -290,7 +290,7 @@ export default function IpoGuidePage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e0f0f0" />
                 <XAxis dataKey="year" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v}`} />
-                <Tooltip formatter={(v: any, name: string) => [`${v}`, name]} />
+                <Tooltip formatter={(v: any) => [`${v}`]} />
                 <Legend />
                 <Line type="monotone" dataKey="成長株" stroke={C.green} strokeWidth={3} dot={{ fill: C.green, r: 4 }} />
                 <Line type="monotone" dataKey="市場平均" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
