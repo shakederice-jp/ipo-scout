@@ -173,11 +173,48 @@ for (const date of dates) {
       const priceData = await priceRes.json();
 
       if (priceData.success && priceData.price) {
+        const price = priceData.price;
         await supabase
           .from("ipo_companies")
-          .update({ ipo_price: priceData.price })
+          .update({ ipo_price: price })
           .eq("id", matched.id);
-        results.push(`💰 公募価格自動設定: ${matched.name} → ${priceData.price}円`);
+
+        // visualization_dataも自動更新
+        const { data: companyData } = await supabase
+          .from("ipo_companies")
+          .select("structured_data, visualization_data")
+          .eq("id", matched.id)
+          .single();
+
+        if (companyData) {
+          const structured = companyData.structured_data;
+          const vizData = companyData.visualization_data ?? {};
+          const totalShares = structured?.ipo_details?.total_shares
+            ? Number(String(structured.ipo_details.total_shares).replace(/[^0-9]/g, ""))
+            : null;
+          const marketCap = totalShares && price
+            ? Math.round((totalShares * price) / 1000000)
+            : null;
+          await supabase
+            .from("ipo_companies")
+            .update({
+              visualization_data: {
+                ...vizData,
+                valuation_table: {
+                  ...(vizData?.valuation_table ?? {}),
+                  available: true,
+                  ipo_price: price,
+                  market_cap: marketCap,
+                  float_ratio: structured?.ipo_details?.float_ratio ?? null,
+                  fundraising: structured?.ipo_details?.fundraising_amount ?? null,
+                  title: "バリュエーション指標",
+                },
+              },
+            })
+            .eq("id", matched.id);
+        }
+
+        results.push(`💰 公募価格自動設定: ${matched.name} → ${price}円`);
       } else {
         results.push(`⚠️ 公募価格未検出: ${matched.name}（${priceData.message ?? "不明"}）`);
       }
