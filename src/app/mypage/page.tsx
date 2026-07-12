@@ -43,6 +43,7 @@ export default function MyPage() {
   const [copied, setCopied] = useState(false);
   const [notifyState, setNotifyState] = useState<any>(null);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [notifySaveResult, setNotifySaveResult] = useState<string | null>(null);
 
   useEffect(() => {
     // 管理者プレビューモード（URLに?admin=1がある場合）
@@ -94,15 +95,26 @@ export default function MyPage() {
   const handleSaveNotify = async () => {
     if (!notifyState) return;
     setSavingNotify(true);
-    await fetch("/api/notification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: data.profile?.id,
-        company_id: null,
-        ...notifyState,
-      }),
-    });
+    setNotifySaveResult(null);
+    try {
+      const res = await fetch("/api/notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: data.profile?.id,
+          company_id: null,
+          ...notifyState,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotifySaveResult(`❌ ${json.error ?? "保存に失敗しました"}`);
+      } else {
+        setNotifySaveResult("✅ 通知設定を保存しました");
+      }
+    } catch (e) {
+      setNotifySaveResult("❌ 通信エラーが発生しました");
+    }
     setSavingNotify(false);
   };
 
@@ -237,6 +249,11 @@ export default function MyPage() {
             style={{ width: "100%", marginTop: 14, padding: "10px", backgroundColor: savingNotify ? "#94a3b8" : PRIMARY, color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
             {savingNotify ? "保存中..." : "通知設定を保存する"}
           </button>
+          {notifySaveResult && (
+            <p style={{ marginTop: 10, fontSize: 12, textAlign: "center", color: notifySaveResult.startsWith("❌") ? "#dc2626" : "#15803d", fontWeight: 700 }}>
+              {notifySaveResult}
+            </p>
+          )}
         </Section>
 
         {/* 5. 購入済みレポート */}
