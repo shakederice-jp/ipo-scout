@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session;
     const plan     = session.metadata?.plan ?? "";
     const stockId  = session.metadata?.stock_id ?? "";
-    const email    = session.customer_details?.email ?? "";
     const custId   = session.customer as string ?? "";
 
     const supabase = createClient(
@@ -34,7 +33,6 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // メールからユーザーIDを取得
     const userId = session.metadata?.user_id ?? "";
     if (!userId) {
       console.error("Webhook: user_id not found in metadata");
@@ -52,17 +50,20 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "user_id,company_id" }
       );
-    } else if (plan) {
-      // サブスク購入 → user_profiles のプランを更新
+    } else if (plan === "notify" || plan === "report" || plan === "complete") {
+      // サブスク購入 → user_profiles のプランを更新（列名はid、user_idという列は存在しない）
       await supabase.from("user_profiles").upsert(
         {
-          user_id:            userId,
-          plan:               plan,
-          stripe_customer_id: custId,
-          updated_at:         new Date().toISOString(),
+          id:                    userId,
+          plan:                  plan,
+          stripe_customer_id:    custId,
+          stripe_subscription_id: session.subscription as string ?? null,
+          updated_at:            new Date().toISOString(),
         },
-        { onConflict: "user_id" }
+        { onConflict: "id" }
       );
+    } else {
+      console.error(`Webhook: 不明なplan値のためスキップ: "${plan}"`);
     }
   }
 

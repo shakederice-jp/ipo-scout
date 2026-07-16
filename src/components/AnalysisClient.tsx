@@ -623,7 +623,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
             <button onClick={() => setShowNotify(true)}
               style={{padding:"8px 18px",backgroundColor:"#f59e0b",color:"white",border:"none",borderRadius:20,cursor:"pointer",fontWeight:900,fontSize:12,whiteSpace:"nowrap",flexShrink:0}}>
-              無料で通知設定 →
+              今すぐ通知設定 →
             </button>
           </div>
         )}
@@ -778,7 +778,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                       onClick={() => setShowNotify(true)}
                       style={{display:"inline-flex",alignItems:"center",gap:6,padding:"10px 20px",backgroundColor:"#66c3c6",borderRadius:20,border:"none",cursor:"pointer",boxShadow:"0 2px 8px rgba(102,195,198,0.3)"}}>
                       <span style={{fontSize:14}}>🔔</span>
-                      <span style={{fontSize:12,color:"white",fontWeight:900}}>通知設定をする（無料）</span>
+                      <span style={{fontSize:12,color:"white",fontWeight:900}}>通知設定をする</span>
                     </button>
                   </div>
                 ) : (
