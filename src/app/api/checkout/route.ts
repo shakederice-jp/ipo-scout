@@ -14,7 +14,7 @@ const PRICE_MAP: Record<string, string | undefined> = {
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("STRIPE_SECRET_KEY診断:", process.env.STRIPE_SECRET_KEY?.slice(0, 12), "文字数:", process.env.STRIPE_SECRET_KEY?.length);
+    console.error("STRIPE_SECRET_KEY診断:", process.env.STRIPE_SECRET_KEY?.slice(0, 12), "文字数:", process.env.STRIPE_SECRET_KEY?.length);
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
