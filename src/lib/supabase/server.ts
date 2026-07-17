@@ -57,15 +57,23 @@ export async function fetchIpoCompanies(): Promise<{
     return { data: null, error: error.message };
   }
 
-  const monthCount: Record<string, number> = {};
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  let freeCount = 0;
   const result = (data as IpoCompany[]).map((company) => {
     const monthKey = company.listing_date
       ? company.listing_date.slice(0, 7)
       : "unknown";
-    monthCount[monthKey] = (monthCount[monthKey] ?? 0) + 1;
+    const isCurrentMonth = monthKey === currentMonthKey;
+    let isFree = false;
+    if (isCurrentMonth) {
+      freeCount++;
+      isFree = freeCount <= 2;
+    }
     return {
       ...company,
-      is_free: monthCount[monthKey] <= 3,
+      is_free: isFree,
     };
   });
 
