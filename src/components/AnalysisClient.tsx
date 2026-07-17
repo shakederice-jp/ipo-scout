@@ -461,7 +461,7 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[]}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -611,6 +611,18 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           )}
         </Card>
+        {!hasAccess && (
+          <div style={{borderRadius:14,padding:"20px",backgroundColor:"#0d4f52",color:"white",textAlign:"center"}}>
+            <div style={{fontSize:15,fontWeight:900,marginBottom:6}}>🔒 ここから先は有料コンテンツです</div>
+            <p style={{fontSize:12,color:"#a0d4d6",margin:"0 0 14px",lineHeight:1.7}}>
+              軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、通知プラン以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
+            </p>
+            <a href="/plans" style={{display:"inline-block",padding:"10px 24px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:8,fontWeight:800,fontSize:13,textDecoration:"none"}}>
+              料金プランを見る →
+            </a>
+          </div>
+        )}
+
         {/* 通知促進バナー */}
         {!userId && (
           <div style={{borderRadius:12,padding:"14px 16px",backgroundColor:"#fffbeb",border:"1px solid #fde68a",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>

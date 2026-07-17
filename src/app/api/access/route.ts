@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const { data: profile } = await supabase
     .from("user_profiles")
     .select("plan")
-    .eq("user_id", user.id)
+    .eq("id", user.id)
     .single();
 
   if (profile?.plan && profile.plan !== "free") {

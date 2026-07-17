@@ -1,4 +1,5 @@
-import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, createSupabaseRouteClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
 import { notFound } from "next/navigation";
 
@@ -17,6 +18,39 @@ async function fetchCompany(id: string) {
   return { data, error };
 }
 
+// この銘柄をこのユーザーが閲覧できるかどうかを判定する
+// (無料枠の銘柄 / ログイン済みかつ有料プラン加入 / ログイン済みかつ単品購入済み のいずれか)
+async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<boolean> {
+  if (isFreeCompany) return true;
+
+  const routeClient = await createSupabaseRouteClient();
+  if (!routeClient) return false;
+  const { data: { session } } = await routeClient.auth.getSession();
+  if (!session) return false;
+
+  const serviceSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: profile } = await serviceSupabase
+    .from("user_profiles")
+    .select("plan")
+    .eq("id", session.user.id)
+    .single();
+
+    if (profile?.plan && ["notify", "report", "complete"].includes(profile.plan)) return true;
+
+  const { data: purchase } = await serviceSupabase
+    .from("purchased_stocks")
+    .select("id")
+    .eq("user_id", session.user.id)
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  return !!purchase;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data } = await fetchCompany(id);
@@ -29,7 +63,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     ? `総合スコア${score}/100（${grade}評価）。${summary.slice(0, 120)}`
     : summary.slice(0, 150);
   const title = `${data.name} IPO分析レポート｜大手町調査室九課`;
-  // ティッカーがあればティッカーURLを正規URLとして使用
   const ticker = (data as any).ticker;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo-jp.vercel.app/analysis/${canonicalId}`;
@@ -86,6 +119,24 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     initialAnalysis = { ...co.analysis_detail, is_new_format: false };
   }
 
+  // 無料公開対象の銘柄かどうか(月初3銘柄まで)はfetchIpoCompanies側で計算済み
+  const isFreeCompany = (allCompanies as any[] | null)?.find((c) => c.id === company.id)?.is_free ?? false;
+  const hasAccess = await checkAccess(company.id, isFreeCompany);
+
+  // アクセス権が無い場合は、要約・スコアなどの「無料プレビュー」部分だけ残し、
+  // 詳細分析(軸別スコア・シナリオ・インサイト)はクライアントに一切送らない
+  if (initialAnalysis && !hasAccess) {
+    initialAnalysis = {
+      summary: initialAnalysis.summary,
+      total_score: initialAnalysis.total_score,
+      grade: initialAnalysis.grade,
+      ultra_short_grade: initialAnalysis.ultra_short_grade,
+      short_grade: initialAnalysis.short_grade,
+      long_grade: initialAnalysis.long_grade,
+      is_new_format: initialAnalysis.is_new_format,
+    };
+  }
+
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
 
@@ -113,8 +164,9 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       <AnalysisClient
         company={company as any}
         initialAnalysis={initialAnalysis}
-        visualizationData={visualizationData}
+        visualizationData={hasAccess ? visualizationData : null}
         allCompanies={allCompanies as any[]}
+        hasAccess={hasAccess}
       />
     </>
   );
