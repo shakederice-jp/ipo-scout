@@ -1,4 +1,5 @@
 import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, createSupabaseRouteClient } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
 import { notFound } from "next/navigation";
