@@ -123,6 +123,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   // 無料公開対象の銘柄かどうか(月初3銘柄まで)はfetchIpoCompanies側で計算済み
   const isFreeCompany = (allCompanies as any[] | null)?.find((c) => c.id === company.id)?.is_free ?? false;
   const hasAccess = await checkAccess(company.id, isFreeCompany);
+  console.error("課金判定診断:", "company.id=", company.id, "isFreeCompany=", isFreeCompany, "hasAccess=", hasAccess);
 
   // アクセス権が無い場合は、要約・スコアなどの「無料プレビュー」部分だけ残し、
   // 詳細分析(軸別スコア・シナリオ・インサイト)はクライアントに一切送らない
