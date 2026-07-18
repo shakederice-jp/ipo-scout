@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const plan    = body.plan    ?? "complete";
     const stockId = body.stockId ?? "";
     const priceId = PRICE_MAP[plan];
-
+    console.error("価格ID診断:", "plan=", plan, "priceId=", JSON.stringify(priceId));
     if (!priceId) {
       return NextResponse.json({ error: `プラン「${plan}」の料金IDが未設定です` }, { status: 500 });
     }
