@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const mode       = plan === "single" ? "payment" : "subscription";
     const successUrl = plan === "single" && stockId
       ? `${origin}/analysis/${stockId}?checkout=success`
-      : `${origin}/calendar?checkout=success`;
+      : `${origin}/?checkout=success`;
 
       try {
         const testPrice = await stripe.prices.retrieve(priceId);
