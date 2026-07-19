@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut } from "lucide-react";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 const PRIMARY = "#66c3c6";
 const DARK = "#082b2e";
@@ -44,6 +45,8 @@ export default function MyPage() {
   const [notifyState, setNotifyState] = useState<any>(null);
   const [savingNotify, setSavingNotify] = useState(false);
   const [notifySaveResult, setNotifySaveResult] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   useEffect(() => {
     // 管理者プレビューモード（URLに?admin=1がある場合）
@@ -123,6 +126,23 @@ export default function MyPage() {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
+  const handleOpenPortal = async () => {
+    setPortalLoading(true);
+    setPortalError(null);
+    try {
+      const res = await fetch("/api/portal", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) {
+        setPortalError(body.error ?? "ポータルの起動に失敗しました");
+        return;
+      }
+      window.location.href = body.url;
+    } catch {
+      setPortalError("通信エラーが発生しました");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   if (loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f4fbfc" }}>
@@ -180,8 +200,8 @@ export default function MyPage() {
           <InfoRow label="ユーザーID" value={<span style={{ fontSize: 10, color: "#94a3b8" }}>{profile.id?.slice(0, 8)}...</span>} />
         </Section>
 
-        {/* 2. プラン・契約状況 */}
-        <Section icon={<CreditCard size={16} />} title="プラン・契約状況">
+       {/* 2. プラン・契約状況 */}
+       <Section icon={<CreditCard size={16} />} title="プラン・契約状況">
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <span style={{ fontSize: 13, fontWeight: 900, padding: "6px 14px", borderRadius: 20, backgroundColor: plan.bg, color: plan.color }}>
               {plan.label}
@@ -197,10 +217,20 @@ export default function MyPage() {
               </span>
             } />
           )}
-          <div style={{ marginTop: 12 }}>
-            <a href="/" style={{ fontSize: 12, color: PRIMARY, fontWeight: 700, textDecoration: "none" }}>
-              プランを変更する →
-            </a>
+
+          {profile.stripe_customer_id && (
+            <button onClick={handleOpenPortal} disabled={portalLoading}
+              style={{ width: "100%", marginTop: 16, padding: "12px", backgroundColor: portalLoading ? "#94a3b8" : "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+              {portalLoading ? "接続中..." : "プラン変更・解約はこちら"}
+            </button>
+          )}
+          {portalError && (
+            <p style={{ marginTop: 8, fontSize: 11, color: "#dc2626", textAlign: "center" }}>{portalError}</p>
+          )}
+
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
+            <CheckoutButton />
           </div>
         </Section>
 
