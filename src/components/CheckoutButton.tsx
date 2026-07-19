@@ -45,13 +45,16 @@ const PLANS: {
 export function CheckoutButton({
   defaultPlan = "complete",
   stockId,
+  availablePlans,
 }: {
   defaultPlan?: Plan;
   stockId?: string;
+  availablePlans?: Plan[];
 }) {
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(defaultPlan);
   const [message, setMessage] = useState<string | null>(null);
+  const visiblePlans = availablePlans ? PLANS.filter((p) => availablePlans.includes(p.id)) : PLANS;
 
   async function handleClick() {
     setMessage(null);
@@ -84,13 +87,13 @@ export function CheckoutButton({
     }
   }
 
-  const current = PLANS.find((p) => p.id === selectedPlan) ?? PLANS[2];
+  const current = visiblePlans.find((p) => p.id === selectedPlan) ?? visiblePlans[0];
 
   return (
     <div className="flex flex-col items-stretch gap-3">
       {/* プラン選択 */}
       <div className="grid grid-cols-2 gap-1.5">
-        {PLANS.map((plan) => (
+        {visiblePlans.map((plan) => (
           <button
             key={plan.id}
             type="button"

@@ -228,9 +228,12 @@ export default function MyPage() {
             <p style={{ marginTop: 8, fontSize: 11, color: "#dc2626", textAlign: "center" }}>{portalError}</p>
           )}
 
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
+<div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
-            <CheckoutButton />
+            <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
+            <p style={{ fontSize: 11, color: "#64748b", marginTop: 10, lineHeight: 1.6 }}>
+              💡 特定の1銘柄だけ読みたい場合は、各銘柄の分析ページから「シングルレポートを購入」できます。
+            </p>
           </div>
         </Section>
 
