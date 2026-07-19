@@ -38,7 +38,14 @@ export async function POST(req: NextRequest) {
       ? `${origin}/analysis/${stockId}?checkout=success`
       : `${origin}/calendar?checkout=success`;
 
-    const session = await stripe.checkout.sessions.create({
+      try {
+        const testPrice = await stripe.prices.retrieve(priceId);
+        console.error("同一関数内Price取得テスト:", "成功", testPrice.id, "livemode=", testPrice.livemode);
+      } catch (testErr) {
+        console.error("同一関数内Price取得テスト:", "失敗", testErr instanceof Error ? testErr.message : String(testErr));
+      }
+  
+      const session = await stripe.checkout.sessions.create({
       mode,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
