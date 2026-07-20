@@ -126,12 +126,15 @@ export default async function Home({
             <div style={{ padding:"12px 16px", backgroundColor:"#66c3c6", display:"flex", alignItems:"center", gap:8 }}>
               <Crown size={16} color="#082b2e" />
               <div>
-                <div style={{ fontWeight:900, fontSize:13, color:"#082b2e" }}>プレミアム資料の購入</div>
+                <div style={{ fontWeight:900, fontSize:13, color:"#082b2e" }}>有料プランのお申込み</div>
                 <div style={{ fontSize:10, color:"#0d4f52" }}>Stripeで安全決済 🔒</div>
               </div>
             </div>
             <div style={{ padding:16, backgroundColor:"white" }}>
-              <CheckoutButton />
+              <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
+              <p style={{ fontSize:10, color:"#64748b", marginTop:10, lineHeight:1.6 }}>
+                💡 各IPOレポートの単一購入は、各銘柄の分析ページからお申込みいただけます。
+              </p>
             </div>
           </div>
 
