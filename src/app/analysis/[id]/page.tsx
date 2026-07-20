@@ -40,7 +40,7 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<b
     .eq("id", session.user.id)
     .single();
 
-    if (profile?.plan && ["notify", "report", "complete"].includes(profile.plan)) return true;
+    if (profile?.plan && ["report", "complete"].includes(profile.plan)) return true;
 
   const { data: purchase } = await serviceSupabase
     .from("purchased_stocks")
