@@ -218,15 +218,10 @@ export default function MyPage() {
             } />
           )}
 
-          {profile.stripe_customer_id && (
-            <button onClick={handleOpenPortal} disabled={portalLoading}
-              style={{ width: "100%", marginTop: 16, padding: "12px", backgroundColor: portalLoading ? "#94a3b8" : "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-              {portalLoading ? "接続中..." : "プラン変更・解約はこちら"}
-            </button>
-          )}
-          {portalError && (
-            <p style={{ marginTop: 8, fontSize: 11, color: "#dc2626", textAlign: "center" }}>{portalError}</p>
-          )}
+<a href="/cancel"
+            style={{ display: "block", textAlign: "center", width: "100%", marginTop: 16, padding: "12px", backgroundColor: "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 13, boxSizing: "border-box" }}>
+            🔓 プラン変更・解約はこちら
+          </a>
 
 <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
