@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import RefferalSection from "@/components/RefferalSection";
 import CalendarClient from "@/components/CalendarClient";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -155,7 +154,6 @@ export default async function Home({
             ))}
           </div>
 
-          <RefferalSection userId={userId ?? "test"} />
         </aside>
       </div>
 

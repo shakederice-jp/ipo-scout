@@ -15,11 +15,28 @@ export default function AuthPage() {
   const handleSubmit = async () => {
     setLoading(true); setError(null); setMessage(null);
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email, password,
-        options: { emailRedirectTo: `${location.origin}/auth/callback` },
-      });
-      if (error) setError(error.message);
+      const refCode = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("ref")
+      : null;
+
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+    });
+
+    if (error) {
+      setError(error.message);
+    } else if (refCode && data?.user?.id) {
+      try {
+        await fetch("/api/referral", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referral_code: refCode, user_id: data.user.id }),
+        });
+      } catch (e) {
+        console.error("referral apply failed", e);
+      }
+    }
       else setMessage("確認メールを送信しました。メールをご確認ください。");
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
