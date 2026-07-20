@@ -43,13 +43,26 @@ export default function CancelPage() {
 
         <div style={{ background: "white", borderRadius: 16, border: `1px solid ${BORDER}`, padding: 24, marginBottom: 20 }}>
           <h2 style={{ fontSize: 14, fontWeight: 900, color: DARK, marginBottom: 12 }}>ご確認事項</h2>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#334155", lineHeight: 2 }}>
-            <li>解約は<strong>いつでも何度でも</strong>お手続きいただけます。継続利用の縛りはありません。</li>
-            <li>解約後も、<strong>今の請求期間の終了日まで</strong>は引き続きサービスをご利用いただけます。</li>
-            <li>日割りでの<strong>返金は行っておりません</strong>。ご了承の上、お手続きください。</li>
-            <li>プランのアップグレード・ダウングレードも同じお手続き画面から可能です。</li>
-            <li>お手続きは、次のボタンから遷移するStripe社の安全な決済管理画面で行われます。</li>
-          </ul>
+          <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.9, margin: "0 0 14px" }}>
+            解約は<strong>いつでも何度でも</strong>お手続きいただけます。継続利用の縛りはありません。
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 900, color: MID, margin: "0 0 4px" }}>⬆️ 上位プランへの変更</p>
+              <p style={{ fontSize: 12, color: "#334155", margin: 0, lineHeight: 1.7 }}>
+                その場で新プランに切り替わり、差額を日割りでご請求します。
+              </p>
+            </div>
+            <div style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 900, color: MID, margin: "0 0 4px" }}>⬇️ 下位プランへの変更・解約</p>
+              <p style={{ fontSize: 12, color: "#334155", margin: 0, lineHeight: 1.7 }}>
+                <strong>今の請求期間の終了日まで</strong>は現在のプランをご利用いただけます。期間終了と同時に切り替わり、<strong>日割りでの返金は行っておりません</strong>。
+              </p>
+            </div>
+          </div>
+          <p style={{ fontSize: 11, color: "#64748b", marginTop: 14, marginBottom: 0 }}>
+            お手続きは、次のボタンから遷移するStripe社の安全な決済管理画面で行われます。
+          </p>
         </div>
 
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 20, cursor: "pointer" }}>
