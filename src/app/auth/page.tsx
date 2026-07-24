@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AuthPage() {
@@ -9,24 +9,28 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refCode, setRefCode] = useState("");
 
   const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlRef = new URLSearchParams(window.location.search).get("ref");
+      if (urlRef) setRefCode(urlRef);
+    }
+  }, []);
 
   const handleSubmit = async () => {
     setLoading(true); setError(null); setMessage(null);
     if (mode === "signup") {
-      const refCode = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("ref")
-      : null;
-
-    const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: `${location.origin}/auth/callback` },
     });
 
     if (error) {
       setError(error.message);
-    } else if (refCode && data?.user?.id) {
+    } else if (refCode.trim() && data?.user?.id) {
       try {
         await fetch("/api/referral", {
           method: "POST",
@@ -76,8 +80,22 @@ export default function AuthPage() {
           <label style={{ display:"block", fontSize:"12px", fontWeight:"700", color:"#2a7a7e", marginBottom:"6px" }}>パスワード</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
             placeholder="8文字以上"
-            style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}/>
+            style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}
+          />
         </div>
+
+        {mode === "signup" && (
+          <div style={{ marginBottom:"24px" }}>
+            <label style={{ display:"block", fontSize:"12px", fontWeight:"700", color:"#2a7a7e", marginBottom:"6px" }}>紹介コード（任意）</label>
+            <input type="text" value={refCode} onChange={e => setRefCode(e.target.value)}
+              placeholder="お持ちの方はコードを入力"
+              style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}
+            />
+            <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
+              紹介コードを入力して登録すると、あなたと紹介者の両方に2ヶ月間無料特典が付与されます
+            </p>
+          </div>
+        )}
 
         {error && <p style={{ color:"#b91c1c", fontSize:"13px", margin:"0 0 16px" }}>{error}</p>}
         {message && <p style={{ color:"#2a7a7e", fontSize:"13px", margin:"0 0 16px" }}>{message}</p>}
