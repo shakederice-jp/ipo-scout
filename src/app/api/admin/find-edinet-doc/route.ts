@@ -10,10 +10,9 @@ export async function POST(req: NextRequest) {
     }
 
     // デバッグ:6/9固定で直接テスト
-    const testUrl = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=2026-06-09&type=2`;
+    const testUrl = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=2026-06-09&type=2&Subscription-Key=${EDINET_KEY}`;
     try {
       const res = await fetch(testUrl, {
-        headers: { "Subscription-Key": EDINET_KEY },
         signal: AbortSignal.timeout(8000),
       });
       const bodyText = await res.text();
