@@ -42,11 +42,10 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
       }
       const json = await res.json();
       const docs = json?.results || [];
-      if (i < 10) {
-        const names030000 = docs
-          .filter((doc: any) => doc.formCode === "030000")
-          .map((doc: any) => doc.filerName);
-        console.error(`[EDINET検索デバッグ] ${dateStr} 030000件数=${names030000.length} 会社名一覧=${JSON.stringify(names030000)}`);
+      // デバッグ：formCodeを問わず、名前に「ティア」を含む書類を全部記録
+      const hits = docs.filter((doc: any) => (doc.filerName || "").includes("ティア"));
+      if (hits.length > 0) {
+        console.error(`[EDINET検索デバッグ] ${dateStr} 一致=${JSON.stringify(hits.map((h: any) => ({name: h.filerName, formCode: h.formCode, docId: h.docID})))}`);
       }
       // 完全一致を最優先
       const exact = docs.find((doc: any) =>
