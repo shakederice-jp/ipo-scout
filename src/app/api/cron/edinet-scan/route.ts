@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import Anthropic from "@anthropic-ai/sdk";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,7 +98,48 @@ export async function GET(req: NextRequest) {
       }
 
       if (!targetCompany) {
-        results.push(`スキップ（ipo_companies未登録）: ${companyName}`);
+        // 新規IPO候補として自動的にipo_companiesへ登録する
+        try {
+          const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const analysisMsg = await claude.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 512,
+            messages: [{
+              role: "user",
+              content: `IPO企業「${companyName}」(EDINETコード: ${edinetCode}, EDINET提出書類ID: ${docId})の事業内容を、一般的な知識をもとに推定してください。JSON形式のみで回答してください（前後の説明文は不要）。\n\n{"sector":"業種名","biz_type":"事業内容の一言説明","ai_summary":"150文字程度の事業概要説明"}`
+            }],
+          });
+          const rawAnalysis = (analysisMsg.content[0] as any).text;
+          const jsonMatch = rawAnalysis.match(/\{[\s\S]*\}/);
+          const analysisText = jsonMatch ? jsonMatch[0] : rawAnalysis.replace(/```json|```/g, "").trim();
+          let analysis: any;
+          try {
+            analysis = JSON.parse(analysisText);
+          } catch {
+            analysis = { sector: "不明", biz_type: "不明", ai_summary: "自動検出のため詳細情報は後日更新されます" };
+          }
+
+          const { error: insertError } = await supabase
+            .from("ipo_companies")
+            .insert({
+              name: companyName,
+              ticker: edinetCo?.security_code ?? null,
+              exchange: "グロース",
+              sector: analysis.sector,
+              biz_type: analysis.biz_type,
+              ai_summary: analysis.ai_summary,
+              edinet_doc_id: docId,
+              status: "自動検出・要確認",
+            });
+
+          if (insertError) {
+            results.push(`❌ 新規登録失敗: ${companyName} - ${insertError.message}`);
+          } else {
+            results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
+          }
+        } catch (e: any) {
+          results.push(`❌ 新規登録エラー: ${companyName} - ${String(e)}`);
+        }
         continue;
       }
 
