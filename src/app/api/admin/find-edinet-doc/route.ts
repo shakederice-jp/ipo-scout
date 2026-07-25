@@ -19,6 +19,11 @@ function isMatch(filerName: string, companyName: string): boolean {
   return false;
 }
 
+function isProspectus(doc: any): boolean {
+  const desc = doc.docDescription || "";
+  return desc.includes("有価証券届出書") && !desc.includes("訂正");
+}
+
 async function searchEdinetDoc(companyName: string): Promise<{docId: string; filerName: string} | null> {
   const today = new Date();
   for (let i = 0; i < 180; i++) {
@@ -30,21 +35,9 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
       const res = await fetch(url, {
         signal: AbortSignal.timeout(8000),
       });
-      if (!res.ok) {
-        if (i === 0) {
-          const errText = await res.text();
-          console.error(`[EDINET検索] ${dateStr} エラー status=${res.status} body=${errText.slice(0, 300)}`);
-        }
-        continue;
-      }
+      if (!res.ok) continue;
       const json = await res.json();
       const docs = json?.results || [];
-      const tiaHits = docs.filter((doc: any) => (doc.filerName || "").includes("ティア"));
-      if (tiaHits.length > 0) {
-        console.error(`[EDINET検索デバッグ] ${dateStr} 一致=${JSON.stringify(tiaHits.map((h: any) => ({name: h.filerName, formCode: h.formCode, docId: h.docID})))}`);
-      }
-      const isProspectus = (doc: any) =>
-        (doc.docDescription || "").includes("有価証券届出書") && !(doc.docDescription || "").includes("訂正");
       const exact = docs.find((doc: any) =>
         isProspectus(doc) && normalize(doc.filerName) === normalize(companyName)
       );
@@ -53,10 +46,7 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
         isProspectus(doc) && isMatch(doc.filerName ?? "", companyName)
       );
       if (partial) return { docId: partial.docID, filerName: partial.filerName };
-    } catch (e: any) {
-      if (i === 0) {
-        console.error(`[EDINET検索] fetch自体が失敗 error=${e?.message || e}`);
-      }
+    } catch {
       continue;
     }
   }
@@ -67,7 +57,6 @@ export async function POST(req: NextRequest) {
   try {
     const { company_name } = await req.json();
     if (!company_name) return NextResponse.json({ error: "company_name required" }, { status: 400 });
-    console.error(`[EDINET検索デバッグ] 受信した会社名="${company_name}" (長さ=${company_name.length})`);
     const result = await searchEdinetDoc(company_name);
     if (!result) return NextResponse.json({
       error: `「${company_name}」の目論見書が直近180日のEDINETに見つかりませんでした`
