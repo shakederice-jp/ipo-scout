@@ -43,12 +43,14 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
       if (tiaHits.length > 0) {
         console.error(`[EDINET検索デバッグ] ${dateStr} 一致=${JSON.stringify(tiaHits.map((h: any) => ({name: h.filerName, formCode: h.formCode, docId: h.docID})))}`);
       }
+      const isProspectus = (doc: any) =>
+        (doc.docDescription || "").includes("有価証券届出書") && !(doc.docDescription || "").includes("訂正");
       const exact = docs.find((doc: any) =>
-        doc.formCode === "030000" && normalize(doc.filerName) === normalize(companyName)
+        isProspectus(doc) && normalize(doc.filerName) === normalize(companyName)
       );
       if (exact) return { docId: exact.docID, filerName: exact.filerName };
       const partial = docs.find((doc: any) =>
-        doc.formCode === "030000" && isMatch(doc.filerName ?? "", companyName)
+        isProspectus(doc) && isMatch(doc.filerName ?? "", companyName)
       );
       if (partial) return { docId: partial.docID, filerName: partial.filerName };
     } catch (e: any) {
