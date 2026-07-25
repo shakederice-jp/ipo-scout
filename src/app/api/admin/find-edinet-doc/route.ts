@@ -52,7 +52,12 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
         doc.formCode === "030000" && isMatch(doc.filerName ?? "", companyName)
       );
       if (partial) return { docId: partial.docID, filerName: partial.filerName };
-    } catch { continue; }
+    } catch (e: any) {
+      if (i === 0) {
+        console.error(`[EDINET検索] fetch自体が失敗 error=${e?.message || e}`);
+      }
+      continue;
+    }
   }
   return null;
 }
