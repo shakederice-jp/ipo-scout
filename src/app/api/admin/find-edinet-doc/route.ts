@@ -42,6 +42,12 @@ async function searchEdinetDoc(companyName: string): Promise<{docId: string; fil
       }
       const json = await res.json();
       const docs = json?.results || [];
+      if (i < 10) {
+        const names030000 = docs
+          .filter((doc: any) => doc.formCode === "030000")
+          .map((doc: any) => doc.filerName);
+        console.error(`[EDINET検索デバッグ] ${dateStr} 030000件数=${names030000.length} 会社名一覧=${JSON.stringify(names030000)}`);
+      }
       // 完全一致を最優先
       const exact = docs.find((doc: any) =>
         doc.formCode === "030000" && normalize(doc.filerName) === normalize(companyName)
