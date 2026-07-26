@@ -20,12 +20,24 @@ async function fetchEdinetDocuments(date: string) {
 
 function isProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
-  return desc.includes("有価証券届出書") && !desc.includes("訂正");
+  return (
+    doc.ordinanceCode === "010" &&
+    desc.includes("有価証券届出書") &&
+    !desc.includes("訂正") &&
+    !desc.includes("受益証券") &&
+    !desc.includes("投資信託")
+  );
 }
 
 function isCorrectedProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
-  return desc.includes("有価証券届出書") && desc.includes("訂正");
+  return (
+    doc.ordinanceCode === "010" &&
+    desc.includes("有価証券届出書") &&
+    desc.includes("訂正") &&
+    !desc.includes("受益証券") &&
+    !desc.includes("投資信託")
+  );
 }
 
 // 会社名の類似度チェック(部分一致・正規化)
