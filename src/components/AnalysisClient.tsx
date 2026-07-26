@@ -1023,12 +1023,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </div>
         </div>
 
-        {/* ===== ここから参考資料（超短期・短期・長期の3分類） ===== */}
+       {/* 事業等のリスク（重要度別）：深掘りレポートの直後、参考資料の手前に配置 */}
+       {visualizationData && <RiskTable vizData={visualizationData} />}
 
-        <ReferenceGroupHeader
-          icon="⚡" order="①" title="超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
-          accent="#ef4444"
-        />
+{/* ===== ここから参考資料（超短期・短期・長期の3分類） ===== */}
+
+<ReferenceGroupHeader
+  icon="⚡" order="①" title="超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
+  accent="#ef4444"
+/>
         {visualizationData && <IpoSummaryTable vizData={visualizationData} />}
         {visualizationData && <ShareStructureChart vizData={visualizationData} />}
         {renderSupplyDemand()}
@@ -1069,7 +1072,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {visualizationData && <ShareholdersChart vizData={visualizationData} />}
         {renderCompetitorFinancials()}
         {visualizationData && <UseOfProceedsTable vizData={visualizationData} />}
-        {visualizationData && <RiskTable vizData={visualizationData} />}
 
         {/* ⑱ 参考文献・確認先 */}
         {(analysis.sources||[]).length>0&&(
