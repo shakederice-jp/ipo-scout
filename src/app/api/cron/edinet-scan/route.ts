@@ -8,12 +8,24 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const EDINET_KEY = process.env.EDINET_API_KEY!;
+
 async function fetchEdinetDocuments(date: string) {
-  const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2`;
+  const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
   return data?.results ?? [];
+}
+
+function isProspectus(doc: any): boolean {
+  const desc = doc.docDescription || "";
+  return desc.includes("有価証券届出書") && !desc.includes("訂正");
+}
+
+function isCorrectedProspectus(doc: any): boolean {
+  const desc = doc.docDescription || "";
+  return desc.includes("有価証券届出書") && desc.includes("訂正");
 }
 
 // 会社名の類似度チェック(部分一致・正規化)
@@ -53,9 +65,7 @@ export async function GET(req: NextRequest) {
     const docs = await fetchEdinetDocuments(date);
 
     // 目論見書(ordinance_code=010, form_code=030000)のみ抽出
-    const prospectuses = docs.filter((d: any) =>
-      d.ordinanceCode === "010" && d.formCode === "030000"
-    );
+    const prospectuses = docs.filter((d: any) => isProspectus(d));
 
     for (const doc of prospectuses) {
       const edinetCode = doc.edinetCode;
@@ -197,9 +207,7 @@ const { data: pendingPriceList } = await supabase
 if (pendingPriceList && pendingPriceList.length > 0) {
 for (const date of dates) {
   const docs = await fetchEdinetDocuments(date);
-  const corrections = docs.filter((d: any) =>
-    d.ordinanceCode === "010" && d.formCode === "030001"
-  );
+  const corrections = docs.filter((d: any) => isCorrectedProspectus(d));
 
   for (const doc of corrections) {
     const companyName = doc.filerName;
