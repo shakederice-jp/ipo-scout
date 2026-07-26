@@ -25,7 +25,8 @@ function isProspectus(doc: any): boolean {
     desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投資信託")
+    !desc.includes("投資信託") &&
+    !doc.secCode  // 証券コードが既にある会社（既存上場企業）は新規IPOではないので除外
   );
 }
 
