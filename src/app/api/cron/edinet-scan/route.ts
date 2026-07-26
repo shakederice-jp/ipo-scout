@@ -159,42 +159,8 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // ① EDINETテキスト取得を自動実行
-      try {
-        const edinetRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/edinet`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            company_id: targetCompany.id,
-            company_name: companyName,
-            edinet_doc_id: docId,
-          }),
-        });
-        const edinetData = await edinetRes.json();
-        if (edinetData.error) {
-          results.push(`❌ テキスト取得失敗: ${companyName} - ${edinetData.error}`);
-        } else {
-          results.push(`✅ テキスト取得成功: ${companyName}（${docId}）`);
-          // ② 分析・ai_summary自動生成
-          try {
-            const analyzeRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analyze`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: targetCompany.id }),
-            });
-            const analyzeData = await analyzeRes.json();
-            if (analyzeData.error) {
-              results.push(`⚠️ 分析失敗: ${companyName} - ${analyzeData.error}`);
-            } else {
-              results.push(`✅ 分析・ai_summary生成完了: ${companyName}`);
-            }
-          } catch (e) {
-            results.push(`⚠️ 分析通信エラー: ${companyName}`);
-          }
-        }
-      } catch (e) {
-        results.push(`❌ 通信エラー: ${companyName}`);
-      }
+      // 重いテキスト取得・分析はここでは行わず、管理画面から手動実行してもらう
+      results.push(`📌 未処理あり（要手動でテキスト取得）: ${companyName}（${docId}）`);
     }
   }
 
