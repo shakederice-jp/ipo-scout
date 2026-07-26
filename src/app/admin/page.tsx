@@ -100,11 +100,29 @@ export default function AdminPage() {
   const handleStep3 = async () => {
     if (!selectedCompany) return;
     setStep("3", true);
+    const parts = [
+      { key:"score",     label:"①総合スコア" },
+      { key:"insights",  label:"②まずここに注目" },
+      { key:"scenarios", label:"③株価シナリオ" },
+    ];
+    const merged: Record<string, any> = {};
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      setStepResult(prev => ({...prev, "3": `⏳ ${p.label} 生成中 (${i+1}/${parts.length})...`}));
+      try {
+        const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:p.key }) });
+        const data = await res.json();
+        if (data.error) { setStep("3", false, `❌ ${p.label}: ${data.error}`); return; }
+        Object.assign(merged, data);
+      } catch { setStep("3", false, `❌ ${p.label}: 通信エラー`); return; }
+    }
+    setStepResult(prev => ({...prev, "3": "⏳ 保存中..."}));
     try {
-      const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id }) });
-      const data = await res.json();
-      setStep("3", false, data.error ? `❌ ${data.error}` : `✅ スコア: ${data.total_score}/100・${data.grade}ランク`);
-    } catch { setStep("3", false, "❌ 通信エラー"); }
+      const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
+      const saveData = await saveRes.json();
+      if (saveData.error) { setStep("3", false, `❌ 保存エラー: ${saveData.error}`); return; }
+    } catch { setStep("3", false, "❌ 保存通信エラー"); return; }
+    setStep("3", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク`);
   };
 
   const runAxes = async (period: string, label: string, stepNum: string) => {
@@ -577,7 +595,7 @@ export default function AdminPage() {
                   <StepRow num="1" color="#3b82f6" title="STEP 1｜EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
                   <StepRow num="7" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="⑦ 市場・競合情報を収集する" onClick={handleStep7}/>
                   <StepRow num="2" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="② 財務データを構造化する" onClick={handleStep2}/>
-                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc="総合スコア・A〜E判定・株価シナリオを生成します（約30〜40秒）" btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
+                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc="総合スコア→まずここに注目→株価シナリオの順に3回に分けて生成します（約40〜60秒）" btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fecaca":stepResult["6"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fef2f2":stepResult["6"]?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#7c3aed", fontSize:13, marginBottom:3 }}>STEP 5｜9軸 詳細分析（一括実行）</div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>超短期・短期・長期の9軸をすべて自動で順番に分析します（約2〜4分）</p>
