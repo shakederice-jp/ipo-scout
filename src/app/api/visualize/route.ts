@@ -423,11 +423,11 @@ if (chart_type === "key_metrics_table") {
     const text = (message.content[0] as any).text;
     const clean = text.replace(/```json|```/g, "").trim();
     const chartData = JSON.parse(clean);
-    // 念のため、頼んだchart_type以外の余計なキーは全て捨てる（Claudeが余計なデータを作ってしまった場合の保険）
-    const filtered = { [chart_type]: chartData[chart_type] };
+   // 念のため、頼んだchart_type以外の余計なキーは全て捨てる（Claudeが余計なデータを作ってしまった場合の保険）
+   const filtered: Record<string, any> = { [chart_type]: chartData[chart_type] };
 
-    // valuation_table: 公募価格が確定している場合、時価総額・PER・PBRはAI任せにせずTS側で確定計算して上書きする
-    if (chart_type === "valuation_table" && filtered.valuation_table) {
+   // valuation_table: 公募価格が確定している場合、時価総額・PER・PBRはAI任せにせずTS側で確定計算して上書きする
+   if (chart_type === "valuation_table" && filtered.valuation_table) {
       const ipoPrice = (co as any).ipo_price ?? null;
       if (ipoPrice) {
         const ipoDetails = sd?.ipo_details ?? {};
