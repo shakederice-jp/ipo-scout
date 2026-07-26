@@ -451,23 +451,23 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
 }
 
 /* 参考資料セクションの見出し（超短期・短期・長期の3分類、実践的法則ページと世界観を統一） */
-/* 3分類とも同じ濃色ネイビー地に、アクセントカラーの帯とアイコン背景だけを差し替えて統一感を出す */
-const REFERENCE_HEADER_BG = "#0d1b2a";
+/* 「詳細分析 深掘りレポート」ヘッダーと同じPRIMARYグリーンで統一し、アイコン背景だけをアクセントカラーで差し替える */
 function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;order:string;title:string;subtitle:string;accent:string}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:12,margin:"28px 0 4px",padding:"14px 16px",
-      borderRadius:12,backgroundColor:REFERENCE_HEADER_BG,borderLeft:`6px solid ${accent}`}}>
+      borderRadius:12,backgroundColor:PRIMARY,borderLeft:`6px solid ${accent}`}}>
       <div style={{width:40,height:40,borderRadius:10,backgroundColor:accent,display:"flex",
         alignItems:"center",justifyContent:"center",flexShrink:0}}>
         <span style={{fontSize:20,lineHeight:1}}>{icon}</span>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontWeight:900,fontSize:11,color:accent,letterSpacing:"0.02em",marginBottom:2}}>【参考資料{order}】</div>
-        <div style={{fontWeight:900,fontSize:15,color:"white",lineHeight:1.3}}>{title}</div>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginTop:3}}>{subtitle}</div>
+        <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{title}</div>
+        <div style={{fontSize:10,color:MID,marginTop:3}}>{subtitle}</div>
       </div>
       <a href="/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,
-        whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${accent}`,borderRadius:20,padding:"4px 10px"}}>
+        whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${accent}`,borderRadius:20,padding:"4px 10px",
+        backgroundColor:"rgba(255,255,255,0.7)"}}>
         法則を読む →
       </a>
     </div>
