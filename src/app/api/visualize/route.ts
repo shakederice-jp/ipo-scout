@@ -426,35 +426,44 @@ if (chart_type === "key_metrics_table") {
    // 念のため、頼んだchart_type以外の余計なキーは全て捨てる（Claudeが余計なデータを作ってしまった場合の保険）
    const filtered: Record<string, any> = { [chart_type]: chartData[chart_type] };
 
-   // valuation_table: 公募価格が確定している場合、時価総額・PER・PBRはAI任せにせずTS側で確定計算して上書きする
+   // valuation_table: 流通比率はAI任せにせず常にstructured_dataの実値を使う（market_structure_chartと計算方法を統一）
    if (chart_type === "valuation_table" && filtered.valuation_table) {
-      const ipoPrice = (co as any).ipo_price ?? null;
-      if (ipoPrice) {
-        const ipoDetails = sd?.ipo_details ?? {};
-        const existingShares = parseNumericShares(ipoDetails.total_shares);
-        const newShares = parsePublicOfferingShares(ipoDetails.public_shares);
-        const totalShares = (existingShares !== null && newShares !== null)
-          ? existingShares + newShares
-          : existingShares;
-
-        const keyMetrics: any[] = Array.isArray(sd?.key_metrics) ? sd.key_metrics : [];
-        const latest = keyMetrics.length > 0 ? keyMetrics[keyMetrics.length - 1] : null;
-        const latestEps = latest ? parseJpNumber(latest.eps) : null;
-        const latestBps = latest ? parseJpNumber(latest.bps) : null;
-
-        const marketCap = totalShares ? Math.round((ipoPrice * totalShares) / 1_000_000) : null; // 百万円
-        const per = (latestEps && latestEps > 0) ? Math.round((ipoPrice / latestEps) * 10) / 10 : null;
-        const pbr = (latestBps && latestBps > 0) ? Math.round((ipoPrice / latestBps) * 100) / 100 : null;
-
-        filtered.valuation_table = {
-          ...filtered.valuation_table,
-          ipo_price: ipoPrice,
-          market_cap: marketCap,
-          per,
-          pbr,
-        };
-      }
+    const ipoDetails = sd?.ipo_details ?? {};
+    const floatRatioFromData = parseFloatRatio(ipoDetails.float_ratio);
+    if (floatRatioFromData !== null) {
+      filtered.valuation_table = {
+        ...filtered.valuation_table,
+        float_ratio: floatRatioFromData,
+      };
     }
+
+    // 公募価格が確定している場合、時価総額・PER・PBRはAI任せにせずTS側で確定計算して上書きする
+    const ipoPrice = (co as any).ipo_price ?? null;
+    if (ipoPrice) {
+      const existingShares = parseNumericShares(ipoDetails.total_shares);
+      const newShares = parsePublicOfferingShares(ipoDetails.public_shares);
+      const totalShares = (existingShares !== null && newShares !== null)
+        ? existingShares + newShares
+        : existingShares;
+
+      const keyMetrics: any[] = Array.isArray(sd?.key_metrics) ? sd.key_metrics : [];
+      const latest = keyMetrics.length > 0 ? keyMetrics[keyMetrics.length - 1] : null;
+      const latestEps = latest ? parseJpNumber(latest.eps) : null;
+      const latestBps = latest ? parseJpNumber(latest.bps) : null;
+
+      const marketCap = totalShares ? Math.round((ipoPrice * totalShares) / 1_000_000) : null; // 百万円
+      const per = (latestEps && latestEps > 0) ? Math.round((ipoPrice / latestEps) * 10) / 10 : null;
+      const pbr = (latestBps && latestBps > 0) ? Math.round((ipoPrice / latestBps) * 100) / 100 : null;
+
+      filtered.valuation_table = {
+        ...filtered.valuation_table,
+        ipo_price: ipoPrice,
+        market_cap: marketCap,
+        per,
+        pbr,
+      };
+    }
+  }
 
     return NextResponse.json({ success: true, chart_type, data: filtered });
   } catch (e) {

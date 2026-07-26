@@ -230,7 +230,7 @@ export function ValuationTable({ vizData }: { vizData: any }) {
         {[
           { label: "IPO価格", value: valuation_table.ipo_price ? `¥${valuation_table.ipo_price?.toLocaleString()}` : "未定" },
           { label: "時価総額", value: valuation_table.market_cap ? `${(valuation_table.market_cap/100).toFixed(0)}億円` : "未定" },
-          { label: "PER", value: valuation_table.per ? `${valuation_table.per}倍` : "未定" },
+          { label: "PER", value: valuation_table.per ? `${valuation_table.per}倍` : (valuation_table.ipo_price ? "赤字のため算出不可" : "未定") },
           { label: "PBR", value: valuation_table.pbr ? `${valuation_table.pbr}倍` : "未定" },
           { label: "流通比率", value: fmt(valuation_table.float_ratio, "%") },
           { label: "調達額", value: valuation_table.fundraising ? `${valuation_table.fundraising}百万円` : "未定" },
