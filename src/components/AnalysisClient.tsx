@@ -451,16 +451,23 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
 }
 
 /* 参考資料セクションの見出し（超短期・短期・長期の3分類、実践的法則ページと世界観を統一） */
-function ReferenceGroupHeader({icon,title,subtitle,accent,bg}:{icon:string;title:string;subtitle:string;accent:string;bg:string}) {
+/* 3分類とも同じ濃色ネイビー地に、アクセントカラーの帯とアイコン背景だけを差し替えて統一感を出す */
+const REFERENCE_HEADER_BG = "#0d1b2a";
+function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;order:string;title:string;subtitle:string;accent:string}) {
   return (
-    <div style={{display:"flex",alignItems:"center",gap:10,margin:"28px 0 4px",padding:"10px 14px",
-      borderRadius:12,backgroundColor:bg,border:`1px solid ${accent}33`}}>
-      <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
-      <div style={{flex:1}}>
-        <div style={{fontWeight:900,fontSize:14,color:accent}}>{title}</div>
-        <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{subtitle}</div>
+    <div style={{display:"flex",alignItems:"center",gap:12,margin:"28px 0 4px",padding:"14px 16px",
+      borderRadius:12,backgroundColor:REFERENCE_HEADER_BG,borderLeft:`6px solid ${accent}`}}>
+      <div style={{width:40,height:40,borderRadius:10,backgroundColor:accent,display:"flex",
+        alignItems:"center",justifyContent:"center",flexShrink:0}}>
+        <span style={{fontSize:20,lineHeight:1}}>{icon}</span>
       </div>
-      <a href="/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:900,fontSize:11,color:accent,letterSpacing:"0.02em",marginBottom:2}}>【参考資料{order}】</div>
+        <div style={{fontWeight:900,fontSize:15,color:"white",lineHeight:1.3}}>{title}</div>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginTop:3}}>{subtitle}</div>
+      </div>
+      <a href="/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,
+        whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${accent}`,borderRadius:20,padding:"4px 10px"}}>
         法則を読む →
       </a>
     </div>
@@ -1019,8 +1026,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {/* ===== ここから参考資料（超短期・短期・長期の3分類） ===== */}
 
         <ReferenceGroupHeader
-          icon="⚡" title="参考資料｜超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
-          accent="#ef4444" bg="#fee2e2"
+          icon="⚡" order="①" title="超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
+          accent="#ef4444"
         />
         {visualizationData && <IpoSummaryTable vizData={visualizationData} />}
         {visualizationData && <ShareStructureChart vizData={visualizationData} />}
@@ -1028,8 +1035,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {visualizationData && <RecentIpoChart vizData={visualizationData} />}
 
         <ReferenceGroupHeader
-          icon="📈" title="参考資料｜短期投資家向け" subtitle="ロックアップを読む：総合スコア・価格の妥当性・今後のイベント"
-          accent="#d97706" bg="#fef3c7"
+          icon="📈" order="②" title="短期投資家向け" subtitle="ロックアップを読む：総合スコア・価格の妥当性・今後のイベント"
+          accent="#d97706"
         />
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -1054,8 +1061,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {visualizationData && <ShareholdersLockupTable vizData={visualizationData} />}
 
         <ReferenceGroupHeader
-          icon="🌱" title="参考資料｜長期投資家向け" subtitle="10倍株を狙う：業績実績・株主構成・資金使途・事業リスク"
-          accent="#7c3aed" bg="#ede9fe"
+          icon="🌱" order="③" title="長期投資家向け" subtitle="10倍株を狙う：業績実績・株主構成・資金使途・事業リスク"
+          accent="#7c3aed"
         />
         {visualizationData && <RevenueChart vizData={visualizationData} />}
         {visualizationData && <KeyMetricsTable vizData={visualizationData} />}
