@@ -1,6 +1,11 @@
 "use client";
-import VizCharts from "@/components/VizCharts";
-import VizTables from "@/components/VizTables";
+import {
+  RevenueChart, KeyMetricsTable, ShareholdersChart,
+  ValuationTable, ShareStructureChart, RecentIpoChart,
+} from "@/components/VizCharts";
+import {
+  IpoSummaryTable, UseOfProceedsTable, ShareholdersLockupTable, RiskTable,
+} from "@/components/VizTables";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
@@ -115,8 +120,6 @@ function parseAxisReport(text:string):{sections:Record<string,string>;positives:
   return {sections,positives,negatives,summary};
 }
 
-
-
 function parseNumbers(s?:string):number[] {
   if(!s) return [];
   const m=s.match(/-?\d+(\.\d+)?/g);
@@ -150,29 +153,23 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
   const W=600,H=300,padL=58,padR=150,padT=24,padB=40;
   const chartW=W-padL-padR,chartH=H-padT-padB;
   const x0=padL,x1=padL+chartW;
-  const xMid=x0+chartW*0.06; // 上場直後(約5営業日≒全体の6%地点)
+  const xMid=x0+chartW*0.06;
   const yFor=(v:number)=>padT+chartH-((v-minV)/range)*chartH;
   const y100=yFor(100);
 
-  // 目盛り刻み幅をデータ範囲に応じて自動決定
   const rawRange=maxV-minV;
   const tickStep=rawRange>300?100:rawRange>150?50:rawRange>60?20:10;
   const ticks:number[]=[];
   for(let v=Math.ceil(minV/tickStep)*tickStep;v<=maxV;v+=tickStep) ticks.push(v);
 
-  // 各シナリオの制御点を計算
-  // xMid地点: 公募価格から一気に動く(上場直後の急騰・急落を表現)
-  // 帯の幅: xMid地点で広く、x1地点で短期は狭く・長期は広く
   const getPoints=(lo:number,hi:number,verdict:string)=>{
     const mid=(lo+hi)/2;
-    // 上場直後の急激な動き(xMid地点)
-    const earlySpread=isLong?25:30; // 上場直後の不確実性(帯の広さ)
+    const earlySpread=isLong?25:30;
     const earlyMidOffset=verdict==="強気"?15:verdict==="弱気"?-15:0;
     const earlyMid=100+earlyMidOffset;
     const earlyHi=earlyMid+earlySpread;
     const earlyLo=earlyMid-earlySpread;
-    // 期間終了時点
-    const lateSpread=isLong?(hi-lo)*1.3:(hi-lo)*0.7; // 長期は不確実性拡大、短期は収束
+    const lateSpread=isLong?(hi-lo)*1.3:(hi-lo)*0.7;
     const lateHi=mid+lateSpread/2;
     const lateLo=mid-lateSpread/2;
     return {earlyHi,earlyLo,lateHi,lateLo};
@@ -181,7 +178,6 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
   return (
     <div style={{width:"100%",overflowX:"auto",marginBottom:14}}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,minWidth:480}}>
-        {/* グリッド線と目盛り */}
         {ticks.map(v=>(
           <g key={v}>
             <line x1={x0} y1={yFor(v)} x2={x1} y2={yFor(v)}
@@ -194,14 +190,11 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
             </text>
           </g>
         ))}
-        {/* 縦軸・横軸 */}
         <line x1={x0} y1={padT} x2={x0} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
         <line x1={x0} y1={padT+chartH} x2={x1} y2={padT+chartH} stroke="#475569" strokeWidth={1.5}/>
-        {/* 上場直後フェーズの区切り線 */}
         <line x1={xMid} y1={padT} x2={xMid} y2={padT+chartH}
           stroke="#cbd5e1" strokeWidth={0.8} strokeDasharray="3 3"/>
         <text x={xMid} y={padT-6} textAnchor="middle" fontSize={8} fill="#94a3b8">上場直後</text>
-        {/* シナリオ帯(2段階の折れ線帯) */}
         {[...rows].reverse().map(r=>{
           const{earlyHi,earlyLo,lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
           return (
@@ -211,7 +204,6 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
               stroke={colorFor(r.verdict)} strokeWidth={1.5} strokeOpacity={0.8}/>
           );
         })}
-        {/* 各シナリオの中心線 */}
         {rows.map(r=>{
           const{earlyHi,earlyLo,lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
           const earlyMid=(earlyHi+earlyLo)/2;
@@ -223,13 +215,10 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
               strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.7}/>
           );
         })}
-        {/* 起点マーカー */}
         <circle cx={x0} cy={y100} r={5} fill="#0d4f52" stroke="white" strokeWidth={2}/>
         <text x={x0+8} y={y100-7} fontSize={9} fontWeight={900} fill="#0d4f52">公募価格</text>
-        {/* 横軸ラベル */}
         <text x={x0} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">上場日</text>
         <text x={x1} y={padT+chartH+14} textAnchor="middle" fontSize={9} fill="#64748b">{periodLabel||"期間終了"}</text>
-        {/* 右側ラベル */}
         {rows.map(r=>{
           const{lateHi,lateLo}=getPoints(r.lo,r.hi,r.verdict);
           const midY=(yFor(lateLo)+yFor(lateHi))/2;
@@ -461,6 +450,23 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
   );
 }
 
+/* 参考資料セクションの見出し（超短期・短期・長期の3分類、実践的法則ページと世界観を統一） */
+function ReferenceGroupHeader({icon,title,subtitle,accent,bg}:{icon:string;title:string;subtitle:string;accent:string;bg:string}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"28px 0 4px",padding:"10px 14px",
+      borderRadius:12,backgroundColor:bg,border:`1px solid ${accent}33`}}>
+      <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:900,fontSize:14,color:accent}}>{title}</div>
+        <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{subtitle}</div>
+      </div>
+      <a href="/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>
+        法則を読む →
+      </a>
+    </div>
+  );
+}
+
 export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
@@ -512,6 +518,130 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   ];
 
   const wrap:React.CSSProperties={maxWidth:720,margin:"0 auto",padding:"0 16px"};
+
+  // 需給・VC分析（超短期ブロック用）の中身を関数化
+  const renderSupplyDemand=()=>{
+    const sd=(company as any).structured_data;
+    const lockupPeriod=sd?.ipo_details?.lockup_period||"上場後180日";
+    const floatRatio=sd?.ipo_details?.float_ratio||"参考値";
+    const shareholders:any[]=sd?.shareholders||[];
+    const valid=(Array.isArray(shareholders)?shareholders:[]).filter((s:any)=>parseFloat(String(s.ratio||'0').replace('%',''))>0);
+    const colors=["#f87171","#fb923c","#facc15","#4ade80","#60a5fa"];
+    const chart=valid.length>0
+      ?valid.slice(0,4).map((s:any,i:number)=>({label:s.name||`株主${i+1}`,pct:parseFloat(String(s.ratio||'0').replace('%','')),color:colors[i],lockup:s.lockup==="有"?"ロックアップあり":"上場時より流通"}))
+      :[{label:"創業者・役員",pct:50,color:"#f87171",lockup:lockupPeriod},{label:"その他株主",pct:35,color:"#fb923c",lockup:"各種条件あり"},{label:"一般投資家（公募）",pct:15,color:"#4ade80",lockup:"上場時より流通"}];
+    const sz=160,cx=80,cy=80,r=60,ir=36;
+    let ang=-Math.PI/2;
+    const slices=chart.map((d:any)=>{const a=2*Math.PI*(d.pct/100);const x1=cx+r*Math.cos(ang),y1=cy+r*Math.sin(ang),x2=cx+r*Math.cos(ang+a),y2=cy+r*Math.sin(ang+a),ix1=cx+ir*Math.cos(ang),iy1=cy+ir*Math.sin(ang),ix2=cx+ir*Math.cos(ang+a),iy2=cy+ir*Math.sin(ang+a),lg=a>Math.PI?1:0,path=`M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${ir} ${ir} 0 ${lg} 0 ${ix1} ${iy1} Z`;ang+=a;return{...d,path};});
+    return(
+      <Card>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+          <Shield size={14} color="#ef4444"/>
+          <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
+          <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
+          <svg width={sz} height={sz} style={{flexShrink:0}}>
+            {slices.map((s:any,i:number)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
+            <text x={cx} y={cy-6} textAnchor="middle" fontSize={9} fill="#64748b">株主構成</text>
+            <text x={cx} y={cy+8} textAnchor="middle" fontSize={9} fill="#64748b">{valid.length>0?"(実データ)":"(概算)"}</text>
+          </svg>
+          <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+            {chart.map((d:any,i:number)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:10,height:10,borderRadius:2,backgroundColor:d.color,flexShrink:0}}/>
+                <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:"#475569"}}>{d.label}</div><div style={{fontSize:9,color:"#94a3b8"}}>{d.lockup}</div></div>
+                <span style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{valid.length>0?`${d.pct}%`:"目論見書参照"}</span>
+              </div>
+            ))}
+            {valid.length===0&&shareholders.length>0&&(
+              <div style={{fontSize:9,color:"#94a3b8",padding:"4px 6px",backgroundColor:"#f8fafc",borderRadius:6}}>
+              主要株主：{(Array.isArray(shareholders)?shareholders:[]).slice(0,3).map((s:any)=>s.name).filter(Boolean).join('、')}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+          {[{label:"流通比率",val:floatRatio,c:"#d97706"},{label:"ロックアップ",val:lockupPeriod.replace("上場後","").replace("間",""),c:"#ef4444"},{label:"売り圧力",val:valid.length>0&&parseFloat(String(valid[valid.length-1]?.ratio||'0').replace('%',''))<=20?"低":"参考値",c:"#475569"}].map(({label,val,c})=>(
+            <div key={label} style={{backgroundColor:"#f8fafc",borderRadius:8,padding:"6px",textAlign:"center",border:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
+              <div style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <LockupTimeline lockupPeriod={lockupPeriod}/>
+      </Card>
+    );
+  };
+
+  // 競合他社 財務比較（長期ブロック用）の中身を関数化
+  const renderCompetitorFinancials=()=>{
+    const cf=(analysis as any).market_data?.competitor_financials;
+    if(!cf||!cf.length) return null;
+    const valid=cf.filter((c:any)=>!c.error&&(c.revenue!=null||c.net_profit!=null));
+    if(!valid.length) return null;
+    const sd=(company as any).structured_data;
+    const km=sd?.key_metrics;
+    const latestKm=Array.isArray(km)&&km.length>0?km[km.length-1]:null;
+    const parseJpNum=(s:string|null|undefined)=>{
+      if(!s) return null;
+      const neg=s.includes("△")||s.includes("-");
+      const n=parseFloat(s.replace(/[△▲\-,△円千万億]/g,"").replace(/,/g,""));
+      if(isNaN(n)) return null;
+      return neg?-n:n;
+    };
+    const toOku=(sen:number|null)=>sen==null?null:Math.round(sen/10000)/10;
+    const ownRevenue=toOku(parseJpNum(latestKm?.revenue));
+    const ownProfit=toOku(parseJpNum(latestKm?.ordinary_profit));
+    const ownNetProfit=toOku(parseJpNum(latestKm?.net_profit));
+    const ownFiscalYear=latestKm?.period??null;
+    return (
+      <Card>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
+          <BarChart2 size={14} color="#7c3aed"/>
+          <span style={{fontWeight:900,fontSize:14,color:DARK}}>競合他社 財務比較</span>
+          <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>有価証券報告書より</span>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead>
+              <tr style={{backgroundColor:LIGHT}}>
+                <th style={{padding:"8px 10px",textAlign:"left",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>企業名</th>
+                <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>売上高</th>
+                <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>経常利益</th>
+                <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>当期純利益</th>
+                <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>PER</th>
+                <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>決算期</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:PRIMARY+"22"}}>
+                <td style={{padding:"8px 10px",fontWeight:900,color:DARK}}>🎯 {company.name}（IPO銘柄）</td>
+                <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}億円`:"-"}</td>
+                <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}億円`:"-"}</td>
+                <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}億円`:"-"}</td>
+                <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>
+                  {(()=>{const ipoPrice=(company as any).ipo_price;const eps=parseJpNum(latestKm?.eps);return ipoPrice&&eps&&eps>0?`${Math.round(ipoPrice/eps*10)/10}倍`:"-";})()}
+                </td>
+                <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{ownFiscalYear||"目論見書参照"}</td>
+              </tr>
+              {valid.map((c:any,i:number)=>(
+                <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:i%2===0?"white":LIGHT}}>
+                  <td style={{padding:"8px 10px",fontWeight:700,color:DARK}}>{c.name}</td>
+                  <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.revenue!=null?`${c.revenue}億円`:"–"}</td>
+                  <td style={{padding:"8px 10px",textAlign:"right",color:c.operating_profit>=0?"#15803d":"#ef4444"}}>{c.operating_profit!=null?`${c.operating_profit}億円`:"–"}</td>
+                  <td style={{padding:"8px 10px",textAlign:"right",color:c.net_profit>=0?"#15803d":"#ef4444"}}>{c.net_profit!=null?`${c.net_profit}億円`:"–"}</td>
+                  <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.per!=null?`${c.per}倍`:"–"}</td>
+                  <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{c.fiscal_year||"–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{fontSize:10,color:"#94a3b8",marginTop:8,lineHeight:1.6}}>※ EDINETの有価証券報告書から自動取得。単位：億円（百万円未満切り捨て）</p>
+      </Card>
+    );
+  };
 
   return (
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
@@ -578,6 +708,20 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </div>
         </div>
 
+        {/* このレポートの読み方（総論→各論→参考資料という設計思想の案内） */}
+        <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",borderRadius:10,
+          backgroundColor:"white",border:`1px dashed ${BORDER}`}}>
+          <span style={{fontSize:14,flexShrink:0,marginTop:1}}>📖</span>
+          <p style={{fontSize:11,color:"#64748b",lineHeight:1.8,margin:0}}>
+            <strong style={{color:TTEXT}}>このレポートの読み方：</strong>
+            まず「まずここに注目！」と「株価シナリオ」で全体像をつかみ、続く「詳細分析 深掘りレポート」で9軸を掘り下げます。
+            その先は<strong style={{color:"#ef4444"}}>⚡超短期</strong>・<strong style={{color:"#d97706"}}>📈短期</strong>・<strong style={{color:"#7c3aed"}}>🌱長期</strong>、
+            ご自身の投資スタイルに合わせて参考資料を選んでお読みください（分類の考え方は
+            <a href="/ipo-guide" style={{color:PRIMARY,fontWeight:700}}>実践的法則ページ</a>で解説しています）。
+          </p>
+        </div>
+
+        {/* ① AI分析要約 */}
         <Card>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:8}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -611,6 +755,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           )}
         </Card>
+
         {!hasAccess && (
           <div style={{borderRadius:14,padding:"20px",backgroundColor:"#0d4f52",color:"white",textAlign:"center"}}>
             <div style={{fontSize:15,fontWeight:900,marginBottom:6}}>🔒 ここから先は有料コンテンツです</div>
@@ -639,8 +784,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </button>
           </div>
         )}
-        {visualizationData && <VizCharts vizData={visualizationData} />}
-        {visualizationData && <VizTables vizData={visualizationData} section="top" />}
+
+        {/* ⑨ まずここに注目！ */}
         {insights.length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -653,84 +798,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </Card>
         )}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:12}}>
-          <Card>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-              <BarChart2 size={14} color={PRIMARY}/>
-              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>パフォーマンス・レーダー（9軸）</span>
-            </div>
-            <div style={{height:200}}><RadarSVG data={radarData}/></div>
-            <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
-              {radarData.map(({id,fullLabel,value,grade})=>(
-                <div key={id} style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:10,fontWeight:700,color:"#475569",width:92,flexShrink:0}}>{fullLabel}</span>
-                  <div style={{flex:1,height:6,borderRadius:3,backgroundColor:BORDER,overflow:"hidden"}}>
-                    <div style={{height:"100%",borderRadius:3,width:`${value}%`,backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
-                  </div>
-                  <span style={{fontSize:11,fontWeight:900,color:"#1e293b",width:24,textAlign:"right"}}>{value}</span>
-                  <span style={{fontSize:9,fontWeight:900,color:TTEXT,width:18,textAlign:"center",backgroundColor:LIGHT,borderRadius:4,padding:"1px 0",flexShrink:0}}>{grade}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-    <Shield size={14} color={PRIMARY}/>
-    <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
-    <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
-  </div>
-  {(()=>{
-    const sd=(company as any).structured_data;
-    const lockupPeriod=sd?.ipo_details?.lockup_period||"上場後180日";
-    const floatRatio=sd?.ipo_details?.float_ratio||"参考値";
-    const shareholders:any[]=sd?.shareholders||[];
-    const valid=(Array.isArray(shareholders)?shareholders:[]).filter((s:any)=>parseFloat(String(s.ratio||'0').replace('%',''))>0);
-    const colors=["#f87171","#fb923c","#facc15","#4ade80","#60a5fa"];
-    const chart=valid.length>0
-      ?valid.slice(0,4).map((s:any,i:number)=>({label:s.name||`株主${i+1}`,pct:parseFloat(String(s.ratio||'0').replace('%','')),color:colors[i],lockup:s.lockup==="有"?"ロックアップあり":"上場時より流通"}))
-      :[{label:"創業者・役員",pct:50,color:"#f87171",lockup:lockupPeriod},{label:"その他株主",pct:35,color:"#fb923c",lockup:"各種条件あり"},{label:"一般投資家（公募）",pct:15,color:"#4ade80",lockup:"上場時より流通"}];
-    const sz=160,cx=80,cy=80,r=60,ir=36;
-    let ang=-Math.PI/2;
-    const slices=chart.map((d:any)=>{const a=2*Math.PI*(d.pct/100);const x1=cx+r*Math.cos(ang),y1=cy+r*Math.sin(ang),x2=cx+r*Math.cos(ang+a),y2=cy+r*Math.sin(ang+a),ix1=cx+ir*Math.cos(ang),iy1=cy+ir*Math.sin(ang),ix2=cx+ir*Math.cos(ang+a),iy2=cy+ir*Math.sin(ang+a),lg=a>Math.PI?1:0,path=`M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${ir} ${ir} 0 ${lg} 0 ${ix1} ${iy1} Z`;ang+=a;return{...d,path};});
-    return(
-      <>
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
-          <svg width={sz} height={sz} style={{flexShrink:0}}>
-            {slices.map((s:any,i:number)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
-            <text x={cx} y={cy-6} textAnchor="middle" fontSize={9} fill="#64748b">株主構成</text>
-            <text x={cx} y={cy+8} textAnchor="middle" fontSize={9} fill="#64748b">{valid.length>0?"(実データ)":"(概算)"}</text>
-          </svg>
-          <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
-            {chart.map((d:any,i:number)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:10,height:10,borderRadius:2,backgroundColor:d.color,flexShrink:0}}/>
-                <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:"#475569"}}>{d.label}</div><div style={{fontSize:9,color:"#94a3b8"}}>{d.lockup}</div></div>
-                <span style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{valid.length>0?`${d.pct}%`:"目論見書参照"}</span>
-              </div>
-            ))}
-            {valid.length===0&&shareholders.length>0&&(
-              <div style={{fontSize:9,color:"#94a3b8",padding:"4px 6px",backgroundColor:"#f8fafc",borderRadius:6}}>
-              主要株主：{(Array.isArray(shareholders)?shareholders:[]).slice(0,3).map((s:any)=>s.name).filter(Boolean).join('、')}
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-          {[{label:"流通比率",val:floatRatio,c:"#d97706"},{label:"ロックアップ",val:lockupPeriod.replace("上場後","").replace("間",""),c:"#ef4444"},{label:"売り圧力",val:valid.length>0&&parseFloat(String(valid[valid.length-1]?.ratio||'0').replace('%',''))<=20?"低":"参考値",c:"#475569"}].map(({label,val,c})=>(
-            <div key={label} style={{backgroundColor:"#f8fafc",borderRadius:8,padding:"6px",textAlign:"center",border:"1px solid #e2e8f0"}}>
-              <div style={{fontSize:9,fontWeight:700,color:c,marginBottom:2}}>{label}</div>
-              <div style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{val}</div>
-            </div>
-          ))}
-        </div>
-        <LockupTimeline lockupPeriod={lockupPeriod}/>
-      </>
-    );
-  })()}
-</Card>
-        </div>
-
+        {/* ⑫⑬ 株価シナリオ分析＋投資シミュレーション */}
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
             <BarChart2 size={14} color={PRIMARY}/>
@@ -762,7 +830,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
     <strong>下部の「詳細分析 深掘りレポート」</strong>に9軸で体系的に整理しています。
   </p>
 </div>
-{/* 投資シミュレーション */}
 {(()=>{
             const ipoPrice = (company as any).ipo_price;
             const scenarios = scenTab==="short" ? scenarios_short : scenarios_long;
@@ -866,7 +933,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                       </table>
                     </div>
 
-                    {/* 免責文言 */}
                     <div style={{marginTop:12,padding:"10px 12px",backgroundColor:"#fffbeb",borderRadius:8,border:"1px solid #fde68a"}}>
                       <p style={{fontSize:10,color:"#92400e",lineHeight:1.8,margin:0}}>
                         ⚠️ 【重要】本シミュレーションは、IPO企業が金融庁に提出した目論見書をAIが分析した結果に基づく試算値であり、実際の株価を保証するものではありません。実際の株価は市場環境・需給・業績等により大きく影響を受け、試算値より大幅に乖離することがあります。想定外の値動きが生じた場合は、ご自身の判断で躊躇なく損切り等の対応をご検討ください。投資判断および結果に対する責任は当サービスでは負いかねます。
@@ -879,6 +945,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           })()}
         </Card>
 
+        {/* ⑭ 詳細分析 深掘りレポート（各論・本題） */}
         <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
           <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:12}}>
@@ -949,75 +1016,55 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </div>
         </div>
 
-        {(()=>{
-          const cf=(analysis as any).market_data?.competitor_financials;
-          if(!cf||!cf.length) return null;
-          const valid=cf.filter((c:any)=>!c.error&&(c.revenue!=null||c.net_profit!=null));
-          if(!valid.length) return null;
-          const sd=(company as any).structured_data;
-          const km=sd?.key_metrics;
-          const latestKm=Array.isArray(km)&&km.length>0?km[km.length-1]:null;
-          const parseJpNum=(s:string|null|undefined)=>{
-            if(!s) return null;
-            const neg=s.includes("△")||s.includes("-");
-            const n=parseFloat(s.replace(/[△▲\-,△円千万億]/g,"").replace(/,/g,""));
-            if(isNaN(n)) return null;
-            return neg?-n:n;
-          };
-          const toOku=(sen:number|null)=>sen==null?null:Math.round(sen/10000)/10;
-          const ownRevenue=toOku(parseJpNum(latestKm?.revenue));
-          const ownProfit=toOku(parseJpNum(latestKm?.ordinary_profit));
-          const ownNetProfit=toOku(parseJpNum(latestKm?.net_profit));
-          const ownFiscalYear=latestKm?.period??null;
-          return (
-            <Card>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
-                <BarChart2 size={14} color={PRIMARY}/>
-                <span style={{fontWeight:900,fontSize:14,color:DARK}}>競合他社 財務比較</span>
-                <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>有価証券報告書より</span>
-              </div>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                  <thead>
-                    <tr style={{backgroundColor:LIGHT}}>
-                      <th style={{padding:"8px 10px",textAlign:"left",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>企業名</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>売上高</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>経常利益</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>当期純利益</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>PER</th>
-                      <th style={{padding:"8px 10px",textAlign:"right",fontWeight:900,color:TTEXT,fontSize:10,borderBottom:`1px solid ${BORDER}`}}>決算期</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:PRIMARY+"22"}}>
-                      <td style={{padding:"8px 10px",fontWeight:900,color:DARK}}>🎯 {company.name}（IPO銘柄）</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownRevenue!=null?`${ownRevenue}億円`:"-"}</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownProfit!=null?`${ownProfit}億円`:"-"}</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>{ownNetProfit!=null?`${ownNetProfit}億円`:"-"}</td>
-                      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#1e293b"}}>
-                        {(()=>{const ipoPrice=(company as any).ipo_price;const eps=parseJpNum(latestKm?.eps);return ipoPrice&&eps&&eps>0?`${Math.round(ipoPrice/eps*10)/10}倍`:"-";})()}
-                      </td>
-                      <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{ownFiscalYear||"目論見書参照"}</td>
-                    </tr>
-                    {valid.map((c:any,i:number)=>(
-                      <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,backgroundColor:i%2===0?"white":LIGHT}}>
-                        <td style={{padding:"8px 10px",fontWeight:700,color:DARK}}>{c.name}</td>
-                        <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.revenue!=null?`${c.revenue}億円`:"–"}</td>
-                        <td style={{padding:"8px 10px",textAlign:"right",color:c.operating_profit>=0?"#15803d":"#ef4444"}}>{c.operating_profit!=null?`${c.operating_profit}億円`:"–"}</td>
-                        <td style={{padding:"8px 10px",textAlign:"right",color:c.net_profit>=0?"#15803d":"#ef4444"}}>{c.net_profit!=null?`${c.net_profit}億円`:"–"}</td>
-                        <td style={{padding:"8px 10px",textAlign:"right",color:"#1e293b"}}>{c.per!=null?`${c.per}倍`:"–"}</td>
-                        <td style={{padding:"8px 10px",textAlign:"right",color:"#64748b",fontSize:10}}>{c.fiscal_year||"–"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p style={{fontSize:10,color:"#94a3b8",marginTop:8,lineHeight:1.6}}>※ EDINETの有価証券報告書から自動取得。単位：億円（百万円未満切り捨て）</p>
-            </Card>
-          );
-        })()}
+        {/* ===== ここから参考資料（超短期・短期・長期の3分類） ===== */}
 
-        {visualizationData && <VizTables vizData={visualizationData} section="bottom" />}
+        <ReferenceGroupHeader
+          icon="⚡" title="参考資料｜超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
+          accent="#ef4444" bg="#fee2e2"
+        />
+        {visualizationData && <IpoSummaryTable vizData={visualizationData} />}
+        {visualizationData && <ShareStructureChart vizData={visualizationData} />}
+        {renderSupplyDemand()}
+        {visualizationData && <RecentIpoChart vizData={visualizationData} />}
+
+        <ReferenceGroupHeader
+          icon="📈" title="参考資料｜短期投資家向け" subtitle="ロックアップを読む：総合スコア・価格の妥当性・今後のイベント"
+          accent="#d97706" bg="#fef3c7"
+        />
+        <Card>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+            <BarChart2 size={14} color="#d97706"/>
+            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>パフォーマンス・レーダー（9軸）</span>
+          </div>
+          <div style={{height:200}}><RadarSVG data={radarData}/></div>
+          <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
+            {radarData.map(({id,fullLabel,value,grade})=>(
+              <div key={id} style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:10,fontWeight:700,color:"#475569",width:92,flexShrink:0}}>{fullLabel}</span>
+                <div style={{flex:1,height:6,borderRadius:3,backgroundColor:BORDER,overflow:"hidden"}}>
+                  <div style={{height:"100%",borderRadius:3,width:`${value}%`,backgroundColor:value>=80?PRIMARY:value>=65?"#f59e0b":"#f97316"}}/>
+                </div>
+                <span style={{fontSize:11,fontWeight:900,color:"#1e293b",width:24,textAlign:"right"}}>{value}</span>
+                <span style={{fontSize:9,fontWeight:900,color:TTEXT,width:18,textAlign:"center",backgroundColor:LIGHT,borderRadius:4,padding:"1px 0",flexShrink:0}}>{grade}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        {visualizationData && <ValuationTable vizData={visualizationData} />}
+        {visualizationData && <ShareholdersLockupTable vizData={visualizationData} />}
+
+        <ReferenceGroupHeader
+          icon="🌱" title="参考資料｜長期投資家向け" subtitle="10倍株を狙う：業績実績・株主構成・資金使途・事業リスク"
+          accent="#7c3aed" bg="#ede9fe"
+        />
+        {visualizationData && <RevenueChart vizData={visualizationData} />}
+        {visualizationData && <KeyMetricsTable vizData={visualizationData} />}
+        {visualizationData && <ShareholdersChart vizData={visualizationData} />}
+        {renderCompetitorFinancials()}
+        {visualizationData && <UseOfProceedsTable vizData={visualizationData} />}
+        {visualizationData && <RiskTable vizData={visualizationData} />}
+
+        {/* ⑱ 参考文献・確認先 */}
         {(analysis.sources||[]).length>0&&(
           <Card>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
