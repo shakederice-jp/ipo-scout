@@ -652,32 +652,37 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
 
   return (
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 16px",backgroundColor:"#e8f4f5",borderBottom:"1px solid #d0e8ea"}}>
-        <button onClick={()=>setShowNotify(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:6,backgroundColor:"#0d4f52",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}>🔔 通知</button>
-        <a href="/" style={{color:"#0d4f52",fontSize:11,display:"flex",alignItems:"center",gap:3,textDecoration:"none",fontWeight:600}}>‹ トップへ</a>
+     <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",backgroundColor:"#e8f4f5",borderBottom:"1px solid #d0e8ea",flexWrap:"wrap"}}>
         {allCompanies && allCompanies.length > 0 && (
           <select onChange={e => { if(e.target.value) window.location.href=`/analysis/${e.target.value}`; }}
-            style={{fontSize:11,padding:"2px 6px",borderRadius:6,border:"1px solid #b3e8ea",color:"#0d4f52",backgroundColor:"white",cursor:"pointer",maxWidth:160}}>
+            style={{fontSize:12,padding:"6px 8px",borderRadius:8,border:"1px solid #b3e8ea",color:"#0d4f52",backgroundColor:"white",cursor:"pointer",flex:"1 1 140px",minWidth:0}}>
             <option value="">他の銘柄を選ぶ</option>
             {allCompanies.map((c:any) => (
               <option key={c.id} value={c.id} selected={c.id===company.id}>{c.name}</option>
             ))}
           </select>
         )}
-        {showNotify&&<NotifyModal company={company} userId={userId} onClose={()=>setShowNotify(false)}/>}
-        <button
-          onClick={() => {
-            const grade = analysis?.grade ?? "B";
-            const score = analysis?.total_score ?? 0;
-            const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\nAI総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
-            const shareId = company.ticker ?? company.id;
-            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo-jp.vercel.app/analysis/${shareId}`)}`;
-            window.open(url, "_blank");
-          }}
-          style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:6,backgroundColor:"#000000",border:"none",cursor:"pointer",color:"white",fontSize:11,fontWeight:700}}
-        >
-          𝕏 シェア
-        </button>
+        <div style={{display:"flex",gap:8,flexShrink:0}}>
+          <button onClick={()=>setShowNotify(true)} aria-label="通知設定"
+            style={{display:"flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:8,backgroundColor:"#0d4f52",border:"none",cursor:"pointer",color:"white",fontSize:15}}>
+            🔔
+          </button>
+          {showNotify&&<NotifyModal company={company} userId={userId} onClose={()=>setShowNotify(false)}/>}
+          <button
+            aria-label="Xでシェア"
+            onClick={() => {
+              const grade = analysis?.grade ?? "B";
+              const score = analysis?.total_score ?? 0;
+              const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\nAI総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
+              const shareId = company.ticker ?? company.id;
+              const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo-jp.vercel.app/analysis/${shareId}`)}`;
+              window.open(url, "_blank");
+            }}
+            style={{display:"flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:8,backgroundColor:"#000000",border:"none",cursor:"pointer",color:"white",fontSize:14,fontWeight:700}}
+          >
+            𝕏
+          </button>
+        </div>
       </div>
 
       <div style={{...wrap,paddingTop:12,paddingBottom:40,display:"flex",flexDirection:"column",gap:12}}>
