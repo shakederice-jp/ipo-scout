@@ -751,6 +751,16 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             )}
           </div>
           <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
+          {(analysis as any).missing_data_points?.length > 0 && (
+            <div style={{marginTop:10,padding:"10px 12px",backgroundColor:"#fffbeb",borderRadius:8,border:"1px solid #fde68a"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#92400e",marginBottom:6}}>📭 目論見書に記載がなかった項目</div>
+              {(analysis as any).missing_data_points.map((m:string, i:number) => (
+                <div key={i} style={{fontSize:11,color:"#78350f",display:"flex",gap:6,marginBottom:3}}>
+                  <span style={{color:"#f59e0b",flexShrink:0}}>›</span>{m}
+                </div>
+              ))}
+            </div>
+          )}
           {(analysis as any).data_citations?.length > 0 && (
             <div style={{marginTop:10,padding:"10px 12px",backgroundColor:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:6}}>📄 引用データ根拠</div>

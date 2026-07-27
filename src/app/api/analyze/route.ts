@@ -110,12 +110,17 @@ ${dataNote}
 1. 数値・事実は必ず上記【実データ】から引用すること。データにない数値は絶対に作らない
 2. データに記載のない情報は「不明」または「目論見書参照」と記載する
 3. summaryには必ず実データから引用した具体的数値を最低2つ含める
+4. missing_data_pointsには、IPO投資判断において通常あるべき以下のような項目のうち、上記【実データ】に記載がなかった、または「不明」「目論見書参照」となっていたものだけを具体的に列挙すること（記載があった項目は含めない）:
+   業績予想（次期見通し）／配当方針／株主別の具体的な保有比率／流通株式比率の具体的な数値／主幹事証券会社名／類似他社との詳細な比較データ／黒字化・収益化の見込み時期／代表者の同業界での実績年数
+   ※このリストは例示であり、他にも実データに記載がなく投資判断上重要と思われる項目があれば追加してよい
+5. 記載がなかった項目が無い場合はmissing_data_pointsを空配列[]にすること
 
 【出力形式】必ず以下の構造のみで完結させること:
 {
   "summary": "300字以内。必ず実データの具体的数値を2つ以上引用して記述。ですます調",
   "data_citations": ["引用根拠1", "引用根拠2", "引用根拠3"],
   "data_confidence": "high（実データあり）/ medium（一部推定）/ low（データ不足）のいずれか",
+  "missing_data_points": ["記載がなかった項目1（15字以内、体言止め）", "記載がなかった項目2（15字以内、体言止め）"],
   "ai_summary": "トップページ掲載用・120字以内。この銘柄の最大の魅力・独自ポジション・成長の根拠を核心から語る文章。ですます調",
   "total_score": 65,
   "grade": "B",
@@ -196,9 +201,10 @@ export async function POST(req: NextRequest) {
     if (body.save_results) {
       const r = body.save_results;
       const summary = {
-        summary:           r.summary ?? `${co.name}IPO分析`,
-        data_citations:    Array.isArray(r.data_citations) ? r.data_citations : [],
-        data_confidence:   r.data_confidence ?? "low",
+        summary:             r.summary ?? `${co.name}IPO分析`,
+        data_citations:      Array.isArray(r.data_citations) ? r.data_citations : [],
+        data_confidence:     r.data_confidence ?? "low",
+        missing_data_points: Array.isArray(r.missing_data_points) ? r.missing_data_points.slice(0,8) : [],
         total_score:       r.total_score ?? 65,
         grade:             r.grade ?? "C",
         ultra_short_grade: r.ultra_short_grade ?? "C",
