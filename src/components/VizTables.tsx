@@ -42,6 +42,17 @@ function buildProceedsChartData(rows: any[]) {
   return { chartData, categories };
 }
 
+/* 「推定XX.X%程度」のようにAIが埋め切れなかったプレースホルダー値を検知し、分かりやすい文言に差し替える */
+function cleanPlaceholderValue(label: string, value: string | null | undefined): string {
+  if (!value) return "目論見書に記載なし";
+  const hasPlaceholder = /X{1,3}(\.X+)?/i.test(value) || /[◯○△▲×]{2,}/.test(value);
+  if (hasPlaceholder) {
+    if (label.includes("流通比率")) return "目論見書に株主別保有比率の記載がなく算出できず";
+    return "目論見書に具体的記載なし";
+  }
+  return value;
+}
+
 /* ⑧ IPO条件・資金調達サマリー */
 export function IpoSummaryTable({ vizData }: { vizData: any }) {
   const ipo_summary_table = vizData?.ipo_summary_table;
@@ -68,7 +79,7 @@ export function IpoSummaryTable({ vizData }: { vizData: any }) {
             }}
           >
             <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700, flexShrink: 0 }}>{r.label}</span>
-            <span style={{ fontSize: 13, color: "#082b2e", fontWeight: 700, textAlign: "right", flex: 1, minWidth: 0 }}>{r.value ?? "目論見書に記載なし"}</span>
+            <span style={{ fontSize: 13, color: "#082b2e", fontWeight: 700, textAlign: "right", flex: 1, minWidth: 0 }}>{cleanPlaceholderValue(r.label ?? "", r.value)}</span>
           </div>
         ))}
       </div>
