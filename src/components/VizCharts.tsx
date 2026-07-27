@@ -232,7 +232,7 @@ export function ValuationTable({ vizData }: { vizData: any }) {
           { label: "時価総額", value: valuation_table.market_cap ? `${(valuation_table.market_cap/100).toFixed(0)}億円` : "未定" },
           { label: "PER", value: valuation_table.per ? `${valuation_table.per}倍` : (valuation_table.ipo_price ? "赤字のため算出不可" : "未定") },
           { label: "PBR", value: valuation_table.pbr ? `${valuation_table.pbr}倍` : "未定" },
-          { label: "流通比率", value: valuation_table.float_ratio != null ? `${valuation_table.float_ratio}%` : "目論見書に具体的記載なし" },
+          { label: "流通比率", value: valuation_table.float_ratio != null ? `${valuation_table.float_ratio}%` : "目論見書に株主別保有比率の記載がなく算出できず" },
           { label: "調達額", value: valuation_table.fundraising ? `${valuation_table.fundraising}百万円` : "未定" },
         ].map((item, i) => (
           <div key={i} style={{ backgroundColor: C.bg, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
