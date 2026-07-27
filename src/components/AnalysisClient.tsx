@@ -759,6 +759,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   <span style={{color:"#f59e0b",flexShrink:0}}>›</span>{m}
                 </div>
               ))}
+              <p style={{fontSize:10,color:"#92400e",marginTop:8,paddingTop:8,borderTop:"1px solid #fde68a",lineHeight:1.6}}>
+                ※これらの項目は目論見書に記載がなく判断材料に欠けるため、AIをもってしても分析できていない点、あらかじめご了承ください。
+              </p>
             </div>
           )}
           {(analysis as any).data_citations?.length > 0 && (
