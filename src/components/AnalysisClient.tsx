@@ -274,7 +274,9 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
       </button>
       {open&&(
         <div style={{backgroundColor:"white",borderTop:`1px solid ${BORDER}`,padding:"10px 12px"}}>
-          <p style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{ins.detail}</p>
+          {(ins.detail??"").split(/\n\n+/).map((para,i)=>(
+            <p key={i} style={{fontSize:11,color:"#475569",lineHeight:1.8,whiteSpace:"pre-wrap",margin:i===0?"0 0 10px":"10px 0"}}>{para}</p>
+          ))}
         </div>
       )}
     </div>
