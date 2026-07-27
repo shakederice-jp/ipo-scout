@@ -32,9 +32,9 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 4px" }}>
-            {(["sm", "md", "lg"] as FontSize[]).map((s) => (
+          {(["sm", "md", "lg"] as FontSize[]).map((s) => (
               <button key={s} onClick={() => setFontSize(s)} style={{
-                fontSize: s === "sm" ? 10 : s === "md" ? 12 : 14,
+                fontSize: s === "sm" ? 13 : s === "md" ? 15 : 17,
                 fontWeight: fontSize === s ? 700 : 400,
                 color: fontSize === s ? C.teal : "#a0d4d6",
                 background: "none", border: "none", cursor: "pointer", padding: "2px 5px", borderRadius: 4,
@@ -51,7 +51,7 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
       </div>
       {crumbs.length > 0 && (
         <div style={{ backgroundColor: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(102,195,198,0.15)" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto", padding: "4px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               {crumbs.map((c, i) => (
                 <span key={c.href} style={{ display: "flex", alignItems: "center", gap: 4 }}>
