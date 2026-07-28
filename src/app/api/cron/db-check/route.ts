@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const issues: string[] = [];
   const today = new Date().toISOString().slice(0, 10);
   const in7days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const in30days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   // ① 目論見書取得済みなのにai_summaryがない銘柄
   const { data: noSummary } = await supabase
@@ -33,18 +34,31 @@ export async function GET(req: NextRequest) {
       noSummary.map(c => `  - ${c.name}（${c.listing_date}）`).join("\n"));
   }
 
-  // ② 上場まで7日以内なのにanalysis_summaryがない銘柄
-  const { data: noAnalysis } = await supabase
-    .from("ipo_companies")
-    .select("name, listing_date")
-    .gte("listing_date", today)
-    .lte("listing_date", in7days)
-    .is("analysis_summary", null);
+ // ② 上場まで7日以内なのにanalysis_summaryがない銘柄（緊急度：高）
+ const { data: noAnalysis } = await supabase
+ .from("ipo_companies")
+ .select("name, listing_date")
+ .gte("listing_date", today)
+ .lte("listing_date", in7days)
+ .is("analysis_summary", null);
 
-  if (noAnalysis && noAnalysis.length > 0) {
-    issues.push(`🚨 上場7日以内・分析未生成（${noAnalysis.length}件）:\n` +
-      noAnalysis.map(c => `  - ${c.name}（${c.listing_date}）`).join("\n"));
-  }
+if (noAnalysis && noAnalysis.length > 0) {
+ issues.push(`🚨 上場7日以内・分析未生成（${noAnalysis.length}件）:\n` +
+   noAnalysis.map(c => `  - ${c.name}（${c.listing_date}）`).join("\n"));
+}
+
+// ②-B 上場まで8〜30日なのにanalysis_summaryがない銘柄（早期警告・緊急度：中）
+const { data: noAnalysisEarly } = await supabase
+ .from("ipo_companies")
+ .select("name, listing_date")
+ .gt("listing_date", in7days)
+ .lte("listing_date", in30days)
+ .is("analysis_summary", null);
+
+if (noAnalysisEarly && noAnalysisEarly.length > 0) {
+ issues.push(`📅 上場8〜30日先・分析未生成（早めの対応推奨、${noAnalysisEarly.length}件）:\n` +
+   noAnalysisEarly.map(c => `  - ${c.name}（${c.listing_date}）`).join("\n"));
+}
 
   // ③ 上場済みなのにanalysis_summaryがない銘柄
   const { data: listedNoAnalysis } = await supabase
