@@ -57,20 +57,17 @@ export async function fetchIpoCompanies(): Promise<{
     return { data: null, error: error.message };
   }
 
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-  let freeCount = 0;
+  // 月ごと（現在・過去・未来を問わず）に、上場日が早い順で先頭2社を無料開放とする
+  const monthFreeCount: Record<string, number> = {};
   const result = (data as IpoCompany[]).map((company) => {
     const monthKey = company.listing_date
       ? company.listing_date.slice(0, 7)
       : "unknown";
-    const isCurrentMonth = monthKey === currentMonthKey;
-    let isFree = false;
-    if (isCurrentMonth) {
-      freeCount++;
-      isFree = freeCount <= 2;
+    if (monthKey === "unknown") {
+      return { ...company, is_free: false };
     }
+    monthFreeCount[monthKey] = (monthFreeCount[monthKey] ?? 0) + 1;
+    const isFree = monthFreeCount[monthKey] <= 2;
     return {
       ...company,
       is_free: isFree,
