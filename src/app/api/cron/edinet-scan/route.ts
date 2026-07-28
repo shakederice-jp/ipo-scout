@@ -155,11 +155,22 @@ export async function GET(req: NextRequest) {
               status: "自動検出・要確認",
             });
 
-          if (insertError) {
-            results.push(`❌ 新規登録失敗: ${companyName} - ${insertError.message}`);
-          } else {
-            results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
-          }
+            if (insertError) {
+              results.push(`❌ 新規登録失敗: ${companyName} - ${insertError.message}`);
+            } else {
+              results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
+              await notifyAdmin(
+                `🆕 新規IPO発見: ${companyName}`,
+                `EDINETで新規上場候補を発見し、自動登録しました。\n\n` +
+                `会社名: ${companyName}\n` +
+                `EDINETコード: ${edinetCode}\n` +
+                `書類ID: ${docId}\n` +
+                `業種: ${analysis.sector}\n\n` +
+                `管理画面から①〜⑥のステップを実行して分析を完成させてください。\n` +
+                `https://ipo-jp.vercel.app/admin`,
+                "info"
+              );
+            }
         } catch (e: any) {
           results.push(`❌ 新規登録エラー: ${companyName} - ${String(e)}`);
         }
