@@ -152,14 +152,16 @@ ${dataNote}
 【絶対ルール】
 1. 数値・事実は必ず上記【実データ】から引用すること。データにない数値は絶対に作らない
 2. 3つは「強み」「懸念点」「注目すべき構造・戦略」など、視点が重ならないよう選ぶこと
+3. tweet_summaryは、3つのインサイトのうち最も注目度が高いもの1つを選び、40字以内で要約すること（Xへの投稿に使うため、文字数を厳守すること）
 
 【出力形式】必ず以下の構造のみで完結させること:
 {
   "insights": [
-    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短い要約（100字以内）。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。なぜこれが注目ポイントなのか、実データの数値を交えながら背景・理由・投資判断への影響を丁寧に説明する。ですます調"},
+    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短い要約（100字以内）。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。1文目で結論・要点を端的に述べ、そのあと改行(\\n\\n)を1つ挟んでから、実データの数値を交えた背景・理由の説明、さらに改行(\\n\\n)を挟んで投資判断への影響、という2〜3段落構成にすること。ですます調"},
     {"title": "インサイトタイトル2（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"},
     {"title": "インサイトタイトル3（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"}
-  ]
+  ],
+  "tweet_summary": "40字以内の要約文（ですます調）"
 }`;
 }
 
@@ -213,6 +215,7 @@ export async function POST(req: NextRequest) {
         long_grade:        r.long_grade ?? "C",
         grade_reason:      r.grade_reason ?? {},
         insights:          Array.isArray(r.insights) ? r.insights.slice(0,3) : [],
+        tweet_summary:     r.tweet_summary ?? "",
         scenarios_short:   Array.isArray(r.scenarios_short) ? r.scenarios_short.slice(0,3) : [],
         scenarios_long:    Array.isArray(r.scenarios_long) ? r.scenarios_long.slice(0,3) : [],
         axes_scores:       r.axes_scores ?? {},
@@ -234,9 +237,8 @@ export async function POST(req: NextRequest) {
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
           const shareId = (co as any).ticker ?? co.id;
-          const topInsight = summary.insights[0];
-          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${topInsight.title}\n${topInsight.body}\n\n詳しい分析はこちら👇\nhttps://ipo-jp.vercel.app/analysis/${shareId}\n\n#IPO #新規上場`;
-          const postResult = await postToX(tweetText.slice(0, 140));
+          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${summary.tweet_summary}\n\n詳しい分析はこちら👇\nhttps://ipo-jp.vercel.app/analysis/${shareId}\n\n#IPO #新規上場`;
+          const postResult = await postToX(tweetText);
           if (!postResult.success) {
             await notifyAdmin(
               `⚠️ X投稿失敗: ${co.name}（分析系）`,
