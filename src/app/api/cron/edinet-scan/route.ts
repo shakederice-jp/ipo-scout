@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { postToX } from "@/lib/post-to-x";
 import Anthropic from "@anthropic-ai/sdk";
 
 const getSupabase = () => createClient(
@@ -170,6 +171,25 @@ export async function GET(req: NextRequest) {
                 `https://ipo-jp.vercel.app/admin`,
                 "info"
               );
+
+              // X速報投稿
+              if (process.env.X_AUTOPOST_ENABLED === "true") {
+                try {
+                  const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n#IPO #新規上場`;
+                  const postResult = await postToX(tweetText.slice(0, 140));
+                  if (postResult.success) {
+                    results.push(`🐦 X投稿完了: ${companyName}`);
+                  } else {
+                    await notifyAdmin(
+                      `⚠️ X投稿失敗: ${companyName}`,
+                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}`,
+                      "warn"
+                    );
+                  }
+                } catch (e: any) {
+                  await notifyAdmin(`⚠️ X投稿エラー: ${companyName}`, String(e), "warn");
+                }
+              }
             }
         } catch (e: any) {
           results.push(`❌ 新規登録エラー: ${companyName} - ${String(e)}`);
