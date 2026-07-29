@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { postToX } from "@/lib/post-to-x";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -228,6 +229,26 @@ export async function POST(req: NextRequest) {
         analysis_detail: { ...summary, axes: { ultra_short: [], short: [], long: [] } },
         ...(r.ai_summary ? { ai_summary: r.ai_summary } : {}),
       }).eq("id", co.id);
+
+      // X分析系投稿：「まずここに注目！」の1つ目のインサイトを紹介
+      if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
+        try {
+          const shareId = (co as any).ticker ?? co.id;
+          const topInsight = summary.insights[0];
+          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${topInsight.title}\n${topInsight.body}\n\n詳しい分析はこちら👇\nhttps://ipo-jp.vercel.app/analysis/${shareId}\n\n#IPO #新規上場`;
+          const postResult = await postToX(tweetText.slice(0, 140));
+          if (!postResult.success) {
+            await notifyAdmin(
+              `⚠️ X投稿失敗: ${co.name}（分析系）`,
+              `エラー: ${postResult.error}`,
+              "warn"
+            );
+          }
+        } catch (e: any) {
+          await notifyAdmin(`⚠️ X投稿エラー: ${co.name}（分析系）`, String(e), "warn");
+        }
+      }
+
       return NextResponse.json({ success: true });
     }
 
