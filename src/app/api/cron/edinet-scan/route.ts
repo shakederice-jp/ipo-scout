@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
               // X速報投稿
               if (process.env.X_AUTOPOST_ENABLED === "true") {
                 try {
-                  const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n#IPO #新規上場`;
+                  const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n詳しくはプロフィールのリンクから👆\n\n#IPO #新規上場`;
                   const postResult = await postToX(tweetText.slice(0, 140));
                   if (postResult.success) {
                     results.push(`🐦 X投稿完了: ${companyName}`);

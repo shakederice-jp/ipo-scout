@@ -236,8 +236,7 @@ export async function POST(req: NextRequest) {
       // X分析系投稿：「まずここに注目！」の1つ目のインサイトを紹介
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
-          const shareId = (co as any).ticker ?? co.id;
-          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${summary.tweet_summary}\n\n詳しい分析はこちら👇\nhttps://ipo-jp.vercel.app/analysis/${shareId}\n\n#IPO #新規上場`;
+          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${summary.tweet_summary}\n\n詳しい分析はプロフィールのリンクから👆\n\n#IPO #新規上場`;
           const postResult = await postToX(tweetText);
           if (!postResult.success) {
             await notifyAdmin(
