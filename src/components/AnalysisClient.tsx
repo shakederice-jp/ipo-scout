@@ -1010,19 +1010,25 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 <span style={{fontWeight:900,fontSize:9,letterSpacing:"0.1em",padding:"2px 8px",borderRadius:4,backgroundColor:DARK,color:"white",display:"inline-block",marginBottom:6}}>DEEP ANALYSIS</span>
                 <h2 style={{fontWeight:900,fontSize:18,color:DARK,margin:"0 0 2px"}}>詳細分析 深掘りレポート</h2>
                 <p style={{fontSize:10,color:MID,margin:"0 0 8px"}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
-                <div style={{display:"flex",gap:6}}>
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:4}}>
                   {(()=>{
                     const shareId=(company as any).ticker??company.id;
                     const expertHref=`/analysis/${shareId}`;
                     const beginnerHref=`/analysis/${shareId}/beginner`;
                     return (
                       <>
-                        <a href={beginnerHref} style={{fontSize:10,fontWeight:700,padding:"4px 10px",borderRadius:20,textDecoration:"none",
-                          backgroundColor:level==="beginner"?DARK:"rgba(255,255,255,0.6)",color:level==="beginner"?"white":DARK}}>
+                        <a href={beginnerHref} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                          fontSize:14,fontWeight:900,padding:"12px 16px",borderRadius:12,textDecoration:"none",
+                          backgroundColor:level==="beginner"?DARK:"rgba(255,255,255,0.75)",
+                          color:level==="beginner"?"white":DARK,
+                          border:level==="beginner"?"none":`2px solid ${DARK}`}}>
                           📖 初心者向け分析
                         </a>
-                        <a href={expertHref} style={{fontSize:10,fontWeight:700,padding:"4px 10px",borderRadius:20,textDecoration:"none",
-                          backgroundColor:level==="expert"?DARK:"rgba(255,255,255,0.6)",color:level==="expert"?"white":DARK}}>
+                        <a href={expertHref} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                          fontSize:14,fontWeight:900,padding:"12px 16px",borderRadius:12,textDecoration:"none",
+                          backgroundColor:level==="expert"?DARK:"rgba(255,255,255,0.75)",
+                          color:level==="expert"?"white":DARK,
+                          border:level==="expert"?"none":`2px solid ${DARK}`}}>
                           🎓 中・上級者向け分析
                         </a>
                       </>
