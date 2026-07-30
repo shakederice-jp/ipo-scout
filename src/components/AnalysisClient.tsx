@@ -1080,7 +1080,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                     </div>
                   </div>
                   <div>
-                  <div>
                     {items.map((item:AxisItem)=>(
                       <div key={item.id} style={{borderBottom:"1px solid #f8fafc"}}>
                         <DeepDiveCard item={item} accentColor={g.color} level={level}/>
