@@ -164,6 +164,40 @@ export default function AdminPage() {
     await runAxes("long","長期3軸","6");
     setAllAxesLoading(false);
   };
+  const runBeginnerRewrite = async (period: string, label: string, stepNum: string) => {
+    const axisMap: Record<string, string[]> = { ultra_short:["float","lockup","timing"], short:["valuation","vc_sell","growth"], long:["management","unit_econ","competitor"] };
+    const axes = axisMap[period];
+    const allResults: any[] = [];
+    for (let i = 0; i < axes.length; i++) {
+      const axisId = axes[i];
+      setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}を初心者向けに書き直し中...`}));
+      try {
+        const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId }) });
+        const data = await res.json();
+        if (data.error) { setStep(stepNum, false, `❌ ${axisId}: ${data.error}`); return false; }
+        allResults.push({ id:axisId, report_beginner:data.report_beginner });
+      } catch { setStep(stepNum, false, `❌ ${axisId} 通信エラー`); return false; }
+    }
+    setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
+    try {
+      const saveRes = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
+      const saveData = await saveRes.json();
+      if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return false; }
+    } catch { setStep(stepNum, false, "❌ 保存通信エラー"); return false; }
+    setStep(stepNum, false, `✅ ${label} 初心者向けリライト完了`);
+    return true;
+  };
+
+  const [beginnerLoading, setBeginnerLoading] = useState(false);
+  const handleBeginnerRewrite = async () => {
+    if (!selectedCompany) return;
+    setBeginnerLoading(true);
+    setStep("7a",true); setStep("7b",true); setStep("7c",true);
+    const ok1 = await runBeginnerRewrite("ultra_short","超短期3軸","7a"); if (!ok1) { setBeginnerLoading(false); return; }
+    const ok2 = await runBeginnerRewrite("short","短期3軸","7b"); if (!ok2) { setBeginnerLoading(false); return; }
+    await runBeginnerRewrite("long","長期3軸","7c");
+    setBeginnerLoading(false);
+  };
 
   const handleVisualize = async () => {
     if (!selectedCompany) return;
@@ -615,6 +649,18 @@ export default function AdminPage() {
                       {vizLoading?"⏳ 生成中...":"📊 視覚化データを生成"}
                     </button>
                     {vizResult && <div style={{ marginTop:6, fontSize:11, padding:"4px 8px", borderRadius:6, background:vizResult.startsWith("❌")?"#fef2f2":"#f0fdf4", color:vizResult.startsWith("❌")?"#dc2626":"#166534" }}>{vizResult}</div>}
+                  </div>
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["7a"]||stepResult["7b"]||stepResult["7c"])?.startsWith("❌")?"#fecaca":stepResult["7c"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["7a"]||stepResult["7b"]||stepResult["7c"])?.startsWith("❌")?"#fef2f2":stepResult["7c"]?"#f0fdf4":"#f8fafc" }}>
+                    <div style={{ fontWeight:900, color:"#db2777", fontSize:13, marginBottom:3 }}>STEP 7｜初心者向けリライト（一括実行）</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>④⑤⑥の9軸レポートを初心者向けにやさしく書き直します（約2〜4分・要④⑤⑥完了後）</p>
+                    <button onClick={handleBeginnerRewrite} disabled={beginnerLoading} style={btnStyle("#db2777", beginnerLoading)}>
+                      {beginnerLoading?"⏳ 書き直し中（しばらくお待ちください）...":"📖 初心者向けにリライトする"}
+                    </button>
+                    {["7a","7b","7c"].map(n=>stepResult[n]&&(
+                      <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
+                        {stepResult[n]}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
