@@ -72,16 +72,35 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
   );
 }
 
-function MarkdownReport({text}:{text:string}) {
+function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
+  if(beginner){
+    return (
+      <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
+        {text.split('\n').map((line,i)=>{
+          if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{line.replace(/^#### /,'')}</div>;
+          if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{line.replace(/^### /,'')}</div>;
+          if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{line.replace(/^## /,'')}</div>;
+          if(line.startsWith('- ')) return (
+            <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
+              <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
+              <span>{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
+            </div>
+          );
+          if(line.trim()==='') return <div key={i} style={{height:18}}/>;
+          return <p key={i} style={{marginBottom:16}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+        })}
+      </div>
+    );
+  }
   return (
     <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
       {text.split('\n').map((line,i)=>{
-        if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"10px 0 4px"}}>{line.replace(/^#### /,'')}</div>;
-        if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"12px 0 6px"}}>{line.replace(/^### /,'')}</div>;
-        if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#082b2e",margin:"14px 0 8px"}}>{line.replace(/^## /,'')}</div>;
-        if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:3}}>{'• '}{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
-        if(line.trim()==='') return <div key={i} style={{height:6}}/>;
-        return <div key={i} style={{marginBottom:3}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+        if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"16px 0 6px"}}>{line.replace(/^#### /,'')}</div>;
+        if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"18px 0 8px"}}>{line.replace(/^### /,'')}</div>;
+        if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#082b2e",margin:"20px 0 10px"}}>{line.replace(/^## /,'')}</div>;
+        if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:6}}>{'• '}{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+        if(line.trim()==='') return <div key={i} style={{height:12}}/>;
+        return <div key={i} style={{marginBottom:10}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
       })}
     </div>
   );
@@ -283,14 +302,17 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
   );
 }
 
-function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
+function DeepDiveCard({item,accentColor,level="expert"}:{item:AxisItem;accentColor:string;level?:"expert"|"beginner"}) {
   const [open,setOpen]=useState(false);
   const sc=Math.max(0,Math.min(100,item.score||0));
   const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
   const r=22,circ=2*Math.PI*r,dash=(sc/100)*circ;
+  const isBeginner=level==="beginner";
+  const reportBeginner=(item as any).report_beginner??"";
+  const hasBeginnerReport=!!reportBeginner;
   const hasReport=!!(item as any).report;
-  const report=(item as any).report??"";
-  const parsed=hasReport?parseAxisReport(report):null;
+  const report=isBeginner?(hasBeginnerReport?reportBeginner:""):((item as any).report??"");
+  const parsed=(!isBeginner&&hasReport)?parseAxisReport(report):null;
 
   return (
     <div style={{borderLeft:`3px solid ${open?accentColor:"#e2e8f0"}`,backgroundColor:open?"#fafffe":"white",transition:"background 0.15s"}}>
@@ -324,7 +346,15 @@ function DeepDiveCard({item,accentColor}:{item:AxisItem;accentColor:string}) {
       </button>
       {open&&(
         <div style={{borderTop:`1px solid ${BORDER}`,padding:"12px 16px 16px"}}>
-          {hasReport?(
+          {isBeginner&&!hasBeginnerReport?(
+            <div style={{backgroundColor:"#fffbeb",borderRadius:10,padding:"14px",border:"1px solid #fde68a",textAlign:"center"}}>
+              <p style={{fontSize:12,color:"#92400e",lineHeight:1.8,margin:0}}>📖 この項目の初心者向け解説は、現在準備中です。<br/>もう少しお待ちください。</p>
+            </div>
+          ):isBeginner&&hasBeginnerReport?(
+            <div style={{backgroundColor:"white",borderRadius:12,padding:"16px",border:`1px solid ${BORDER}`}}>
+              <MarkdownReport text={report} beginner/>
+            </div>
+          ):hasReport?(
             <div style={{backgroundColor:"white",borderRadius:10,padding:"12px",border:`1px solid ${BORDER}`}}>
               <MarkdownReport text={report}/>
             </div>
@@ -476,7 +506,7 @@ function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;or
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert"}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner"}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -972,14 +1002,33 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           })()}
         </Card>
 
-        {/* ⑭ 詳細分析 深掘りレポート（各論・本題） */}
-        <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
+       {/* ⑭ 詳細分析 深掘りレポート（各論・本題） */}
+       <div style={{borderRadius:16,overflow:"hidden",border:`2px solid ${BORDER}`}}>
           <div style={{backgroundColor:PRIMARY,padding:"16px 20px"}}>
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:12}}>
               <div>
                 <span style={{fontWeight:900,fontSize:9,letterSpacing:"0.1em",padding:"2px 8px",borderRadius:4,backgroundColor:DARK,color:"white",display:"inline-block",marginBottom:6}}>DEEP ANALYSIS</span>
                 <h2 style={{fontWeight:900,fontSize:18,color:DARK,margin:"0 0 2px"}}>詳細分析 深掘りレポート</h2>
-                <p style={{fontSize:10,color:MID,margin:0}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
+                <p style={{fontSize:10,color:MID,margin:"0 0 8px"}}>投資時間軸（超短期・短期・長期）で整理した9軸分析</p>
+                <div style={{display:"flex",gap:6}}>
+                  {(()=>{
+                    const shareId=(company as any).ticker??company.id;
+                    const expertHref=`/analysis/${shareId}`;
+                    const beginnerHref=`/analysis/${shareId}/beginner`;
+                    return (
+                      <>
+                        <a href={beginnerHref} style={{fontSize:10,fontWeight:700,padding:"4px 10px",borderRadius:20,textDecoration:"none",
+                          backgroundColor:level==="beginner"?DARK:"rgba(255,255,255,0.6)",color:level==="beginner"?"white":DARK}}>
+                          📖 初心者向け分析
+                        </a>
+                        <a href={expertHref} style={{fontSize:10,fontWeight:700,padding:"4px 10px",borderRadius:20,textDecoration:"none",
+                          backgroundColor:level==="expert"?DARK:"rgba(255,255,255,0.6)",color:level==="expert"?"white":DARK}}>
+                          🎓 中・上級者向け分析
+                        </a>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
               <div style={{backgroundColor:"rgba(255,255,255,0.9)",borderRadius:10,padding:"8px 14px",textAlign:"center",flexShrink:0}}>
                 <div style={{fontWeight:900,fontSize:26,color:DARK,lineHeight:1}}>{score}</div>
@@ -1031,9 +1080,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                     </div>
                   </div>
                   <div>
+                  <div>
                     {items.map((item:AxisItem)=>(
                       <div key={item.id} style={{borderBottom:"1px solid #f8fafc"}}>
-                        <DeepDiveCard item={item} accentColor={g.color}/>
+                        <DeepDiveCard item={item} accentColor={g.color} level={level}/>
                       </div>
                     ))}
                   </div>
