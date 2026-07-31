@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
   if (applyList?.length) applyList.forEach((c: any) => xLines.push(`▶ ${formatDate(c.apply_start_date)} ${c.name} 申込開始`));
 
   if (xLines.length > 0) {
-    const xText = `📊【今週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はプロフィールのリンクから👇\n\n#IPO #新規上場 #IPO投資`;
+    const xText = `📊【翌週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はプロフィールのリンクから👇\n\n#IPO #新規上場 #IPO投資`;
     const xResult = await postToX(xText);
     if (!xResult.success) {
       await notifyAdmin("X自動投稿失敗", `エラー: ${xResult.error}`, "warn");
