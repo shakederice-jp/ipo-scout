@@ -299,7 +299,7 @@ function InsightCard({ins,idx,level="expert"}:{ins:Insight;idx:number;level?:"ex
           {isBeginner&&!beginnerDetail&&(
             <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け解説は準備中のため、通常の解説を表示しています。</p>
           )}
-          {detailText.split(/\n\n+/).map((para,i)=>(
+          {detailText.split(/\n\n+/).map((para:string,i:number)=>(
             <p key={i} style={{fontSize:isBeginner?13:11,color:"#475569",lineHeight:isBeginner?2:1.8,whiteSpace:"pre-wrap",margin:i===0?`0 0 ${isBeginner?14:10}px`:`${isBeginner?14:10}px 0`}}>{para}</p>
           ))}
         </div>
