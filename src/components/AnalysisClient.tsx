@@ -91,14 +91,16 @@ function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
          );
          // 空行は「直前の行も空行」の場合だけスキップ（連続する空行の重複表示を防ぐ）
          if(line.trim()===''){
-           if(i>0 && arr[i-1].trim()==='') return null;
-           return <div key={i} style={{height:18}}/>;
-         }
-         return <p key={i} style={{marginBottom:16}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
-       })}
-     </div>
-   );
- }
+          if(i>0 && arr[i-1].trim()==='') return null;
+          return <div key={i} style={{height:14}}/>;
+        }
+        // 短い一文（見出し的な短文）は余白を詰めて、次の説明文と一体感を持たせる
+        const isShortLine = line.length <= 28 && !line.includes('。');
+        return <p key={i} style={{marginBottom:isShortLine?4:16,fontWeight:isShortLine?700:400,color:isShortLine?"#0d4f52":"#334155"}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+      })}
+    </div>
+  );
+}
   return (
     <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
       {normalizedText.split('\n').map((line,i)=>{
