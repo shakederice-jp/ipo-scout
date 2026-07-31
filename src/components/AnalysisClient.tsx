@@ -94,9 +94,9 @@ function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
           if(i>0 && arr[i-1].trim()==='') return null;
           return <div key={i} style={{height:14}}/>;
         }
-        // 短い一文（見出し的な短文）は余白を詰めて、次の説明文と一体感を持たせる
-        const isShortLine = line.length <= 28 && !line.includes('。');
-        return <p key={i} style={{marginBottom:isShortLine?4:16,fontWeight:isShortLine?700:400,color:isShortLine?"#0d4f52":"#334155"}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+        // 短い一文、または体言止め（句点で終わらない文）は見出し的な行とみなし、太字にして余白を詰める
+        const isHeadingLike = (line.length <= 28 && !line.includes('。')) || (!line.endsWith('。') && !line.endsWith('.') && !line.endsWith('！') && !line.endsWith('？') && line.length <= 40);
+        return <p key={i} style={{marginBottom:isHeadingLike?4:16,fontWeight:isHeadingLike?700:400,fontSize:isHeadingLike?15:14,color:isHeadingLike?"#0d4f52":"#334155"}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
       })}
     </div>
   );
