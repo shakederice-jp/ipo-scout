@@ -108,7 +108,7 @@ export default function AdminPage() {
     const merged: Record<string, any> = {};
     for (let i = 0; i < parts.length; i++) {
       const p = parts[i];
-      setStepResult(prev => ({...prev, "3": `⏳ ${p.label} 生成中 (${i+1}/${parts.length})...`}));
+      setStepResult(prev => ({...prev, "3": `⏳ ${p.label} 生成中 (${i+1}/${parts.length+1})...`}));
       try {
         const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:p.key }) });
         const data = await res.json();
@@ -116,6 +116,16 @@ export default function AdminPage() {
         Object.assign(merged, data);
       } catch { setStep("3", false, `❌ ${p.label}: 通信エラー`); return; }
     }
+    // ④まずここに注目・初心者向けリライト（別呼び出しにして負荷分散）
+    setStepResult(prev => ({...prev, "3": `⏳ ④まずここに注目（初心者向け）生成中 (4/4)...`}));
+    try {
+      const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:"insights_beginner", insights:merged.insights ?? [] }) });
+      const data = await res.json();
+      if (!data.error && Array.isArray(data.details_beginner) && Array.isArray(merged.insights)) {
+        merged.insights = merged.insights.map((ins: any, i: number) => ({ ...ins, detail_beginner: data.details_beginner[i] ?? "" }));
+      }
+    } catch { /* 初心者向けリライト失敗は致命的ではないため、通常保存は続行する */ }
+
     setStepResult(prev => ({...prev, "3": "⏳ 保存中..."}));
     try {
       const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });

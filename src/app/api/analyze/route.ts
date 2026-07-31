@@ -158,11 +158,31 @@ ${dataNote}
 【出力形式】必ず以下の構造のみで完結させること:
 {
   "insights": [
-    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短い要約（100字以内）。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。1文目で結論・要点を端的に述べ、そのあと改行(\\n\\n)を1つ挟んでから、実データの数値を交えた背景・理由の説明、さらに改行(\\n\\n)を挟んで投資判断への影響、という2〜3段落構成にすること。ですます調", "detail_beginner": "同じ内容を投資初心者にも分かるように書き直したもの。250〜400字程度。専門用語には都度かんたんな説明を添えること。段落ごとに改行(\\n\\n)を入れて読みやすくすること。ですます調"},
-    {"title": "インサイトタイトル2（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調", "detail_beginner": "同上の形式で250〜400字程度。ですます調"},
-    {"title": "インサイトタイトル3（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調", "detail_beginner": "同上の形式で250〜400字程度。ですます調"}
+    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短い要約（100字以内）。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。1文目で結論・要点を端的に述べ、そのあと改行(\\n\\n)を1つ挟んでから、実データの数値を交えた背景・理由の説明、さらに改行(\\n\\n)を挟んで投資判断への影響、という2〜3段落構成にすること。ですます調"},
+    {"title": "インサイトタイトル2（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"},
+    {"title": "インサイトタイトル3（20字以内）", "body": "同上（100字以内）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"}
   ],
   "tweet_summary": "40字以内の要約文（ですます調）"
+}`;
+}
+
+function insightsBeginnerPrompt(insights: any[]): string {
+  const list = insights.map((ins: any, i: number) => `${i+1}. タイトル:${ins.title}\n本文:${ins.detail ?? ins.body ?? ""}`).join("\n\n");
+  return `以下は日本のIPO投資に関する3つの解説です。それぞれを、投資初心者にも分かるように書き直してください。
+JSONのみで返答してください。マークダウン・コードブロック・余分なテキスト一切不要。
+
+【元の解説】
+${list}
+
+【書き直しのルール】
+1. 専門用語には都度かんたんな説明を添えること
+2. 250〜400字程度、段落ごとに改行(\\n\\n)を入れること
+3. ですます調で記述すること
+4. 元の数値・事実は省略せずそのまま引用すること
+
+【出力形式】必ず以下の構造のみで完結させること:
+{
+  "details_beginner": ["1つ目の書き直し文", "2つ目の書き直し文", "3つ目の書き直し文"]
 }`;
 }
 
@@ -257,6 +277,19 @@ export async function POST(req: NextRequest) {
 
     // ===== 個別パートの生成 =====
     const part = body.part ?? "score";
+
+    if (part === "insights_beginner") {
+      const insights = body.insights ?? [];
+      const prompt = insightsBeginnerPrompt(insights);
+      const msg = await callClaudeWithRetry(prompt);
+      const raw2 = (msg.content[0] as any).text ?? "";
+      const parsed = repairJson('{' + raw2);
+      if (!parsed) {
+        return NextResponse.json({ error: "parse failed (insights_beginner)" }, { status: 500 });
+      }
+      return NextResponse.json(parsed);
+    }
+
     const { dataNote, dataSource } = buildDataNote(co);
     const prompt =
       part === "insights"  ? insightsPrompt(co, dataNote) :
