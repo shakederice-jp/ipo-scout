@@ -74,26 +74,31 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
 
 function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
   // AIが生成時に実際の改行ではなく "\n" という文字列のまま出力してしまうケースへの保険
-  const normalizedText = text.replace(/\\n/g, "\n");
-  if(beginner){
-    return (
-      <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
-        {normalizedText.split('\n').map((line,i)=>{
-          if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{line.replace(/^#### /,'')}</div>;
-          if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{line.replace(/^### /,'')}</div>;
-          if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{line.replace(/^## /,'')}</div>;
-          if(line.startsWith('- ')) return (
-            <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
-              <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
-              <span>{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
-            </div>
-          );
-          if(line.trim()==='') return <div key={i} style={{height:18}}/>;
-          return <p key={i} style={{marginBottom:16}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
-        })}
-      </div>
-    );
-  }
+ // 連続する空行は1つにまとめる（\n\n\n\nのような二重改行による余白の重複を防ぐ）
+ const normalizedText = text.replace(/\\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+ if(beginner){
+   return (
+     <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
+       {normalizedText.split('\n').map((line,i,arr)=>{
+         if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{line.replace(/^#### /,'')}</div>;
+         if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{line.replace(/^### /,'')}</div>;
+         if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{line.replace(/^## /,'')}</div>;
+         if(line.startsWith('- ')) return (
+           <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
+             <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
+             <span>{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
+           </div>
+         );
+         // 空行は「直前の行も空行」の場合だけスキップ（連続する空行の重複表示を防ぐ）
+         if(line.trim()===''){
+           if(i>0 && arr[i-1].trim()==='') return null;
+           return <div key={i} style={{height:18}}/>;
+         }
+         return <p key={i} style={{marginBottom:16}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+       })}
+     </div>
+   );
+ }
   return (
     <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
       {normalizedText.split('\n').map((line,i)=>{
