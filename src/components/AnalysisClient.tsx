@@ -277,8 +277,11 @@ function LockupTimeline({lockupPeriod}:{lockupPeriod:string}) {
 }
 
 const ICONS=[<Zap size={13} key="z"/>,<TrendingUp size={13} key="t"/>,<Users size={13} key="u"/>];
-function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
+function InsightCard({ins,idx,level="expert"}:{ins:Insight;idx:number;level?:"expert"|"beginner"}) {
   const [open,setOpen]=useState(false);
+  const isBeginner=level==="beginner";
+  const beginnerDetail=(ins as any).detail_beginner??"";
+  const detailText=isBeginner&&beginnerDetail?beginnerDetail:(ins.detail??"");
   return (
     <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${BORDER}`}}>
       <button onClick={()=>setOpen(!open)} style={{width:"100%",display:"flex",gap:8,padding:"10px 12px",
@@ -292,9 +295,12 @@ function InsightCard({ins,idx}:{ins:Insight;idx:number}) {
           display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
       </button>
       {open&&(
-        <div style={{backgroundColor:"white",borderTop:`1px solid ${BORDER}`,padding:"10px 12px"}}>
-          {(ins.detail??"").split(/\n\n+/).map((para,i)=>(
-            <p key={i} style={{fontSize:11,color:"#475569",lineHeight:1.8,whiteSpace:"pre-wrap",margin:i===0?"0 0 10px":"10px 0"}}>{para}</p>
+        <div style={{backgroundColor:"white",borderTop:`1px solid ${BORDER}`,padding:isBeginner?"14px":"10px 12px"}}>
+          {isBeginner&&!beginnerDetail&&(
+            <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け解説は準備中のため、通常の解説を表示しています。</p>
+          )}
+          {detailText.split(/\n\n+/).map((para,i)=>(
+            <p key={i} style={{fontSize:isBeginner?13:11,color:"#475569",lineHeight:isBeginner?2:1.8,whiteSpace:"pre-wrap",margin:i===0?`0 0 ${isBeginner?14:10}px`:`${isBeginner?14:10}px 0`}}>{para}</p>
           ))}
         </div>
       )}
@@ -787,7 +793,21 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </span>
             )}
           </div>
-          <p style={{fontSize:13,color:"#475569",lineHeight:1.8}}>{analysis.summary}</p>
+          {(()=>{
+            const isBeginner=level==="beginner";
+            const beginnerSummary=(analysis as any).summary_beginner??"";
+            const summaryText=isBeginner&&beginnerSummary?beginnerSummary:(analysis.summary??"");
+            return (
+              <>
+                {isBeginner&&!beginnerSummary&&(
+                  <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け要約は準備中のため、通常の要約を表示しています。</p>
+                )}
+                {summaryText.split(/\n\n+/).map((para,i)=>(
+                  <p key={i} style={{fontSize:isBeginner?15:13,color:"#475569",lineHeight:isBeginner?2:1.8,margin:i===0?`0 0 ${isBeginner?12:10}px`:`${isBeginner?12:10}px 0`}}>{para}</p>
+                ))}
+              </>
+            );
+          })()}
           {(analysis as any).missing_data_points?.length > 0 && (
             <div style={{marginTop:10,padding:"10px 12px",backgroundColor:"#fffbeb",borderRadius:8,border:"1px solid #fde68a"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#92400e",marginBottom:6}}>📭 目論見書に記載がなかった項目</div>
@@ -850,7 +870,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>まずここに注目！</span>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {insights.map((ins,i)=><InsightCard key={i} ins={ins} idx={i}/>)}
+              {insights.map((ins,i)=><InsightCard key={i} ins={ins} idx={i} level={level}/>)}
             </div>
           </Card>
         )}
