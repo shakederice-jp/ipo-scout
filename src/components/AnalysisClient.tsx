@@ -73,10 +73,12 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
 }
 
 function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
+  // AIが生成時に実際の改行ではなく "\n" という文字列のまま出力してしまうケースへの保険
+  const normalizedText = text.replace(/\\n/g, "\n");
   if(beginner){
     return (
       <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
-        {text.split('\n').map((line,i)=>{
+        {normalizedText.split('\n').map((line,i)=>{
           if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{line.replace(/^#### /,'')}</div>;
           if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{line.replace(/^### /,'')}</div>;
           if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{line.replace(/^## /,'')}</div>;
@@ -94,7 +96,7 @@ function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
   }
   return (
     <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
-      {text.split('\n').map((line,i)=>{
+      {normalizedText.split('\n').map((line,i)=>{
         if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"16px 0 6px"}}>{line.replace(/^#### /,'')}</div>;
         if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"18px 0 8px"}}>{line.replace(/^### /,'')}</div>;
         if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#082b2e",margin:"20px 0 10px"}}>{line.replace(/^## /,'')}</div>;
