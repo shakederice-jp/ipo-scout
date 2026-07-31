@@ -802,7 +802,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 {isBeginner&&!beginnerSummary&&(
                   <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け要約は準備中のため、通常の要約を表示しています。</p>
                 )}
-                {summaryText.split(/\n\n+/).map((para,i)=>(
+                {summaryText.split(/\n\n+/).map((para:string,i:number)=>(
                   <p key={i} style={{fontSize:isBeginner?15:13,color:"#475569",lineHeight:isBeginner?2:1.8,margin:i===0?`0 0 ${isBeginner?12:10}px`:`${isBeginner?12:10}px 0`}}>{para}</p>
                 ))}
               </>
