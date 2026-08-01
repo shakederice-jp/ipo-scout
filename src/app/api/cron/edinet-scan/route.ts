@@ -23,11 +23,11 @@ function isProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
   return (
     doc.ordinanceCode === "010" &&
-    desc.includes("有価証券届�E書") &&
+    desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投賁E��訁E) &&
-    !doc.secCode  // 証券コードが既にある会社�E�既存上場企業�E��E新規IPOではなぁE�Eで除夁E
+    !desc.includes("投資信託") &&
+    !doc.secCode  // 証券コードが既にある会社（既存上場企業）は新規IPOではないので除外
   );
 }
 
@@ -35,17 +35,17 @@ function isCorrectedProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
   return (
     doc.ordinanceCode === "010" &&
-    desc.includes("有価証券届�E書") &&
+    desc.includes("有価証券届出書") &&
     desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投賁E��訁E)
+    !desc.includes("投資信託")
   );
 }
 
-// 会社名�E類似度チェチE��(部刁E��致・正規化)
+// 会社名の類似度チェック(部分一致・正規化)
 function isNameMatch(edinetName: string, ipoName: string): boolean {
   const normalize = (s: string) => s
-    .replace(/株式会社|㈱|�E�株�E�|\(株\)/g, "")
+    .replace(/株式会社|㈱|（株）|\(株\)/g, "")
     .replace(/\s+/g, "")
     .trim();
   const a = normalize(edinetName);
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase();
   const results: string[] = [];
 
-  // 直迁E日刁E��スキャン
+  // 直近5日分をスキャン
   const dates: string[] = [];
   for (let i = 0; i <= 4; i++) {
     const d = new Date();
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     dates.push(d.toISOString().slice(0, 10));
   }
 
-  // ipo_companiesの全銘柄を取征E名前ベ�Eスマッチング用)
+  // ipo_companiesの全銘柄を取得(名前ベースマッチング用)
   const { data: ipoList } = await supabase
     .from("ipo_companies")
     .select("id, name, edinet_doc_id, raw_prospectus");
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
 
       if (!edinetCode || !docId) continue;
 
-      // ① まずedinet_companiesチE�EブルでEDINETコードを検索(既存ロジチE��)
+      // ① まずedinet_companiesテーブルでEDINETコードを検索(既存ロジック)
       const { data: edinetCo } = await supabase
         .from("edinet_companies")
         .select("company_name, security_code")
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
       let targetCompany: any = null;
 
       if (edinetCo) {
-        // EDINETコードで見つかった場吁EↁEipo_companiesでdocIdを検索
+        // EDINETコードで見つかった場合 → ipo_companiesでdocIdを検索
         const { data: found } = await supabase
           .from("ipo_companies")
           .select("id, edinet_doc_id, raw_prospectus")
@@ -106,16 +106,16 @@ export async function GET(req: NextRequest) {
           .single();
         targetCompany = found;
       } else {
-        // ② EDINETコードで見つからなかった場吁EↁE会社名でipo_companiesを検索(新規追加)
+        // ② EDINETコードで見つからなかった場合 → 会社名でipo_companiesを検索(新規追加)
         const matched = (ipoList ?? []).find(ipo => isNameMatch(companyName, ipo.name));
         if (matched) {
-          // docIdが未設宁Eor 別のdocIdが�EってぁE��場合�Eみ更新
+          // docIdが未設定 or 別のdocIdが入っている場合のみ更新
           if (!matched.edinet_doc_id || matched.edinet_doc_id !== docId) {
             await supabase
               .from("ipo_companies")
               .update({ edinet_doc_id: docId })
               .eq("id", matched.id);
-            results.push(`📋 書類ID自動設宁E ${companyName} ↁE${docId}`);
+            results.push(`📋 書類ID自動設定: ${companyName} → ${docId}`);
           }
           targetCompany = matched;
         }
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
             max_tokens: 512,
             messages: [{
               role: "user",
-              content: `IPO企業、E{companyName}、EEDINETコーチE ${edinetCode}, EDINET提�E書類ID: ${docId})の事業冁E��を、一般皁E��知識をもとに推定してください、ESON形式�Eみで回答してください�E�前後�E説明文は不要E��、En\n{"sector":"業種吁E,"biz_type":"事業冁E��の一言説昁E,"ai_summary":"150斁E��程度の事業概要説昁E}`
+              content: `IPO企業「${companyName}」(EDINETコード: ${edinetCode}, EDINET提出書類ID: ${docId})の事業内容を、一般的な知識をもとに推定してください。JSON形式のみで回答してください（前後の説明文は不要）。\n\n{"sector":"業種名","biz_type":"事業内容の一言説明","ai_summary":"150文字程度の事業概要説明"}`
             }],
           });
           const rawAnalysis = (analysisMsg.content[0] as any).text;
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
           try {
             analysis = JSON.parse(analysisText);
           } catch {
-            analysis = { sector: "不�E", biz_type: "不�E", ai_summary: "自動検�Eのため詳細惁E��は後日更新されまぁE };
+            analysis = { sector: "不明", biz_type: "不明", ai_summary: "自動検出のため詳細情報は後日更新されます" };
           }
 
           const { error: insertError } = await supabase
@@ -153,21 +153,21 @@ export async function GET(req: NextRequest) {
               biz_type: analysis.biz_type,
               ai_summary: analysis.ai_summary,
               edinet_doc_id: docId,
-              status: "自動検�E・要確誁E,
+              status: "自動検出・要確認",
             });
 
             if (insertError) {
-              results.push(`❁E新規登録失敁E ${companyName} - ${insertError.message}`);
+              results.push(`❌ 新規登録失敗: ${companyName} - ${insertError.message}`);
             } else {
-              results.push(`�E 新規IPO候補として自動登録: ${companyName}�E�E{docId}�E�`);
+              results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
               await notifyAdmin(
-                `�E 新規IPO発要E ${companyName}`,
-                `EDINETで新規上場候補を発見し、�E動登録しました、En\n` +
-                `会社吁E ${companyName}\n` +
-                `EDINETコーチE ${edinetCode}\n` +
+                `🆕 新規IPO発見: ${companyName}`,
+                `EDINETで新規上場候補を発見し、自動登録しました。\n\n` +
+                `会社名: ${companyName}\n` +
+                `EDINETコード: ${edinetCode}\n` +
                 `書類ID: ${docId}\n` +
                 `業種: ${analysis.sector}\n\n` +
-                `管琁E��面から①〜⑥のスチE��プを実行して刁E��を完�Eさせてください、En` +
+                `管理画面から①〜⑥のステップを実行して分析を完成させてください。\n` +
                 `https://ipo.finance-tower.com/admin`,
                 "info"
               );
@@ -175,40 +175,40 @@ export async function GET(req: NextRequest) {
               // X速報投稿
               if (process.env.X_AUTOPOST_ENABLED === "true") {
                 try {
-                  const tweetText = `【新規上場承認、E{companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を�E析してぁE��ます、En\n詳しくはプロフィールのリンクから👆\n\n#IPO #新規上場`;
+                  const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n詳しくはプロフィールのリンクから👆\n\n#IPO #新規上場`;
                   const postResult = await postToX(tweetText.slice(0, 140));
                   if (postResult.success) {
-                    results.push(`🐦 X投稿完亁E ${companyName}`);
+                    results.push(`🐦 X投稿完了: ${companyName}`);
                   } else {
                     await notifyAdmin(
-                      `⚠�E�EX投稿失敁E ${companyName}`,
-                      `速報チE��ート�E投稿に失敗しました、En\nエラー: ${postResult.error}`,
+                      `⚠️ X投稿失敗: ${companyName}`,
+                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}`,
                       "warn"
                     );
                   }
                 } catch (e: any) {
-                  await notifyAdmin(`⚠�E�EX投稿エラー: ${companyName}`, String(e), "warn");
+                  await notifyAdmin(`⚠️ X投稿エラー: ${companyName}`, String(e), "warn");
                 }
               }
             }
         } catch (e: any) {
-          results.push(`❁E新規登録エラー: ${companyName} - ${String(e)}`);
+          results.push(`❌ 新規登録エラー: ${companyName} - ${String(e)}`);
         }
         continue;
       }
 
-      // すでにチE��スト取得済みならスキチE�E
+      // すでにテキスト取得済みならスキップ
       if (targetCompany.raw_prospectus) {
-        results.push(`スキチE�E�E�取得済み�E�E ${companyName}`);
+        results.push(`スキップ（取得済み）: ${companyName}`);
         continue;
       }
 
-      // 重いチE��スト取得�E刁E��はここでは行わず、管琁E��面から手動実行してもらぁE
-      results.push(`📌 未処琁E��り（要手動でチE��スト取得！E ${companyName}�E�E{docId}�E�`);
+      // 重いテキスト取得・分析はここでは行わず、管理画面から手動実行してもらう
+      results.push(`📌 未処理あり（要手動でテキスト取得）: ${companyName}（${docId}）`);
     }
   }
 
-// ③ 公募価格がまだ未確定�E銘柄につぁE��、訂正届�E書から価格を�E動取征E
+// ③ 公募価格がまだ未確定の銘柄について、訂正届出書から価格を自動取得
 const { data: pendingPriceList } = await supabase
 .from("ipo_companies")
 .select("id, name")
@@ -239,7 +239,7 @@ for (const date of dates) {
           .update({ ipo_price: price })
           .eq("id", matched.id);
 
-        // visualization_dataも�E動更新
+        // visualization_dataも自動更新
         const { data: companyData } = await supabase
           .from("ipo_companies")
           .select("structured_data, visualization_data")
@@ -259,8 +259,8 @@ for (const date of dates) {
           let fundraising = null;
           if (rawFundraising) {
             const str = String(rawFundraising);
-            const hyakumanMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*百丁E�E/);
-            const okuMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*儁E�E/);
+            const hyakumanMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*百万円/);
+            const okuMatch = str.match(/([0-9,]+(?:\.[0-9]+)?)\s*億円/);
             if (hyakumanMatch) {
               fundraising = Math.round(parseFloat(hyakumanMatch[1].replace(/,/g, "")));
             } else if (okuMatch) {
@@ -282,29 +282,29 @@ for (const date of dates) {
                   market_cap: marketCap,
                   float_ratio: structured?.ipo_details?.float_ratio ?? null,
                   fundraising: fundraising,
-                  title: "バリュエーション持E��E,
+                  title: "バリュエーション指標",
                 },
               },
             })
             .eq("id", matched.id);
         }
 
-        results.push(`💰 公募価格自動設宁E ${matched.name} ↁE${price}冁E);
+        results.push(`💰 公募価格自動設定: ${matched.name} → ${price}円`);
       } else {
-        results.push(`⚠�E�E公募価格未検�E: ${matched.name}�E�E{priceData.message ?? "不�E"}�E�`);
+        results.push(`⚠️ 公募価格未検出: ${matched.name}（${priceData.message ?? "不明"}）`);
       }
     } catch {
-      results.push(`❁E公募価格取得通信エラー: ${matched.name}`);
+      results.push(`❌ 公募価格取得通信エラー: ${matched.name}`);
     }
   }
 }
 }
 
-  const errors = results.filter(r => r.startsWith("❁E));
+  const errors = results.filter(r => r.startsWith("❌"));
   if (errors.length > 0) {
     await notifyAdmin(
-      `EDINETスキャン エラーあり�E�E{errors.length}件�E�`,
-      `実行日晁E ${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n結果:\n${results.join("\n")}`,
+      `EDINETスキャン エラーあり（${errors.length}件）`,
+      `実行日時: ${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n結果:\n${results.join("\n")}`,
       "warn"
     );
   }

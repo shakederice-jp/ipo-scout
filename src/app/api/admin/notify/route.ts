@@ -10,9 +10,9 @@ const supabase = createClient(
 );
 
 export async function POST() {
-  // 翌週月曜〜日曜�E篁E��を計箁E
+  // 翌週月曜〜日曜の範囲を計算
   const now = new Date();
-  const dow = now.getDay(); // 0=日, 5=釁E
+  const dow = now.getDay(); // 0=日, 5=金
   const daysUntilMonday = dow === 0 ? 1 : 8 - dow;
   const nextMonday = new Date(now);
   nextMonday.setDate(now.getDate() + daysUntilMonday);
@@ -24,7 +24,7 @@ export async function POST() {
   const fromDate = nextMonday.toISOString().split("T")[0];
   const toDate   = nextSunday.toISOString().split("T")[0];
 
-  // 翌週のBB開始�E申込開始�E上場銘柄を取征E
+  // 翌週のBB開始・申込開始・上場銘柄を取得
   const { data: bbCompanies } = await supabase
     .from("ipo_companies")
     .select("*")
@@ -45,28 +45,28 @@ export async function POST() {
 
   const hasAny = (bbCompanies?.length ?? 0) + (applyCompanies?.length ?? 0) + (listingCompanies?.length ?? 0) > 0;
   if (!hasAny) {
-    return NextResponse.json({ message: "翌週の通知対象なぁE, sent: 0 });
+    return NextResponse.json({ message: "翌週の通知対象なし", sent: 0 });
   }
 
-  // 通知設定を取征E
+  // 通知設定を取得
   const { data: settings } = await supabase
     .from("notification_settings")
     .select("user_id, notify_bb, notify_apply, notify_listing, method_email")
     .eq("method_email", true);
 
   if (!settings || settings.length === 0) {
-    return NextResponse.json({ message: "通知ユーザーなぁE, sent: 0 });
+    return NextResponse.json({ message: "通知ユーザーなし", sent: 0 });
   }
 
-  // auth.usersからメールアドレス取征E
+  // auth.usersからメールアドレス取得
   const { data: { users } } = await supabase.auth.admin.listUsers();
   const emailMap: Record<string, string> = {};
   users.forEach(u => { if (u.email) emailMap[u.id] = u.email; });
 
   const formatDate = (d: string) => {
     const dt = new Date(d);
-    const dow = ["日","朁E,"火","水","木","釁E,"圁E][dt.getDay()];
-    return `${dt.getMonth()+1}/${dt.getDate()}�E�E{dow}�E�`;
+    const dow = ["日","月","火","水","木","金","土"][dt.getDay()];
+    return `${dt.getMonth()+1}/${dt.getDate()}（${dow}）`;
   };
 
   let sent = 0;
@@ -79,17 +79,17 @@ export async function POST() {
 
     if (setting.notify_bb && bbCompanies?.length) {
       bbCompanies.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>�E�E{c.ticker ?? ""}�E�E/td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0369a1;font-weight:700">BB開姁E/td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.bb_start_date)}</td></tr>`);
+        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0369a1;font-weight:700">BB開始</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.bb_start_date)}</td></tr>`);
       });
     }
     if (setting.notify_apply && applyCompanies?.length) {
       applyCompanies.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>�E�E{c.ticker ?? ""}�E�E/td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#d97706;font-weight:700">申込開姁E/td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.apply_start_date)}</td></tr>`);
+        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#d97706;font-weight:700">申込開始</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.apply_start_date)}</td></tr>`);
       });
     }
     if (setting.notify_listing && listingCompanies?.length) {
       listingCompanies.forEach(c => {
-        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>�E�E{c.ticker ?? ""}�E�E/td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#15803d;font-weight:700">上場日</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.listing_date)}</td></tr>`);
+        rows.push(`<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0"><strong>${c.name}</strong>（${c.ticker ?? ""}）</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#15803d;font-weight:700">上場日</td><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${formatDate(c.listing_date)}</td></tr>`);
       });
     }
 
@@ -97,35 +97,35 @@ export async function POST() {
 
     try {
       await resend.emails.send({
-        from:    "IPO刁E��レポ�EチE<noreply@ipo.finance-tower.com>",
+        from:    "IPO分析レポート <noreply@ipo.finance-tower.com>",
         to:      email,
-        subject: `【IPO週次通知】翌週�E�E{fromDate}、E{toDate}�E��EIPOイベンチE,
+        subject: `【IPO週次通知】翌週（${fromDate}〜${toDate}）のIPOイベント`,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f4fbfc">
             <div style="background:#0d4f52;padding:16px 24px;border-radius:12px 12px 0 0">
-              <h2 style="color:white;margin:0;font-size:16px">📊 IPO企業惁E��AI刁E��レポ�EチE/h2>
-              <p style="color:#a0d4d6;margin:4px 0 0;font-size:12px">拁E��：大手町調査室九課</p>
+              <h2 style="color:white;margin:0;font-size:16px">📊 IPO企業情報AI分析レポート</h2>
+              <p style="color:#a0d4d6;margin:4px 0 0;font-size:12px">担当：大手町調査室九課</p>
             </div>
             <div style="background:white;padding:24px;border-radius:0 0 12px 12px;border:1px solid #b3e8ea">
               <p style="color:#082b2e;font-size:14px;margin-bottom:16px">
-                翌週�E�Estrong>${fromDate}、E{toDate}</strong>�E��EIPOイベントをお知らせします、E
+                翌週（<strong>${fromDate}〜${toDate}</strong>）のIPOイベントをお知らせします。
               </p>
               <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
                 <thead>
                   <tr style="background:#f4fbfc">
                     <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">銘柄</th>
-                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">イベンチE/th>
-                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">日仁E/th>
+                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">イベント</th>
+                    <th style="padding:8px 12px;text-align:left;color:#2a7a7e;font-size:11px">日付</th>
                   </tr>
                 </thead>
                 <tbody>${rows.join("")}</tbody>
               </table>
               <a href="https://ipo.finance-tower.com"
                 style="display:inline-block;padding:12px 24px;background:#66c3c6;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:20px;font-size:14px">
-                刁E��レポ�Eトを確認すめEↁE
+                分析レポートを確認する →
               </a>
               <p style="margin-top:24px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px">
-                こ�Eメールは毎週金曜日18時に通知設定を有効にしてぁE��ユーザーへ送信されます、Ebr/>
+                このメールは毎週金曜日18時に通知設定を有効にしているユーザーへ送信されます。<br/>
                 © 大手町調査室九課
               </p>
             </div>
@@ -134,7 +134,7 @@ export async function POST() {
       });
       sent++;
     } catch (e) {
-      console.error(`メール送信失敁E ${email}`, e);
+      console.error(`メール送信失敗: ${email}`, e);
     }
   }
 
@@ -149,5 +149,5 @@ export async function POST() {
     ].map(c => c.name).join(", "),
   });
 
-  return NextResponse.json({ success: true, sent, nextWeek: `${fromDate}、E{toDate}` });
+  return NextResponse.json({ success: true, sent, nextWeek: `${fromDate}〜${toDate}` });
 }
