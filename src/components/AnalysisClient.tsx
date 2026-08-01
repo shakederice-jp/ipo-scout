@@ -74,33 +74,61 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
 
 function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
   // AIが生成時に実際の改行ではなく "\n" という文字列のまま出力してしまうケースへの保険
- // 連続する空行は1つにまとめる（\n\n\n\nのような二重改行による余白の重複を防ぐ）
- const normalizedText = text.replace(/\\n/g, "\n").replace(/\n{3,}/g, "\n\n");
- if(beginner){
-   return (
-     <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
-       {normalizedText.split('\n').map((line,i,arr)=>{
-         if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{line.replace(/^#### /,'')}</div>;
-         if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{line.replace(/^### /,'')}</div>;
-         if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{line.replace(/^## /,'')}</div>;
-         if(line.startsWith('- ')) return (
-           <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
-             <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
-             <span>{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
-           </div>
-         );
-         // 空行は「直前の行も空行」の場合だけスキップ（連続する空行の重複表示を防ぐ）
-         if(line.trim()===''){
-          if(i>0 && arr[i-1].trim()==='') return null;
-          return <div key={i} style={{height:14}}/>;
-        }
-        // 短い一文、または体言止め（句点で終わらない文）は見出し的な行とみなし、太字にして余白を詰める
-        const isHeadingLike = (line.length <= 28 && !line.includes('。')) || (!line.endsWith('。') && !line.endsWith('.') && !line.endsWith('！') && !line.endsWith('？') && line.length <= 40);
-        return <p key={i} style={{marginBottom:isHeadingLike?4:16,fontWeight:isHeadingLike?700:400,fontSize:isHeadingLike?15:14,color:isHeadingLike?"#0d4f52":"#334155"}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
-      })}
-    </div>
-  );
-}
+  const normalizedText = text.replace(/\\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+
+  if(beginner){
+    // 見出し的な行（体言止め・短文）かどうかの判定
+    const isHeadingLikeLine = (s: string) =>
+      (s.length <= 28 && !s.includes('。')) ||
+      (!s.endsWith('。') && !s.endsWith('.') && !s.endsWith('！') && !s.endsWith('？') && s.length <= 40);
+
+    // 行を「見出し／箇条書き／本文」に分類し、本文どうしは意味段落としてまとめて1ブロックにする
+    type Block = { type:"h4"|"h3"|"h2"|"bullet"|"para"|"headingline"; text:string };
+    const blocks: Block[] = [];
+    let buffer = "";
+    const flushBuffer = () => {
+      if (buffer.trim()) blocks.push({ type:"para", text: buffer.trim() });
+      buffer = "";
+    };
+
+    for (const line of normalizedText.split('\n')) {
+      if (line.trim() === '') continue; // 空行は段落の切れ目の目安としてのみ扱い、表示上は無視する
+      if (line.startsWith('#### ')) { flushBuffer(); blocks.push({type:"h4", text:line.replace(/^#### /,'')}); continue; }
+      if (line.startsWith('### '))  { flushBuffer(); blocks.push({type:"h3", text:line.replace(/^### /,'')}); continue; }
+      if (line.startsWith('## '))   { flushBuffer(); blocks.push({type:"h2", text:line.replace(/^## /,'')}); continue; }
+      if (line.startsWith('# '))    { flushBuffer(); blocks.push({type:"h2", text:line.replace(/^# /,'')}); continue; }
+      if (line.startsWith('- '))    { flushBuffer(); blocks.push({type:"bullet", text:line.replace(/^- /,'')}); continue; }
+
+      if (isHeadingLikeLine(line)) {
+        flushBuffer();
+        blocks.push({ type:"headingline", text: line });
+        continue;
+      }
+      // 通常の文はバッファに連結し、ある程度の長さになったら1つの意味段落として確定する
+      buffer += line;
+      if (buffer.length >= 110) flushBuffer();
+    }
+    flushBuffer();
+
+    return (
+      <div style={{fontSize:14,color:"#334155",lineHeight:2.1}}>
+        {blocks.map((b,i)=>{
+          if(b.type==="h4") return <div key={i} style={{fontWeight:900,fontSize:15,color:"#0d4f52",margin:"24px 0 10px",display:"flex",alignItems:"center",gap:6}}><span>📌</span>{b.text}</div>;
+          if(b.type==="h3") return <div key={i} style={{fontWeight:900,fontSize:16,color:"#082b2e",margin:"28px 0 12px",paddingBottom:6,borderBottom:`2px solid ${LIGHT}`}}>{b.text}</div>;
+          if(b.type==="h2") return <div key={i} style={{fontWeight:900,fontSize:17,color:"#082b2e",margin:"30px 0 14px"}}>{b.text}</div>;
+          if(b.type==="bullet") return (
+            <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
+              <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
+              <span>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
+            </div>
+          );
+          if(b.type==="headingline") return <p key={i} style={{marginBottom:4,fontWeight:700,fontSize:15,color:"#0d4f52"}}>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+          return <p key={i} style={{marginBottom:18}}>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+        })}
+      </div>
+    );
+  }
+
   return (
     <div style={{fontSize:12,color:"#334155",lineHeight:1.9}}>
       {normalizedText.split('\n').map((line,i)=>{
