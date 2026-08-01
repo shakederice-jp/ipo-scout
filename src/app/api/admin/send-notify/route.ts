@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipo-jp.vercel.app";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipo.finance-tower.com";
     const res = await fetch(`${baseUrl}/api/cron/notify`, {
       method: "GET",
       headers: {

@@ -11,7 +11,7 @@ export default async function sitemap() {
     .select("id, ticker, listing_date")
     .order("listing_date", { ascending: false });
 
-  const baseUrl = "https://ipo-jp.vercel.app";
+  const baseUrl = "https://ipo.finance-tower.com";
 
   const staticPages = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: "daily" as const, priority: 1.0 },

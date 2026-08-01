@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${data.name} IPO分析レポート｜大手町調査室九課`;
   const ticker = (data as any).ticker;
   const canonicalId = ticker ?? data.id;
-  const url = `https://ipo-jp.vercel.app/analysis/${canonicalId}`;
+  const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
   return {
     title,
     description,
@@ -76,12 +76,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       siteName: "大手町調査室九課",
       locale: "ja_JP",
       type: "article",
-      images: [{ url: "https://ipo-jp.vercel.app/ogp.png", width: 1200, height: 630 }],
+      images: [{ url: "https://ipo.finance-tower.com/ogp.png", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title, description,
-      images: ["https://ipo-jp.vercel.app/ogp.png"],
+      images: ["https://ipo.finance-tower.com/ogp.png"],
     },
     alternates: { canonical: url },
   };
@@ -150,13 +150,13 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     "publisher": {
       "@type": "Organization",
       "name": "大手町調査室九課",
-      "url": "https://ipo-jp.vercel.app",
+      "url": "https://ipo.finance-tower.com",
     },
     "datePublished": company.listing_date ?? new Date().toISOString(),
     "dateModified": new Date().toISOString(),
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://ipo-jp.vercel.app/analysis/${canonicalId}`,
+      "@id": `https://ipo.finance-tower.com/analysis/${canonicalId}`,
     },
   };
 

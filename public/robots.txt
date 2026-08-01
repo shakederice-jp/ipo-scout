@@ -19,4 +19,4 @@ Disallow: /
 User-agent: Google-Extended
 Disallow: /
 
-Sitemap: https://ipo-jp.vercel.app/sitemap.xml
+Sitemap: https://ipo.finance-tower.com/sitemap.xml
