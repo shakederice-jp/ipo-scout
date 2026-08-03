@@ -27,25 +27,25 @@ export async function POST() {
     const supabase = createSupabaseServerClient();
     if (!supabase) throw new Error("Supabase接続エラー");
 
-    // 既存ティチE��ーを取征E
+    // 既存ティッカーを取得
     const { data: existing } = await supabase.from("ipo_companies").select("ticker");
     const existingTickers = new Set((existing || []).map((r: any) => r.ticker));
 
-    // IPOスケジュールを取征E
+    // IPOスケジュールを取得
     const html = await fetch("https://96ut.com/ipo/schedule.php?year=2026").then(r => r.text());
     const sourceText = html.slice(0, 8000);
 
-    // Claudeにスケジュール表をパースさせめE
+    // Claudeにスケジュール表をパースさせる
     const parseMsg = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `以下�EHTMLのIPOスケジュール表を読み取り、JSONのみで回答してください、E
+        content: `以下のHTMLのIPOスケジュール表を読み取り、JSONのみで回答してください。
 
 ${sourceText}
 
-[{"name":"銘柄吁E,"ticker":"コーチE,"listing_date":"YYYY-MM-DD","bb_start_date":"YYYY-MM-DD","apply_start_date":"YYYY-MM-DD","exchange":"グロースまた�Eスタンダードまた�Eプライム"}]`
+[{"name":"銘柄名","ticker":"コード","listing_date":"YYYY-MM-DD","bb_start_date":"YYYY-MM-DD","apply_start_date":"YYYY-MM-DD","exchange":"グロースまたはスタンダードまたはプライム"}]`
       }],
     });
 
@@ -59,38 +59,38 @@ ${sourceText}
 
     for (const ipo of newIpos.slice(0, 5)) {
       try {
-        // Step1: ClaudeがAI刁E��を生戁E
+        // Step1: ClaudeがAI分析を生成
         const analysisMsg = await claude.messages.create({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 512,
           messages: [{
             role: "user",
-            content: `IPO企業、E{ipo.name}」！E{ipo.ticker}、E{ipo.exchange}、上場日:${ipo.listing_date}�E�を刁E��し、JSONのみで回筁E
-{"sector":"セクター吁E,"biz_type":"業態�EビジネスモチE��","ai_summary":"150斁E��程度の事業概要E,"ai_score":65,"highlight":false}`
+            content: `IPO企業「${ipo.name}」(${ipo.ticker}、${ipo.exchange}、上場日:${ipo.listing_date})を分析し、JSONのみで回答:
+{"sector":"セクター名","biz_type":"業態・ビジネスモデル","ai_summary":"150文字程度の事業概要","ai_score":65,"highlight":false}`
           }],
         });
         const rawAnalysis = (analysisMsg.content[0] as any).text; const jsonMatch = rawAnalysis.match(/\{[\s\S]*\}/); const analysisText = jsonMatch ? jsonMatch[0] : rawAnalysis.replace(/```json|```/g, "").trim();
-        let analysis; try { analysis = JSON.parse(analysisText); } catch { analysis = { sector: "���̑�", biz_type: "�s��", ai_summary: "�������͂Ɏ��s���܂���", ai_score: 50, highlight: false }; }
+        let analysis; try { analysis = JSON.parse(analysisText); } catch { analysis = { sector: "その他", biz_type: "不明", ai_summary: "AI分析に失敗しました", ai_score: 50, highlight: false }; }
 
-       // Step2: Geminiが�EチE�Eタとの整合性をチェチE��
-        const checkPrompt = `以下�EIPO企業惁E��と、AIが生成した�E析を比輁E��てください、E
+       // Step2: Geminiが元データとの整合性をチェック
+        const checkPrompt = `以下のIPO企業情報と、AIが生成した分析を比較してください。
 
-【�EチE�Eタ�E�EPOスケジュールサイトより）、E
-銘柄吁E ${ipo.name}
-チE��チE��ー: ${ipo.ticker}
+【元データ(IPOスケジュールサイトより)】
+銘柄名: ${ipo.name}
+ティッカー: ${ipo.ticker}
 取引所: ${ipo.exchange}
 上場日: ${ipo.listing_date}
 
-【AI生�E刁E��、E
+【AI生成分析】
 セクター: ${analysis.sector}
-業慁E ${analysis.biz_type}
-要紁E ${analysis.ai_summary}
+業態: ${analysis.biz_type}
+要約: ${analysis.ai_summary}
 スコア: ${analysis.ai_score}
 
-允E��ータの銘柄名�EチE��チE��ー・取引所・日付と、AI刁E��の冁E��に明らかな矛盾めE��りがありますか�E�E
-以下�EJSONのみで回答してください�E�E
-{"ok":true,"issues":"問題なぁE}
-また�E
+元データの銘柄名・ティッカー・取引所・日付と、AI分析の内容に明らかな矛盾や誤りがありますか？
+以下のJSONのみで回答してください:
+{"ok":true,"issues":"問題なし"}
+または
 {"ok":false,"issues":"具体的な問題点"}`;
 
         //const geminiResult = await geminiModel.generateContent(checkPrompt);
@@ -104,18 +104,18 @@ ${sourceText}
             max_tokens: 512,
             messages: [{
               role: "user",
-              content: `IPO企業、E{ipo.name}」！E{ipo.ticker}�E��E刁E��に以下�E問題が持E��されました�E�E
+              content: `IPO企業「${ipo.name}」(${ipo.ticker})の分析に以下の問題が指摘されました:
 ${check.issues}
 
-修正した刁E��をJSONのみで回筁E
-{"sector":"セクター吁E,"biz_type":"業慁E,"ai_summary":"150斁E���E事業概要E,"ai_score":65,"highlight":false}`
+修正した分析をJSONのみで回答:
+{"sector":"セクター名","biz_type":"業態","ai_summary":"150文字程度の事業概要","ai_score":65,"highlight":false}`
             }],
           });
           const rawFix = (fixMsg.content[0] as any).text; const fixMatch = rawFix.match(/\{[\s\S]*\}/); const fixText = fixMatch ? fixMatch[0] : rawFix.replace(/```json|```/g, "").trim();
           try { analysis = JSON.parse(fixText); } catch { }
     }
 
-        // Step4: Supabaseに保孁E
+        // Step4: Supabaseに保存
         await supabase.from("ipo_companies").insert({
           name: ipo.name, ticker: ipo.ticker,
           exchange: ipo.exchange || "グロース",
