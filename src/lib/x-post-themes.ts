@@ -85,3 +85,59 @@ ${theme.includeProfileLinkCTA ? "\n投稿の最後に「プロフィール欄の
 
   return generateWithGemini(prompt);
 }
+
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseForThemes = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// テーマ②: IPOカレンダー(自社DB由来)
+export async function generateIpoCalendarPost(): Promise<string | null> {
+  const today = new Date();
+  const twoWeeksLater = new Date();
+  twoWeeksLater.setDate(today.getDate() + 14);
+
+  const { data, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("ticker, name, exchange, sector, biz_type, listing_date, price_range_min, price_range_max")
+    .gte("listing_date", today.toISOString().split("T")[0])
+    .lte("listing_date", twoWeeksLater.toISOString().split("T")[0])
+    .order("listing_date", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    console.error("IPOカレンダー取得失敗またはデータなし:", error);
+    return null;
+  }
+
+  const listBlock = data
+    .map((c) => {
+      const price =
+        c.price_range_min && c.price_range_max
+          ? `想定価格帯${c.price_range_min}〜${c.price_range_max}円`
+          : "価格未定";
+      return `- ${c.name}(${c.ticker || "コード未定"}・${c.exchange || ""}・${c.sector || c.biz_type || "業種不明"}) 上場日:${c.listing_date} ${price}`;
+    })
+    .join("\n");
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は今後2週間以内に上場予定のIPO銘柄一覧です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+
+# 今後のIPOカレンダー
+${listBlock}
+
+# 文体ルール(厳守)
+- 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
+- タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
+- 絵文字マーカー(📣📝▼など)を要所に使う
+- 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
+- 全体で120〜300文字程度に収める
+- URLは含めない
+- 投稿の最後に「プロフィール欄のリンクから」等の一文をさりげなく加えてください
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  return generateWithGemini(prompt);
+}

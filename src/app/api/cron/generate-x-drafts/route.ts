@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllHeadlines } from "@/lib/rss-feeds";
-import { RSS_THEMES, generateThemedPost } from "@/lib/x-post-themes";
+import { RSS_THEMES, generateThemedPost, generateIpoCalendarPost } from "@/lib/x-post-themes";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +25,28 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
+
+// テーマ②: IPOカレンダー(RSS取得より先に実行)
+try {
+  const ipoContent = await generateIpoCalendarPost();
+  if (ipoContent) {
+    const { error } = await supabase.from("x_post_drafts").insert({
+      theme_number: 2,
+      theme_label: "IPOカレンダー",
+      content: ipoContent,
+      source_note: "自社DB(ipo_companies)由来",
+    });
+    if (error) throw error;
+    results.push({ theme: 2, status: "success" });
+  } else {
+    results.push({ theme: 2, status: "skipped(該当銘柄なし)" });
+  }
+} catch (err) {
+  console.error("テーマ2の生成に失敗:", err);
+  results.push({ theme: 2, status: "failed" });
+}
+
+await new Promise((resolve) => setTimeout(resolve, 1000));
 
     for (const theme of RSS_THEMES) {
       try {
