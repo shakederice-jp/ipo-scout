@@ -50,3 +50,10 @@ jobs:
     steps:
       - name: Run Daily Reminder
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/daily-reminder -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  generate-x-drafts:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 21 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Generate X Post Drafts
+        run: "curl -X GET https://ipo.finance-tower.com/api/cron/generate-x-drafts -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
