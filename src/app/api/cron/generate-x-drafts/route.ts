@@ -9,7 +9,6 @@ const supabase = createClient(
 );
 
 export async function GET(request: Request) {
-  // cronシークレットによる認証チェック(既存のedinet-scan等と同じ方式)
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +17,6 @@ export async function GET(request: Request) {
   const results: { theme: number; status: string }[] = [];
 
   try {
-    // 1. RSSフィードを一度だけ取得(全テーマで使い回す)
     const headlines = await fetchAllHeadlines();
 
     if (headlines.length === 0) {
@@ -28,7 +26,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. テーマ④〜⑧を順番に生成(Gemini無料枠のレート制限を考慮し、間隔を空ける)
     for (const theme of RSS_THEMES) {
       try {
         const content = await generateThemedPost(theme, headlines);
@@ -48,7 +45,6 @@ export async function GET(request: Request) {
         results.push({ theme: theme.number, status: "failed" });
       }
 
-      // Gemini無料枠のレート制限対策として1秒待機
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
