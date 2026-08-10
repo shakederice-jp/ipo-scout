@@ -141,3 +141,69 @@ ${listBlock}
 
   return generateWithGemini(prompt);
 }
+
+const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
+
+async function fetchEdinetDocumentsForThemes(date: string) {
+  const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY_FOR_THEMES}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data?.results ?? [];
+}
+
+// テーマ①: 大量保有報告書ウォッチ(EDINET由来、docTypeCode=350)
+export async function generateLargeHoldingsPost(): Promise<string | null> {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const dates = [
+    today.toISOString().slice(0, 10),
+    yesterday.toISOString().slice(0, 10),
+  ];
+
+  const allReports: any[] = [];
+  for (const date of dates) {
+    const docs = await fetchEdinetDocumentsForThemes(date);
+    const largeHoldings = docs.filter((d: any) => d.docTypeCode === "350");
+    allReports.push(...largeHoldings);
+  }
+
+  if (allReports.length === 0) {
+    return null;
+  }
+
+  // 最大10件までに絞る(情報量が多すぎるとGeminiの出力が散漫になるため)
+  const sample = allReports.slice(0, 10);
+
+  const listBlock = sample
+    .map(
+      (d) =>
+        `- 提出者:${d.filerName || "不明"} / 対象銘柄コード:${d.subjectEdinetCode || d.secCode || "不明"} / 提出日:${d.submitDateTime || ""} / 概要:${d.docDescription || ""}`
+    )
+    .join("\n");
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は本日〜前日にEDINETへ提出された「大量保有報告書」の一覧です。この中から特に個人投資家の関心を引きそうな1〜2件を選び、X(旧Twitter)投稿を1本作成してください。
+
+# 大量保有報告書の提出情報
+${listBlock}
+
+# 注意事項
+- 対象銘柄コードが不明な場合や情報が乏しい場合は、提出者名や概要から分かる範囲で言及してください
+- 保有割合や取得目的など、記載がない情報を憶測で書かないでください
+
+# 文体ルール(厳守)
+- 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
+- タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
+- 絵文字マーカー(📣📝▼など)を要所に使う
+- 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
+- 全体で120〜300文字程度に収める
+- URLは含めない
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  return generateWithGemini(prompt);
+}
