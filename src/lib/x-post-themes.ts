@@ -207,3 +207,49 @@ ${listBlock}
 
   return generateWithGemini(prompt);
 }
+
+// テーマ③: 週内の重要経済指標カレンダー(自社DB由来)
+export async function generateEconomicCalendarPost(): Promise<string | null> {
+    const today = new Date();
+    const oneWeekLater = new Date();
+    oneWeekLater.setDate(today.getDate() + 7);
+  
+    const { data, error } = await supabaseForThemes
+      .from("economic_events")
+      .select("event_date, event_type, label")
+      .gte("event_date", today.toISOString().split("T")[0])
+      .lte("event_date", oneWeekLater.toISOString().split("T")[0])
+      .order("event_date", { ascending: true });
+  
+    if (error || !data || data.length === 0) {
+      console.error("経済指標カレンダー取得失敗またはデータなし:", error);
+      return null;
+    }
+  
+    const listBlock = data
+      .map((e) => `- ${e.event_date} ${e.event_type}:${e.label}`)
+      .join("\n");
+  
+    const prompt = `
+  あなたは日本の個人投資家向けメディアの編集者です。以下は今週(7日以内)に予定されている重要経済指標・イベントの一覧です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+  
+  # 今週の経済指標カレンダー
+  ${listBlock}
+  
+  # 記載のポイント
+  - 各イベントが株式相場にどう影響しうるか、一般的な知識をもとに一言添えてください(記載のない詳細な数値予想などは書かないこと)
+  - 個人投資家が「今週、何に注目すればいいか」がひと目で分かるようにしてください
+  
+  # 文体ルール(厳守)
+  - 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
+  - タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
+  - 絵文字マーカー(📣📝▼など)を要所に使う
+  - 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
+  - 全体で120〜300文字程度に収める
+  - URLは含めない
+  
+  投稿文のみを出力してください。前置きや説明は不要です。
+  `;
+  
+    return generateWithGemini(prompt);
+  }

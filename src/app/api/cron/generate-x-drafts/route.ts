@@ -6,6 +6,7 @@ import {
   generateThemedPost,
   generateIpoCalendarPost,
   generateLargeHoldingsPost,
+  generateEconomicCalendarPost,
 } from "@/lib/x-post-themes";
 
 const supabase = createClient(
@@ -71,6 +72,28 @@ export async function GET(request: Request) {
     } catch (err) {
       console.error("テーマ2の生成に失敗:", err);
       results.push({ theme: 2, status: "failed" });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // テーマ③: 週内の重要経済指標カレンダー
+    try {
+      const econContent = await generateEconomicCalendarPost();
+      if (econContent) {
+        const { error } = await supabase.from("x_post_drafts").insert({
+          theme_number: 3,
+          theme_label: "週内の重要経済指標カレンダー",
+          content: econContent,
+          source_note: "自社DB(economic_events)由来",
+        });
+        if (error) throw error;
+        results.push({ theme: 3, status: "success" });
+      } else {
+        results.push({ theme: 3, status: "skipped(該当イベントなし)" });
+      }
+    } catch (err) {
+      console.error("テーマ3の生成に失敗:", err);
+      results.push({ theme: 3, status: "failed" });
     }
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
