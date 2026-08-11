@@ -43,11 +43,18 @@ export default function AdminPage() {
   const [econLabel, setEconLabel] = useState("");
   const [econLoading, setEconLoading] = useState(false);
   const [econResult, setEconResult] = useState<string | null>(null);
+  const [xDrafts, setXDrafts] = useState<any[]>([]);
+  const [xDraftsLoading, setXDraftsLoading] = useState(false);
+  const [xDraftsOpen, setXDraftsOpen] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
     fetch("/api/admin/economic-events").then(r => r.json()).then(data => {
+      fetch("/api/admin/x-post-drafts").then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setXDrafts(data);
+      }).catch(() => {});
       if (Array.isArray(data)) setEconEvents(data);
     }).catch(() => {});
   }, [authed]);
@@ -345,6 +352,12 @@ export default function AdminPage() {
     } catch {}
   };
 
+  const handleCopyDraft = (id: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
   const labelStyle = { fontSize:"11px", fontWeight:"700" as const, color:"#2a7a7e", marginBottom:"4px", display:"block" as const };
   const sectionStyle = { background:"white", borderRadius:"12px", padding:"20px", marginBottom:"12px", border:"1px solid #d1f5f7" };
@@ -569,6 +582,40 @@ export default function AdminPage() {
 
           {/* ═══ 右カラム ═══ */}
           <div className="admin-col" style={{ width:"50%", display:"flex", flexDirection:"column", gap:12 }}>
+
+{/* 本日のX投稿ドラフト */}
+<div style={{ ...sectionStyle, padding:0, overflow:"hidden" }}>
+              <button onClick={()=>setXDraftsOpen(v=>!v)}
+                style={{ width:"100%", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#0ea5a3", border:"none", cursor:"pointer", borderRadius:xDraftsOpen?"12px 12px 0 0":"12px" }}>
+                <div>
+                  <div style={{ fontWeight:900, fontSize:14, color:"white" }}>🐦 本日のX投稿ドラフト</div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.75)", marginTop:2 }}>毎朝自動生成・{xDrafts.length}件・コピーしてXの予約投稿に貼り付けてください</div>
+                </div>
+                <span style={{ color:"white", fontSize:12, transform:xDraftsOpen?"rotate(180deg)":"none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
+              </button>
+              {xDraftsOpen && (
+                <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:10 }}>
+                  {xDrafts.length===0 ? (
+                    <p style={{ fontSize:12, color:"#94a3b8" }}>本日分のドラフトはまだ生成されていません。毎朝6:00頃に自動生成されます。</p>
+                  ) : (
+                    xDrafts.map(d => (
+                      <div key={d.id} style={{ borderRadius:10, padding:"12px 14px", border:"1px solid #e2e8f0", background:"#f8fafc" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                          <span style={{ fontSize:11, fontWeight:900, color:"#0d4f52", background:"#d1f5f7", padding:"2px 8px", borderRadius:20 }}>
+                            テーマ{d.theme_number}｜{d.theme_label}
+                          </span>
+                          <button onClick={()=>handleCopyDraft(d.id, d.content)}
+                            style={{ padding:"5px 12px", backgroundColor:copiedId===d.id?"#16a34a":"#0ea5a3", color:"white", border:"none", borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:11 }}>
+                            {copiedId===d.id?"✅ コピー完了":"📋 コピー"}
+                          </button>
+                        </div>
+                        <div style={{ fontSize:12, lineHeight:1.7, color:"#334155", whiteSpace:"pre-wrap" }}>{d.content}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 銘柄分析 */}
             <div style={sectionStyle}>
