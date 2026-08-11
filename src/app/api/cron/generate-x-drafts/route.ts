@@ -8,6 +8,7 @@ import {
   generateLargeHoldingsPost,
   generateEconomicCalendarPost,
 } from "@/lib/x-post-themes";
+import { notifyAdmin } from "@/lib/notify-admin";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -120,6 +121,27 @@ export async function GET(request: Request) {
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+
+// 生成完了後、メールで通知(本文にすべてのドラフトを含める)
+try {
+  const { data: todayDrafts } = await supabase
+    .from("x_post_drafts")
+    .select("theme_number, theme_label, content")
+    .eq("target_date", new Date().toISOString().split("T")[0])
+    .order("theme_number", { ascending: true });
+
+  const emailBody = (todayDrafts ?? [])
+    .map((d) => `【テーマ${d.theme_number}｜${d.theme_label}】\n${d.content}`)
+    .join("\n\n" + "─".repeat(30) + "\n\n");
+
+  await notifyAdmin(
+    `本日のX投稿ドラフト（${todayDrafts?.length ?? 0}件）`,
+    emailBody || "本日は生成された投稿がありませんでした。",
+    "info"
+  );
+} catch (e) {
+  console.error("X投稿ドラフトのメール通知失敗:", e);
+}
 
     return NextResponse.json({
       success: true,
