@@ -24,20 +24,6 @@ jobs:
       - name: Run EDINET Scan
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
-  news-fetch-with-newsapi:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 21 * * *' || github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Run News Fetch with News API
-        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/news-fetch?newsapi=true' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
-
-  news-fetch-pr-only:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 9 * * *'
-    steps:
-      - name: Run News Fetch PR Times only
-        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/news-fetch?newsapi=false' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
-
   detect-ipo-price:
     runs-on: ubuntu-latest
     steps:
