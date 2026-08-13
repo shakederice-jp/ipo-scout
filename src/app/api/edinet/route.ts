@@ -57,7 +57,12 @@ function extractSection(text: string, keywords: string[], maxLen = 3000, useLast
   }
   return "";
 }
-
+// 全角英数字を半角に変換(会社名比較のため)
+function toHalfWidth(s: string): string {
+  return s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+  );
+}
 // 表紙の【会社名】タグから、書類の本当の提出者名を取り出す
 function extractCoverCompanyName(text: string): string {
   const plain = cleanText(text);
@@ -233,10 +238,10 @@ export async function POST(req: NextRequest) {
 
     // 🛡 安全チェック：表紙の【会社名】が、指定企業名と一致するか検証
     if (sectionCount > 0 && company_name) {
-      const nameCore = company_name.replace(/株式会社|㈱/g, "").trim();
+      const nameCore = toHalfWidth(company_name.replace(/株式会社|㈱/g, "").trim());
       if (coverCompanyName) {
-        // 表紙情報が取れた場合は、これを最優先で照合
-        if (nameCore && !coverCompanyName.includes(nameCore)) {
+        // 表紙情報が取れた場合は、これを最優先で照合(全角/半角の違いを無視して比較)
+        if (nameCore && !toHalfWidth(coverCompanyName).includes(nameCore)) {
           return NextResponse.json({
             error: `取得した書類（docID: ${docId}）の表紙に記載された会社名「${coverCompanyName}」が、指定企業「${company_name}」と一致しません。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。`,
             doc_id: docId,
@@ -244,7 +249,7 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // 表紙情報が取れなかった場合のみ、本文全体からの照合にフォールバック
-        const allText = Object.values(sections).join(" ");
+        const allText = toHalfWidth(Object.values(sections).join(" "));
         if (nameCore && !allText.includes(nameCore)) {
           return NextResponse.json({
             error: `取得した書類（docID: ${docId}）の本文に企業名「${company_name}」が見つかりませんでした。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。書類IDを確認のうえ、手動で正しいdocIDを入力してください。`,

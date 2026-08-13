@@ -75,6 +75,11 @@ export async function GET(req: NextRequest) {
     .from("ipo_companies")
     .select("id, name, edinet_doc_id, raw_prospectus");
 
+// edinet_companiesの全銘柄も取得(既上場企業の安全チェック用)
+const { data: edinetCompanyList } = await supabase
+.from("edinet_companies")
+.select("company_name, security_code");
+
   for (const date of dates) {
     const docs = await fetchEdinetDocuments(date);
 
@@ -123,6 +128,15 @@ export async function GET(req: NextRequest) {
 
       if (!targetCompany) {
         // 新規IPO候補として自動的にipo_companiesへ登録する
+        // 安全チェック: 会社名で既上場企業マスタを照合し、
+        // すでに証券コードを持つ会社なら新規IPOではないので登録しない
+        const knownListed = (edinetCompanyList ?? []).find(
+          (c: any) => c.security_code && isNameMatch(companyName, c.company_name)
+        );
+        if (knownListed) {
+          results.push(`⏭️ 既上場企業のため除外: ${companyName}（証券コード: ${knownListed.security_code}）`);
+          continue;
+        }
         try {
           const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
           const analysisMsg = await claude.messages.create({
