@@ -58,6 +58,7 @@ ${rawText}
 【抽出するJSON形式】
 {
   "company_name": "企業名",
+  "listing_date": "新規上場（予定）日をYYYY-MM-DD形式で（例：2026-09-25）。目論見書に記載がない場合はnull",
   "business_summary": "事業内容の要約（200字以内）",
   "financials": {
     "revenue_trend": "売上高の推移（例：2022年3月期19.3億円→2023年3月期29.1億円→...）",
@@ -184,10 +185,16 @@ ${rawText}
       }
     }
 
-    await supabase.from("ipo_companies").update({
+    // 上場予定日をstructured_dataから抽出し、カレンダー表示用のlisting_date列にも保存
+    const updatePayload: any = {
       structured_data: structured,
       analysis_detail: null,
-    }).eq("id", company_id);
+    };
+    if (structured?.listing_date && /^\d{4}-\d{2}-\d{2}$/.test(structured.listing_date)) {
+      updatePayload.listing_date = structured.listing_date;
+    }
+
+    await supabase.from("ipo_companies").update(updatePayload).eq("id", company_id);
 
     return NextResponse.json({
       success: true,
