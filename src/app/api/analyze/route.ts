@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
-import { postToX } from "@/lib/post-to-x";
+
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -255,20 +255,58 @@ export async function POST(req: NextRequest) {
         ...(r.ai_summary ? { ai_summary: r.ai_summary } : {}),
       }).eq("id", co.id);
 
-      // X分析系投稿：「まずここに注目！」の1つ目のインサイトを紹介
+      // X投稿ドラフトを作成 + 2営業日後・4営業日後の再掲を予約
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
-          const tweetText = `【IPO分析】${co.name}（${(co as any).ticker ?? ""}）\n\n${summary.tweet_summary}\n\n詳しい分析はプロフィールのリンクから👆\n\n#IPO #新規上場`;
-          const postResult = await postToX(tweetText);
-          if (!postResult.success) {
-            await notifyAdmin(
-              `⚠️ X投稿失敗: ${co.name}（分析系）`,
-              `エラー: ${postResult.error}`,
-              "warn"
-            );
+          const revenue = (co as any).structured_data?.financials?.revenue_trend ?? "不明";
+          const profit  = (co as any).structured_data?.financials?.profit_trend ?? "不明";
+          const underwriter = (co as any).analysis_market?.lead_underwriter ?? "未定";
+
+          function addBusinessDays(start: Date, days: number): Date {
+            const result = new Date(start);
+            let added = 0;
+            while (added < days) {
+              result.setDate(result.getDate() + 1);
+              const dow = result.getDay();
+              if (dow !== 0 && dow !== 6) added++;
+            }
+            return result;
           }
+          const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+
+          function buildTweetText(titleLabel: string) {
+            return `【${titleLabel}】\n${co.name}\n\n` +
+              `・上場日：${co.listing_date ?? "未定"}\n` +
+              `・市場：${co.exchange ?? "不明"}\n` +
+              `・コード：${(co as any).ticker ?? "未定"}\n` +
+              `・売上：${revenue}\n` +
+              `・利益：${profit}\n` +
+              `・主幹事：${underwriter}\n\n` +
+              `${summary.insights[0].body}\n\n` +
+              `続きは分析アプリで👆\n\n#IPO #新規上場`;
+          }
+
+          const initialText = buildTweetText("新規IPO承認");
+
+          // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)
+          await supabase.from("x_post_drafts").insert({
+            theme_number: 0,
+            theme_label: "新規IPO承認",
+            content: initialText,
+            source_note: `IPO分析システム由来(${co.name})`,
+          });
+
+          // 2営業日後・4営業日後の再掲を予約(当日の朝ドラフト生成時に自動でx_post_draftsへ追加される)
+          const followupText = buildTweetText("IPO再掲");
+          const day2 = toDateStr(addBusinessDays(new Date(), 2));
+          const day4 = toDateStr(addBusinessDays(new Date(), 4));
+
+          await supabase.from("scheduled_posts").insert([
+            { company_id: co.id, scheduled_date: day2, tweet_text: followupText, posted: false },
+            { company_id: co.id, scheduled_date: day4, tweet_text: followupText, posted: false },
+          ]);
         } catch (e: any) {
-          await notifyAdmin(`⚠️ X投稿エラー: ${co.name}（分析系）`, String(e), "warn");
+          await notifyAdmin(`⚠️ Xドラフト作成エラー: ${co.name}（分析系）`, String(e), "warn");
         }
       }
 

@@ -99,6 +99,32 @@ export async function GET(request: Request) {
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
+    // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加
+    try {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const { data: duePosts } = await supabase
+        .from("scheduled_posts")
+        .select("id, tweet_text")
+        .eq("scheduled_date", todayStr)
+        .eq("posted", false);
+
+      for (const p of duePosts ?? []) {
+        const { error } = await supabase.from("x_post_drafts").insert({
+          theme_number: 0,
+          theme_label: "IPO再掲",
+          content: p.tweet_text,
+          source_note: "予約投稿(2営業日後/4営業日後の自動再掲)",
+        });
+        if (!error) {
+          await supabase.from("scheduled_posts").update({ posted: true }).eq("id", p.id);
+        }
+      }
+    } catch (err) {
+      console.error("IPO再掲ドラフトの生成に失敗:", err);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // テーマ④〜⑧: RSS由来
     for (const theme of RSS_THEMES) {
       try {
