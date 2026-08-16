@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [dbCheckResult, setDbCheckResult] = useState<any | null>(null);
 
   const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
   const [edinetDocId, setEdinetDocId] = useState("");
   const [stepLoading, setStepLoading] = useState<Record<string,boolean>>({});
@@ -592,26 +593,46 @@ export default function AdminPage() {
               </div>
 
               <div style={{ marginBottom:14 }}>
-                <label style={labelStyle}>📌 分析する銘柄を選択 *</label>
-                <select onChange={e=>{ const c=companies.find(x=>x.id===e.target.value); if(c) handleSelectCompany(c); }} style={inputStyle} value={selectedCompany?.id??""}>
-                <option value="">-- 銘柄を選択してください --</option>
+                <label style={labelStyle}>📅 上場月を選択 *</label>
+                <select
+                  value={selectedMonth}
+                  onChange={e=>{ setSelectedMonth(e.target.value); setSelectedCompany(null); }}
+                  style={inputStyle}
+                >
+                  <option value="">-- 月を選択してください --</option>
                   {Object.entries(
-                    companies.reduce((groups: Record<string, any[]>, c) => {
+                    companies.reduce((groups: Record<string, number>, c) => {
                       const key = c.listing_date ? c.listing_date.slice(0, 7) : "日付未定";
-                      (groups[key] = groups[key] || []).push(c);
+                      groups[key] = (groups[key] ?? 0) + 1;
                       return groups;
                     }, {})
                   )
                     .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([monthKey, list]) => (
-                      <optgroup key={monthKey} label={monthKey === "日付未定" ? "日付未定" : `${monthKey}月`}>
-                        {list.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>
-                        ))}
-                      </optgroup>
+                    .map(([monthKey, count]) => (
+                      <option key={monthKey} value={monthKey}>
+                        {monthKey === "日付未定" ? "日付未定" : `${monthKey}月`}（{count}件）
+                      </option>
                     ))}
                 </select>
               </div>
+
+              {selectedMonth && (
+                <div style={{ marginBottom:14 }}>
+                  <label style={labelStyle}>📌 分析する銘柄を選択 *</label>
+                  <select
+                    onChange={e=>{ const c=companies.find(x=>x.id===e.target.value); if(c) handleSelectCompany(c); }}
+                    style={inputStyle}
+                    value={selectedCompany?.id??""}
+                  >
+                    <option value="">-- 銘柄を選択してください --</option>
+                    {companies
+                      .filter(c => (c.listing_date ? c.listing_date.slice(0, 7) : "日付未定") === selectedMonth)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
               {selectedCompany && (
                 <>
