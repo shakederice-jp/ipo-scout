@@ -594,8 +594,22 @@ export default function AdminPage() {
               <div style={{ marginBottom:14 }}>
                 <label style={labelStyle}>📌 分析する銘柄を選択 *</label>
                 <select onChange={e=>{ const c=companies.find(x=>x.id===e.target.value); if(c) handleSelectCompany(c); }} style={inputStyle} value={selectedCompany?.id??""}>
-                  <option value="">-- 銘柄を選択してください --</option>
-                  {companies.map(c=><option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>)}
+                <option value="">-- 銘柄を選択してください --</option>
+                  {Object.entries(
+                    companies.reduce((groups: Record<string, any[]>, c) => {
+                      const key = c.listing_date ? c.listing_date.slice(0, 7) : "日付未定";
+                      (groups[key] = groups[key] || []).push(c);
+                      return groups;
+                    }, {})
+                  )
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([monthKey, list]) => (
+                      <optgroup key={monthKey} label={monthKey === "日付未定" ? "日付未定" : `${monthKey}月`}>
+                        {list.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}（{c.listing_date}）</option>
+                        ))}
+                      </optgroup>
+                    ))}
                 </select>
               </div>
 

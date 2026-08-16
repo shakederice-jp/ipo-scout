@@ -171,6 +171,8 @@ const { data: edinetCompanyList } = await supabase
             });
 
             if (insertError) {
+             // 重複登録防止: 今登録した会社を、この実行内の一覧にも即座に反映する
+             ipoList?.push({ id: "", name: companyName, edinet_doc_id: docId, raw_prospectus: null });
               results.push(`❌ 新規登録失敗: ${companyName} - ${insertError.message}`);
             } else {
               results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
