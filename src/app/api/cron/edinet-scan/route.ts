@@ -23,6 +23,7 @@ function isProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
   return (
     doc.ordinanceCode === "010" &&
+    doc.formCode === "030000" &&  // 株式の届出書のみ対象(社債・投資信託等を除外)
     desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
@@ -110,6 +111,13 @@ const { data: edinetCompanyList } = await supabase
           .eq("edinet_doc_id", docId)
           .single();
         targetCompany = found;
+
+        // 安全チェック: EDINETコードそのものが既に証券コードを持つ会社(=既上場企業)で、
+        // かつipo_companiesに未登録なら、会社名の表記ゆれに関係なく新規IPOとして扱わない
+        if (!targetCompany && edinetCo.security_code) {
+          results.push(`⏭️ 既上場企業のため除外: ${companyName}（証券コード: ${edinetCo.security_code}）`);
+          continue;
+        }
       } else {
         // ② EDINETコードで見つからなかった場合 → 会社名でipo_companiesを検索(新規追加)
         const matched = (ipoList ?? []).find(ipo => isNameMatch(companyName, ipo.name));
@@ -250,10 +258,17 @@ for (const date of dates) {
 
       if (priceData.success && priceData.price) {
         const price = priceData.price;
+        const securityCode = doc.secCode || null;
         await supabase
           .from("ipo_companies")
-          .update({ ipo_price: price })
+          .update({
+            ipo_price: price,
+            ...(securityCode ? { ticker: securityCode } : {}),
+          })
           .eq("id", matched.id);
+        if (securityCode) {
+          results.push(`🔢 証券コード自動設定: ${matched.name} → ${securityCode}`);
+        }
 
         // visualization_dataも自動更新
         const { data: companyData } = await supabase
