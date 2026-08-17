@@ -16,6 +16,7 @@ export interface FeedHeadline {
   title: string;
   summary: string;
   pubDate: string;
+  url: string;
 }
 
 export async function fetchAllHeadlines(): Promise<FeedHeadline[]> {
@@ -30,6 +31,7 @@ export async function fetchAllHeadlines(): Promise<FeedHeadline[]> {
           title: item.title ?? "",
           summary: (item.contentSnippet ?? item.content ?? "").slice(0, 300),
           pubDate: item.pubDate ?? "",
+          url: item.link ?? "",
         });
       }
     } catch (err) {

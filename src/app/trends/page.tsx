@@ -129,8 +129,8 @@ export default function TrendsPage() {
           )}
         </div>
 
-        {/* ニュース一覧 */}
-        {loading ? (
+       {/* ニュース一覧 */}
+       {loading ? (
           <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>読み込み中...</div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
@@ -139,37 +139,76 @@ export default function TrendsPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.map(t => (
-              <div key={t.id} style={{ background: "white", borderRadius: 12, padding: 16,
-                border: `1px solid ${t.is_featured ? "#66c3c6" : "#e2e8f0"}`,
-                boxShadow: t.is_featured ? "0 2px 8px rgba(102,195,198,0.15)" : "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-                    {t.is_featured && (
-                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#fef3c7", color: "#d97706", fontWeight: 700 }}>
-                        ⭐ 注目
-                      </span>
-                    )}
+              t.is_theme_article ? (
+                // テーマ記事(長文解説): 本文全体 + 参照記事リンク一覧
+                <div key={t.id} style={{ background: "white", borderRadius: 12, padding: 20,
+                  border: "1px solid #66c3c6", boxShadow: "0 2px 8px rgba(102,195,198,0.15)" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#fef3c7", color: "#d97706", fontWeight: 700 }}>
+                      📝 特集記事
+                    </span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d", fontWeight: 700 }}>
                       {SECTOR_EMOJI[t.sector?.split("/")[0].trim()] ?? "📌"} {t.sector}
                     </span>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f8fafc", color: "#64748b" }}>
-                      {t.source}
+                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 900, color: "#082b2e", margin: "0 0 12px" }}>{t.title}</h3>
+                  <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.9, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>
+                    {t.content}
+                  </p>
+                  {Array.isArray(t.source_links) && t.source_links.length > 0 && (
+                    <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#2a7a7e", marginBottom: 6 }}>🔗 参照記事</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {t.source_links.map((link: any, i: number) => (
+                          link.url ? (
+                            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none" }}>
+                              ・[{link.source}] {link.title}
+                            </a>
+                          ) : (
+                            <span key={i} style={{ fontSize: 11, color: "#94a3b8" }}>
+                              ・[{link.source}] {link.title}
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // 通常のニュース1件
+                <div key={t.id} style={{ background: "white", borderRadius: 12, padding: 16,
+                  border: `1px solid ${t.is_featured ? "#66c3c6" : "#e2e8f0"}`,
+                  boxShadow: t.is_featured ? "0 2px 8px rgba(102,195,198,0.15)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                      {t.is_featured && (
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#fef3c7", color: "#d97706", fontWeight: 700 }}>
+                          ⭐ 注目
+                        </span>
+                      )}
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d", fontWeight: 700 }}>
+                        {SECTOR_EMOJI[t.sector?.split("/")[0].trim()] ?? "📌"} {t.sector}
+                      </span>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f8fafc", color: "#64748b" }}>
+                        {t.source}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 11, color: "#66c3c6", fontWeight: 700, whiteSpace: "nowrap" as const }}>
+                      {t.sector_score}/10
                     </span>
                   </div>
-                  <span style={{ fontSize: 11, color: "#66c3c6", fontWeight: 700, whiteSpace: "nowrap" as const }}>
-                    {t.sector_score}/10
-                  </span>
+                  <a href={t.url} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 14, fontWeight: 700, color: "#082b2e", textDecoration: "none", lineHeight: 1.5, display: "block", marginBottom: 6 }}>
+                    {t.title}
+                  </a>
+                  {t.ai_comment && (
+                    <p style={{ fontSize: 12, color: "#2a7a7e", margin: 0, padding: "6px 10px", backgroundColor: "#f0fdf4", borderRadius: 6, borderLeft: "3px solid #66c3c6" }}>
+                      💡 {t.ai_comment}
+                    </p>
+                  )}
                 </div>
-                <a href={t.url} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 14, fontWeight: 700, color: "#082b2e", textDecoration: "none", lineHeight: 1.5, display: "block", marginBottom: 6 }}>
-                  {t.title}
-                </a>
-                {t.ai_comment && (
-                  <p style={{ fontSize: 12, color: "#2a7a7e", margin: 0, padding: "6px 10px", backgroundColor: "#f0fdf4", borderRadius: 6, borderLeft: "3px solid #66c3c6" }}>
-                    💡 {t.ai_comment}
-                  </p>
-                )}
-              </div>
+              )
             ))}
           </div>
         )}

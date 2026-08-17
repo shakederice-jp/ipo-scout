@@ -63,27 +63,48 @@ function buildHeadlinesBlock(headlines: FeedHeadline[]): string {
     .join("\n");
 }
 
+export interface ThemedPostResult {
+  content: string;
+  sourceLinks: { title: string; url: string; source: string }[];
+}
+
 export async function generateThemedPost(
   theme: ThemeConfig,
   headlines: FeedHeadline[]
-): Promise<string> {
+): Promise<ThemedPostResult> {
+  const numberedHeadlines = headlines.map((h, i) => `${i + 1}. [${h.source}] ${h.title}: ${h.summary}`).join("\n");
+
   const prompt = `
 あなたは日本の個人投資家向けメディアの編集者です。以下の海外ニュース見出し一覧から関連性の高いものを選び、テーマに沿った日本語のX(旧Twitter)投稿を1本作成してください。
 
 # テーマ
 ${theme.angleInstruction}
 
-# 参考ニュース見出し(英語。内容を読み取り、日本語で独自にまとめ直すこと。原文の直訳・引用はしないこと)
-${buildHeadlinesBlock(headlines)}
+# 参考ニュース見出し(英語。内容を読み取り、日本語で独自にまとめ直すこと。原文の直訳・引用はしないこと。各見出しの先頭の番号を後で参照に使います)
+${numberedHeadlines}
 
 ${STYLE_GUIDE}
 
 ${theme.includeProfileLinkCTA ? "\n投稿の最後に「プロフィール欄のリンクから」等の一文をさりげなく加えてください。" : ""}
 
-投稿文のみを出力してください。前置きや説明は不要です。
+出力はJSON形式のみとしてください。マークダウン・前置き・説明は一切不要です。
+{"content": "投稿文本体", "used_indices": [実際に参照した見出しの番号を配列で。例:[1,3,5]]}
 `;
 
-  return generateWithGemini(prompt);
+  const raw = await generateWithGemini(prompt);
+  try {
+    const jsonStart = raw.indexOf("{");
+    const jsonEnd = raw.lastIndexOf("}");
+    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+    const usedIndices: number[] = Array.isArray(parsed.used_indices) ? parsed.used_indices : [];
+    const sourceLinks = usedIndices
+      .map(i => headlines[i - 1])
+      .filter(Boolean)
+      .map(h => ({ title: h.title, url: (h as any).url ?? "", source: h.source }));
+    return { content: parsed.content ?? raw, sourceLinks };
+  } catch {
+    return { content: raw, sourceLinks: [] };
+  }
 }
 
 import { createClient } from "@supabase/supabase-js";
@@ -94,7 +115,7 @@ const supabaseForThemes = createClient(
 );
 
 // テーマ②: IPOカレンダー(自社DB由来)
-export async function generateIpoCalendarPost(): Promise<string | null> {
+export async function generateIpoCalendarPost(): Promise<ThemedPostResult | null> {
   const today = new Date();
   const twoWeeksLater = new Date();
   twoWeeksLater.setDate(today.getDate() + 14);
@@ -139,7 +160,16 @@ ${listBlock}
 投稿文のみを出力してください。前置きや説明は不要です。
 `;
 
-  return generateWithGemini(prompt);
+const content = await generateWithGemini(prompt);
+const sourceLinks = data.map((c: any) => ({
+  title: c.name,
+  url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+  source: "自社DB",
+}));
+return { content, sourceLinks };
+}
+
+const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
 }
 
 const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
@@ -153,7 +183,7 @@ async function fetchEdinetDocumentsForThemes(date: string) {
 }
 
 // テーマ①: 大量保有報告書ウォッチ(EDINET由来、docTypeCode=350)
-export async function generateLargeHoldingsPost(): Promise<string | null> {
+export async function generateLargeHoldingsPost(): Promise<ThemedPostResult | null> {
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
@@ -205,11 +235,17 @@ ${listBlock}
 投稿文のみを出力してください。前置きや説明は不要です。
 `;
 
-  return generateWithGemini(prompt);
+const content = await generateWithGemini(prompt);
+const sourceLinks = sample.map((d: any) => ({
+  title: d.filerName || "不明",
+  url: `https://disclosure2.edinet-fsa.go.jp/`,
+  source: "EDINET",
+}));
+return { content, sourceLinks };
 }
 
 // テーマ③: 週内の重要経済指標カレンダー(自社DB由来)
-export async function generateEconomicCalendarPost(): Promise<string | null> {
+export async function generateEconomicCalendarPost(): Promise<ThemedPostResult | null> {
     const today = new Date();
     const oneWeekLater = new Date();
     oneWeekLater.setDate(today.getDate() + 7);
@@ -251,5 +287,7 @@ export async function generateEconomicCalendarPost(): Promise<string | null> {
   投稿文のみを出力してください。前置きや説明は不要です。
   `;
   
-    return generateWithGemini(prompt);
-  }
+  const content = await generateWithGemini(prompt);
+  const sourceLinks: { title: string; url: string; source: string }[] = [];
+  return { content, sourceLinks };
+}
