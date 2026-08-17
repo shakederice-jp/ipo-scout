@@ -170,9 +170,6 @@ return { content, sourceLinks };
 }
 
 const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
-}
-
-const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
 
 async function fetchEdinetDocumentsForThemes(date: string) {
   const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY_FOR_THEMES}`;
