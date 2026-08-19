@@ -59,6 +59,8 @@ ${rawText}
 {
   "company_name": "企業名",
   "listing_date": "新規上場（予定）日をYYYY-MM-DD形式で（例：2026-09-25）。目論見書に記載がない場合はnull",
+  "sector": "実際の事業内容に基づく業種（例：不動産業、情報・通信業、サービス業、医療・福祉、小売業、製造業など。東証33業種分類を参考に、目論見書の記載内容から最も近いものを1つ選ぶこと。会社名からの推測は禁止）",
+  "biz_type": "事業内容の一言説明（40字以内。目論見書の記載に基づく具体的な内容。会社名からの推測は禁止）",
   "business_summary": "事業内容の要約（200字以内）",
   "financials": {
     "revenue_trend": "売上高の推移（例：2022年3月期19.3億円→2023年3月期29.1億円→...）",
@@ -185,16 +187,19 @@ ${rawText}
       }
     }
 
-    // 上場予定日をstructured_dataから抽出し、カレンダー表示用のlisting_date列にも保存
-    const updatePayload: any = {
-      structured_data: structured,
-      analysis_detail: null,
-    };
-    if (structured?.listing_date && /^\d{4}-\d{2}-\d{2}$/.test(structured.listing_date)) {
-      updatePayload.listing_date = structured.listing_date;
-    }
-
-    await supabase.from("ipo_companies").update(updatePayload).eq("id", company_id);
+        // 上場予定日をstructured_dataから抽出し、カレンダー表示用のlisting_date列にも保存
+        const updatePayload: any = {
+          structured_data: structured,
+          analysis_detail: null,
+        };
+        if (structured?.listing_date && /^\d{4}-\d{2}-\d{2}$/.test(structured.listing_date)) {
+          updatePayload.listing_date = structured.listing_date;
+        }
+        // 目論見書の実データに基づき、自動検出時の誤った業種推測を正しい内容に上書きする
+        if (structured?.sector) updatePayload.sector = structured.sector;
+        if (structured?.biz_type) updatePayload.biz_type = structured.biz_type;
+    
+        await supabase.from("ipo_companies").update(updatePayload).eq("id", company_id);
 
     return NextResponse.json({
       success: true,

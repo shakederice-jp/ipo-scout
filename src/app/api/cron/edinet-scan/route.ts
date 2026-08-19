@@ -107,7 +107,7 @@ const { data: edinetCompanyList } = await supabase
         // EDINETコードで見つかった場合 → ipo_companiesでdocIdを検索
         const { data: found } = await supabase
           .from("ipo_companies")
-          .select("id, edinet_doc_id, raw_prospectus")
+          .select("id, edinet_doc_id, raw_prospectus, ticker")
           .eq("edinet_doc_id", docId)
           .single();
         targetCompany = found;
@@ -119,6 +119,7 @@ const { data: edinetCompanyList } = await supabase
           continue;
         }
       } else {
+
         // ② EDINETコードで見つからなかった場合 → 会社名でipo_companiesを検索(新規追加)
         const matched = (ipoList ?? []).find(ipo => isNameMatch(companyName, ipo.name));
         if (matched) {
@@ -132,6 +133,12 @@ const { data: edinetCompanyList } = await supabase
           }
           targetCompany = matched;
         }
+      }
+
+      // 証券コードが判明していれば、訂正書類を待たずどのタイミングの書類でも即座に反映する
+      if (targetCompany && doc.secCode && !targetCompany.ticker) {
+        await supabase.from("ipo_companies").update({ ticker: doc.secCode }).eq("id", targetCompany.id);
+        results.push(`🔢 証券コード自動反映: ${companyName} → ${doc.secCode}`);
       }
 
       if (!targetCompany) {
