@@ -17,6 +17,20 @@ const supabase = createClient(
 
 const TRENDS_URL = "https://ipo.finance-tower.com/trends";
 
+// contentが二重にJSON化されてしまっている場合(AIの出力揺れ対策)に、正しい本文だけを取り出す
+function extractCleanContent(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("{") && trimmed.includes('"content"')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed.content === "string") return parsed.content;
+    } catch {
+      // JSON解析に失敗した場合はそのまま元の文字列を使う
+    }
+  }
+  return raw;
+}
+
 async function saveThemeArticle(themeLabel: string, sector: string, result: { content: string; sourceLinks: { title: string; url: string; source: string }[] } | null) {
   if (!result) return false;
   await supabase.from("market_trends").insert({
@@ -29,7 +43,7 @@ async function saveThemeArticle(themeLabel: string, sector: string, result: { co
     ai_comment: null,
     is_featured: true,
     is_theme_article: true,
-    content: result.content,
+    content: extractCleanContent(result.content),
     source_links: result.sourceLinks,
     fetched_at: new Date().toISOString(),
   });
