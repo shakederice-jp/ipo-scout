@@ -128,6 +128,7 @@ ${sections}
 
 マークダウン形式で出力してください。`;
 
+async function callOnce(maxTokens: number): Promise<{ text: string; truncated: boolean }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -137,7 +138,7 @@ ${sections}
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 4000,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }),
     signal: AbortSignal.timeout(55000),
@@ -149,7 +150,19 @@ ${sections}
   }
 
   const data = await res.json();
-  return (data?.content?.[0]?.text ?? "").trim();
+  const text = (data?.content?.[0]?.text ?? "").trim();
+  // stop_reasonが"max_tokens"の場合、文字数上限に達して途中で打ち切られている
+  const truncated = data?.stop_reason === "max_tokens";
+  return { text, truncated };
+}
+
+// 1回目(6000トークン)で生成し、途中で切れていたら8000トークンで再試行する
+let result = await callOnce(6000);
+if (result.truncated) {
+  console.warn(`axis ${axisId} part${part}: max_tokensで打ち切り検知、再試行します`);
+  result = await callOnce(8000);
+}
+return result.text;
 }
 
 export async function POST(req: NextRequest) {
