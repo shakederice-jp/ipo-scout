@@ -118,6 +118,24 @@ const { data: edinetCompanyList } = await supabase
           results.push(`⏭️ 既上場企業のため除外: ${companyName}（証券コード: ${edinetCo.security_code}）`);
           continue;
         }
+
+        // 安全チェック2: docId完全一致で見つからなくても、会社名で既に登録済みなら
+        // それは「別の書類が追加提出されただけ」なので新規登録せず、既存レコードとして扱う
+        if (!targetCompany) {
+          const matchedByName = (ipoList ?? []).find(ipo => isNameMatch(companyName, ipo.name));
+          if (matchedByName) {
+            if (!matchedByName.edinet_doc_id) {
+              await supabase
+                .from("ipo_companies")
+                .update({ edinet_doc_id: docId })
+                .eq("id", matchedByName.id);
+              results.push(`📋 書類ID自動設定: ${companyName} → ${docId}`);
+            } else {
+              results.push(`スキップ（登録済み・別書類）: ${companyName}`);
+            }
+            targetCompany = matchedByName;
+          }
+        }
       } else {
 
         // ② EDINETコードで見つからなかった場合 → 会社名でipo_companiesを検索(新規追加)
