@@ -38,10 +38,20 @@ const AXIS_NAMES: Record<string, string> = {
   competitor: "競合環境",
 };
 
+const OPENING_STYLES = [
+  "本文の書き出しは、具体的な数値や事実から入ること（例：「〇〇円という数字は〜」）",
+  "本文の書き出しは、読者への問いかけから入ること（例：「もし〜だったらどうなるでしょうか」）",
+  "本文の書き出しは、身近な例え話から入ること（例：「これは〜のようなものです」）",
+  "本文の書き出しは、一般的な事実の説明から入ること（例：「〜という仕組みがあります」）",
+];
+
 function buildRewritePrompt(periodLabel: string, axisId: string, originalReport: string): string {
   const axisName = AXIS_NAMES[axisId] ?? axisId;
   // 元のレポートから「参考文献」セクションを除去してから渡す(初心者向けには含めない方針のため)
   const reportWithoutSources = originalReport.replace(/###\s*参考文献[\s\S]*$/, "").trim();
+  // 軸ごとに書き出しパターンを固定で変え、9軸まとめて読んだ時に単調にならないようにする
+  const axisIndex = Object.keys(AXIS_NAMES).indexOf(axisId);
+  const variationHint = OPENING_STYLES[(axisIndex >= 0 ? axisIndex : 0) % OPENING_STYLES.length];
 
   return `あなたは、投資初心者にもやさしく丁寧に説明するIPO解説者です。
 以下は「${periodLabel}投資判断における『${axisName}』」について、専門的な視点でまとめられたレポートです。
@@ -60,6 +70,8 @@ ${reportWithoutSources}
 7. 【重複厳禁】同じ見出しを2回出力しない、同じ内容・同じ数値を複数のセクションで繰り返さないこと
 8. 「なぜそれが大事なのか」を、初心者が実感できるような身近な例えを1つ以上使うこと（無理のない範囲で）
 9. マークダウン形式で出力し、前後に余計な説明文を付けないこと
+10. 最初の見出しの直後、本文に入る前に「結論：〇〇」という一言サマリー（30字以内、太字は使わず地の文でよい）を独立した1行として置くこと。読者がそれだけで要点をつかめる一文にすること
+11. ${variationHint}
 
 書き直したレポートのみを出力してください。`;
 }
