@@ -40,21 +40,26 @@ const AXIS_NAMES: Record<string, string> = {
 
 function buildRewritePrompt(periodLabel: string, axisId: string, originalReport: string): string {
   const axisName = AXIS_NAMES[axisId] ?? axisId;
+  // 元のレポートから「参考文献」セクションを除去してから渡す(初心者向けには含めない方針のため)
+  const reportWithoutSources = originalReport.replace(/###\s*参考文献[\s\S]*$/, "").trim();
+
   return `あなたは、投資初心者にもやさしく丁寧に説明するIPO解説者です。
 以下は「${periodLabel}投資判断における『${axisName}』」について、専門的な視点でまとめられたレポートです。
 このレポートを、投資の勉強を始めたばかりの初心者にも理解できるように、やさしく書き直してください。
 
 【元のレポート】
-${originalReport}
+${reportWithoutSources}
 
 【書き直しのルール】
 1. 専門用語（例：ロックアップ、VC、バリュエーション、PER、時価総額など）が出てきたら、必ずその場で一言かんたんな説明を添えること（例：「ロックアップ（＝株主が一定期間、株を売れなくなるルールのことです）」）
 2. 文章はすべて「ですます調」で、やさしい言葉づかいにすること
 3. 1つの段落は60〜80字程度までにし、こまめに改行(\\n\\n)を入れて区切ること。長い文章を1段落に詰め込まないこと
 4. 元のレポートにある具体的な数値・事実は、省略せずそのまま引用すること（数字を削って抽象的な説明だけにしない）
-5. 元のレポートの見出し構成（### で始まる部分）は、同じ見出し名のまま維持すること
-6. 「なぜそれが大事なのか」を、初心者が実感できるような身近な例えを1つ以上使うこと（無理のない範囲で）
-7. マークダウン形式で出力し、前後に余計な説明文を付けないこと
+5. 元のレポートの見出し構成（### で始まる部分）は、同じ見出し名のまま・同じ数のまま維持すること。見出しを増やしたり、統合したり、言い換えたりしないこと
+6. 【厳禁】会社名・銘柄名・「〜分析レポート」「初心者向けやさしい解説版」「総合評価」といった、元のレポートに存在しないタイトルや見出しを新しく作らないこと。区切り線（"---"や"==="など）も一切使わないこと。出力は元のレポートの最初の見出し（###）からそのまま始めること
+7. 【重複厳禁】同じ見出しを2回出力しない、同じ内容・同じ数値を複数のセクションで繰り返さないこと
+8. 「なぜそれが大事なのか」を、初心者が実感できるような身近な例えを1つ以上使うこと（無理のない範囲で）
+9. マークダウン形式で出力し、前後に余計な説明文を付けないこと
 
 書き直したレポートのみを出力してください。`;
 }
@@ -118,28 +123,39 @@ export async function POST(req: NextRequest) {
 
     const prompt = buildRewritePrompt(config.label, axisId, axisData.report);
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 3000,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(55000),
-    });
+    async function callOnce(maxTokens: number): Promise<{ text: string; truncated: boolean }> {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY!,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: maxTokens,
+          messages: [{ role: "user", content: prompt }],
+        }),
+        signal: AbortSignal.timeout(55000),
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Claude API error: ${err.slice(0, 200)}`);
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Claude API error: ${err.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const text = (data?.content?.[0]?.text ?? "").trim();
+      const truncated = data?.stop_reason === "max_tokens";
+      return { text, truncated };
     }
 
-    const data = await res.json();
-    const reportBeginner = (data?.content?.[0]?.text ?? "").trim();
+    let result = await callOnce(3000);
+    if (result.truncated) {
+      console.warn(`axes-beginner ${axisId}: max_tokensで打ち切り検知、再試行します`);
+      result = await callOnce(4500);
+    }
+    const reportBeginner = result.text;
 
     return NextResponse.json({
       success: true,
