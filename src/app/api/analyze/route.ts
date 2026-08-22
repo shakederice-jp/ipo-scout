@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
-
+import { createInfographic } from "@/lib/infographic";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -288,11 +288,29 @@ export async function POST(req: NextRequest) {
 
           const initialText = buildTweetText("新規IPO承認");
 
+          // インフォグラフィック画像を生成(客観的データのみ・失敗しても投稿自体は続行する)
+          let imageUrl: string | null = null;
+          try {
+            imageUrl = await createInfographic({
+              companyId: co.id,
+              companyName: co.name,
+              listingDate: co.listing_date ?? "未定",
+              exchange: co.exchange ?? "不明",
+              ticker: (co as any).ticker ?? "未定",
+              revenue,
+              profit,
+              underwriter,
+            });
+          } catch (e: any) {
+            console.error("インフォグラフィック生成失敗:", e?.message);
+          }
+
           // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)
           await supabase.from("x_post_drafts").insert({
             theme_number: 0,
             theme_label: "新規IPO承認",
             content: initialText,
+            image_url: imageUrl,
             source_note: `IPO分析システム由来(${co.name})`,
           });
 

@@ -22,6 +22,7 @@
     "recharts": "^3.8.1",
     "resend": "^6.12.3",
     "rss-parser": "^3.13.0",
+    "sharp": "^0.35.3",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.5.0",
     "twitter-api-v2": "^1.29.0"

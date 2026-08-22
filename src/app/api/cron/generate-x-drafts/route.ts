@@ -169,6 +169,27 @@ export async function GET(request: Request) {
         ? `大手町発マーケットトレンドが更新されました。\n\n▼ 記事を見る\n${TRENDS_URL}`
         : "本日はマーケットトレンドの更新対象がありませんでした。";
 
+      // 本日分の「新規IPO承認」ドラフト(画像URL付き)があれば、メールに含める
+      try {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { data: ipoDrafts } = await supabase
+          .from("x_post_drafts")
+          .select("content, image_url, created_at")
+          .eq("theme_number", 0)
+          .eq("theme_label", "新規IPO承認")
+          .gte("created_at", `${todayStr}T00:00:00`)
+          .order("created_at", { ascending: false });
+
+        if (ipoDrafts && ipoDrafts.length > 0) {
+          const ipoBody = ipoDrafts.map(d =>
+            d.content + (d.image_url ? `\n\n🖼 画像: ${d.image_url}` : "")
+          ).join("\n\n" + "─".repeat(20) + "\n\n");
+          emailBody += `\n\n${"=".repeat(30)}\n🆕 本日の新規IPO承認ドラフト(${ipoDrafts.length}件)\n${"=".repeat(30)}\n\n${ipoBody}`;
+        }
+      } catch (err) {
+        console.error("新規IPOドラフトのメール組み込みに失敗:", err);
+      }
+
       if (ipoRepostCount > 0) {
         const { data: repostDrafts } = await supabase
           .from("x_post_drafts")
