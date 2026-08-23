@@ -312,55 +312,78 @@ function LockupTimeline({lockupPeriod, lockup90Date, lockup180Date, vcRatio}:{lo
   const dateLabel = (dateStr?: string | null) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return `${d.getMonth()+1}月${d.getDate()}日`;
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
   };
 
-  return (
-    <div style={{marginTop:10,padding:"16px 10px 8px"}}>
-      <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1,marginBottom:24}}>
-        <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:PRIMARY,border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
-        <div style={{position:"absolute",right:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:"#ef4444",border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom: (lockup90Date || lockup180Date) ? 14 : 0}}>
-        <div style={{fontSize:9,fontWeight:700,color:TTEXT}}>🔔 上場日</div>
-        <div style={{fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",maxWidth:"60%",lineHeight:1.4}}>🔓 解除：{lockupPeriod}</div>
-      </div>
-
-      {(lockup90Date || lockup180Date) && (
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {[
-            { label: "90日ロックアップ解除", date: lockup90Date, days: d90 },
-            { label: "180日ロックアップ解除", date: lockup180Date, days: d180 },
-          ].filter(item => item.date).map((item, i) => {
-            const near = isNear(item.days);
-            const passed = item.days !== null && item.days < 0;
-            return (
-              <div key={i} style={{
-                display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
-                padding:"8px 10px", borderRadius:8,
-                backgroundColor: near ? "#fef2f2" : passed ? "#f8fafc" : "#f0fafa",
-                border: `1px solid ${near ? "#fecaca" : passed ? "#e2e8f0" : BORDER}`,
-              }}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{fontSize:12}}>{near ? "⚠️" : "🔓"}</span>
-                  <span style={{fontSize:10,fontWeight:700,color: near ? "#b91c1c" : passed ? "#94a3b8" : "#0d4f52"}}>{item.label}</span>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:10,fontWeight:900,color: near ? "#b91c1c" : passed ? "#94a3b8" : "#082b2e"}}>{dateLabel(item.date)}</div>
-                  <div style={{fontSize:9,color: near ? "#dc2626" : "#94a3b8"}}>
-                    {passed ? "解除済み" : item.days === 0 ? "本日解除" : `あと${item.days}日`}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {vcRatio !== null && vcRatio !== undefined && vcRatio >= 15 && (isNear(d90) || isNear(d180)) && (
-            <div style={{fontSize:9,color:"#b91c1c",backgroundColor:"#fef2f2",borderRadius:6,padding:"6px 8px",lineHeight:1.6}}>
-              ⚠️ 大株主・VCの保有比率が約{vcRatio.toFixed(0)}%と高く、解除後の売り圧力に注意が必要です。
-            </div>
-          )}
+  if (!lockup90Date && !lockup180Date) {
+    return (
+      <div style={{marginTop:10,padding:"16px 10px 8px"}}>
+        <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1,marginBottom:24}}>
+          <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:PRIMARY,border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
+          <div style={{position:"absolute",right:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:"#ef4444",border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
         </div>
-      )}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div style={{fontSize:9,fontWeight:700,color:TTEXT}}>🔔 上場日</div>
+          <div style={{fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",maxWidth:"60%",lineHeight:1.4}}>🔓 解除：{lockupPeriod}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const items = [
+    { label: "90日ロックアップ解除", date: lockup90Date, days: d90 },
+    { label: "180日ロックアップ解除", date: lockup180Date, days: d180 },
+  ].filter(item => item.date);
+  const anyNear = items.some(item => isNear(item.days));
+
+  return (
+    <div style={{marginTop:14, borderRadius:14, overflow:"hidden", border:`2px solid ${anyNear ? "#ef4444" : PRIMARY}`}}>
+      <div style={{padding:"10px 14px", backgroundColor: anyNear ? "#ef4444" : "#0d4f52", display:"flex", alignItems:"center", gap:8}}>
+        <span style={{fontSize:18}}>{anyNear ? "🚨" : "🔓"}</span>
+        <span style={{fontWeight:900, fontSize:13, color:"white"}}>ロックアップ解除アラート</span>
+      </div>
+      <div style={{padding:"14px", backgroundColor:"white", display:"flex", flexDirection:"column", gap:10}}>
+        {items.map((item, i) => {
+          const near = isNear(item.days);
+          const passed = item.days !== null && item.days < 0;
+          return (
+            <div key={i} style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+              padding:"12px 14px", borderRadius:10,
+              backgroundColor: near ? "#fef2f2" : passed ? "#f8fafc" : "#f0fafa",
+              border: `1.5px solid ${near ? "#ef4444" : passed ? "#e2e8f0" : BORDER}`,
+            }}>
+              <div>
+                <div style={{fontSize:12,fontWeight:900,color: near ? "#b91c1c" : passed ? "#94a3b8" : "#0d4f52", marginBottom:3}}>
+                  {near && "⚠️ "}{item.label}
+                </div>
+                <div style={{fontSize:11,color: near ? "#dc2626" : "#64748b"}}>{dateLabel(item.date)}</div>
+              </div>
+              <div style={{
+                textAlign:"center", padding:"8px 14px", borderRadius:10,
+                backgroundColor: near ? "#ef4444" : passed ? "#e2e8f0" : PRIMARY,
+                minWidth:70,
+              }}>
+                {passed ? (
+                  <div style={{fontSize:11,fontWeight:900,color:"#64748b"}}>解除済み</div>
+                ) : item.days === 0 ? (
+                  <div style={{fontSize:13,fontWeight:900,color:"white"}}>本日</div>
+                ) : (
+                  <>
+                    <div style={{fontSize:20,fontWeight:900,color:"white",lineHeight:1}}>{item.days}</div>
+                    <div style={{fontSize:9,fontWeight:700,color:"white"}}>日後</div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {vcRatio !== null && vcRatio !== undefined && vcRatio >= 15 && anyNear && (
+          <div style={{fontSize:11,color:"#b91c1c",backgroundColor:"#fef2f2",borderRadius:8,padding:"10px 12px",lineHeight:1.7,border:"1px solid #fecaca",fontWeight:700}}>
+            ⚠️ 大株主・VCの保有比率が約{vcRatio.toFixed(0)}%と高く、解除後の売り圧力に注意が必要です。
+          </div>
+        )}
+      </div>
     </div>
   );
 }
