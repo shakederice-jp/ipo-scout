@@ -33,7 +33,7 @@ function extractCleanContent(raw: string): string {
 
 async function saveThemeArticle(themeLabel: string, sector: string, result: { content: string; sourceLinks: { title: string; url: string; source: string }[] } | null) {
   if (!result) return false;
-  await supabase.from("market_trends").insert({
+  const { error } = await supabase.from("market_trends").insert({
     source: "大手町調査室九課",
     title: themeLabel,
     url: TRENDS_URL,
@@ -47,6 +47,15 @@ async function saveThemeArticle(themeLabel: string, sector: string, result: { co
     source_links: result.sourceLinks,
     fetched_at: new Date().toISOString(),
   });
+  // 以前はここでinsertのエラーを確認しておらず、DB保存に失敗していても
+  // 常にtrue(=成功)を返してしまっていた。そのため上位のcronログには
+  // success:trueと表示されるのに、実際にはmarket_trendsに1件も
+  // 保存されない、という不整合が起きていた。エラー時は例外を投げ、
+  // 呼び出し元のtry/catchで「failed」として記録・通知させる。
+  if (error) {
+    console.error(`market_trends insert失敗 (${themeLabel}):`, error);
+    throw new Error(`[${themeLabel}] Supabase insert失敗: ${error.message} (code: ${error.code ?? "unknown"})`);
+  }
   return true;
 }
 
@@ -163,11 +172,18 @@ export async function GET(request: Request) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
+    // 失敗したテーマがあれば、メールで気づけるようにまとめておく
+    const failedThemes = results.filter((r) => r.status === "failed");
+
     // メール通知: マーケットトレンド更新の短い通知 + IPO再掲があればその文面
     try {
       let emailBody = trendsUpdated
         ? `大手町発マーケットトレンドが更新されました。\n\n▼ 記事を見る\n${TRENDS_URL}`
         : "本日はマーケットトレンドの更新対象がありませんでした。";
+
+      if (failedThemes.length > 0) {
+        emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
+      }
 
       // 本日分の「新規IPO承認」ドラフト(画像URL付き)があれば、メールに含める
       try {
@@ -208,7 +224,7 @@ export async function GET(request: Request) {
       await notifyAdmin(
         `大手町発マーケットトレンド 更新通知`,
         emailBody,
-        "info"
+        failedThemes.length > 0 ? (trendsUpdated ? "warn" : "error") : "info"
       );
     } catch (e) {
       console.error("更新通知メール送信失敗:", e);
