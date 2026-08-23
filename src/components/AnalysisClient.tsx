@@ -1375,26 +1375,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {visualizationData && <UseOfProceedsTable vizData={visualizationData} />}
         </ReferenceGroup>
 
-        {/* ⑱ 参考文献・確認先 */}
-        {(analysis.sources||[]).length>0&&(
-          <Card>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-              <Info size={13} color="#94a3b8"/>
-              <span style={{fontWeight:900,fontSize:13,color:"#475569"}}>参考文献・確認先</span>
-            </div>
-            {(analysis.sources||[]).map(src=>(
-              <div key={src.url} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:4}}>
-                <span style={{color:"#cbd5e1",fontSize:10,flexShrink:0,marginTop:1}}>→</span>
-                <a href={src.url} target="_blank" rel="noopener noreferrer"
-                  style={{fontSize:11,color:TTEXT,textDecoration:"none"}}
-                  onMouseEnter={e=>(e.target as HTMLElement).style.textDecoration="underline"}
-                  onMouseLeave={e=>(e.target as HTMLElement).style.textDecoration="none"}>
-                  {src.label}
-                </a>
-              </div>
-            ))}
-          </Card>
-        )}
 {allCompanies && allCompanies.length > 1 && (()=>{
           const sorted=[...allCompanies].sort((a,b)=>new Date(a.listing_date??0).getTime()-new Date(b.listing_date??0).getTime());
           const idx=sorted.findIndex(c=>c.id===company.id);
