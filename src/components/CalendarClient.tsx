@@ -366,16 +366,22 @@ export default function CalendarClient() {
                       );
                     })}
 
-                    {/* IPO銘柄番号 */}
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1 }}>
+                                       {/* IPO銘柄番号 */}
+                                       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
                       {ipos.map(c => (
                         <button key={c.id}
                           onClick={e => { e.stopPropagation(); jumpTo(c.id); }}
                           title={c.name}
-                          style={{ background:"none", border:"none", cursor:"pointer", padding:0, lineHeight:1, fontSize:14, color:C.teal, transition:"transform .1s" }}
+                          style={{
+                            background:C.teal, border:"none", cursor:"pointer", padding:0,
+                            width:16, height:16, borderRadius:"50%",
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            lineHeight:1, fontSize:10, fontWeight:900, color:"white",
+                            transition:"transform .1s",
+                          }}
                           onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.25)")}
                           onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")}>
-                          {CIRCLE[monthIndexMap[c.id]] ?? `(${monthIndexMap[c.id]+1})`}
+                          {(monthIndexMap[c.id] ?? 0) + 1}
                         </button>
                       ))}
                     </div>
