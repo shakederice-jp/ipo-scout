@@ -10,6 +10,10 @@ import {
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
+// テーマ生成のたびにGemini呼び出し(再試行込みで最大2回/テーマ)が走るため、
+// Vercelの関数タイムアウトに余裕を持たせる(axes/analyzeルートと同じ考え方)
+export const maxDuration = 90;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
