@@ -72,6 +72,43 @@ function Card({children,style={}}:{children:React.ReactNode;style?:React.CSSProp
   );
 }
 
+// 参考資料セクションの詳細な表・グラフの直前に、初心者向けだけ「これは何を表す表か」を一言添える
+function BeginnerCaption({text,level}:{text:string;level:"expert"|"beginner"}) {
+  if(level!=="beginner") return null;
+  return (
+    <p style={{fontSize:11,color:TTEXT,backgroundColor:LIGHT,border:`1px solid ${BORDER}`,
+      borderRadius:8,padding:"8px 12px",margin:"4px 0",lineHeight:1.6}}>
+      💡 {text}
+    </p>
+  );
+}
+
+// 参考資料の各グループ（超短期・短期・長期投資家向け）を、初心者向けではデフォルト折りたたみにする。
+// 中上級者向けは従来通り常に開いた状態(=見た目・挙動は今までと変わらない)。
+function ReferenceGroup({icon,order,title,subtitle,accent,level,children}:{
+  icon:string;order:string;title:string;subtitle:string;accent:string;
+  level:"expert"|"beginner";children:React.ReactNode;
+}) {
+  const isBeginner=level==="beginner";
+  const [open,setOpen]=useState(!isBeginner);
+  return (
+    <>
+      <ReferenceGroupHeader icon={icon} order={order} title={title} subtitle={subtitle} accent={accent}/>
+      {isBeginner&&(
+        <div style={{display:"flex",justifyContent:"center",margin:"2px 0 12px"}}>
+          <button onClick={()=>setOpen(o=>!o)} style={{
+            display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:700,color:MID,
+            backgroundColor:"white",border:`1.5px solid ${BORDER}`,borderRadius:20,padding:"8px 16px",cursor:"pointer",
+          }}>
+            {open?"▲ 詳しいデータを閉じる":"▼ 詳しいデータ（表・グラフ）を見る"}
+          </button>
+        </div>
+      )}
+      {(open||!isBeginner)&&children}
+    </>
+  );
+}
+
 function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
   // AIが生成時に実際の改行ではなく "\n" という文字列のまま出力してしまうケースへの保険
   const normalizedText = text.replace(/\\n/g, "\n").replace(/\n{3,}/g, "\n\n");
@@ -1275,23 +1312,29 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         </div>
 
        {/* 事業等のリスク（重要度別）：深掘りレポートの直後、参考資料の手前に配置 */}
+       <BeginnerCaption level={level} text="この会社が事業を行ううえでのリスク（注意点）を、重要度別にまとめた表です。"/>
        {visualizationData && <RiskTable vizData={visualizationData} />}
 
 {/* ===== ここから参考資料（超短期・短期・長期の3分類） ===== */}
+{/* 初心者向けでは、各グループをデフォルト折りたたみ表示にして情報量の圧迫感を減らす(ReferenceGroup) */}
 
-<ReferenceGroupHeader
+<ReferenceGroup
   icon="⚡" order="①" title="超短期投資家向け" subtitle="初値で勝つ：公募条件・需給・類似IPOの着地点を確認"
-  accent="#ef4444"
-/>
+  accent="#ef4444" level={level}
+>
+        <BeginnerCaption level={level} text="上場時の想定価格帯や、調達する資金の規模など、IPOの基本条件をまとめた表です。"/>
         {visualizationData && <IpoSummaryTable vizData={visualizationData} />}
+        <BeginnerCaption level={level} text="上場した時点で、株を「誰が」「どれくらいの割合」持っているかを示すグラフです。"/>
         {visualizationData && <ShareStructureChart vizData={visualizationData} />}
         {renderSupplyDemand()}
+        <BeginnerCaption level={level} text="似た業種で最近上場した会社が、上場後に株価がどう動いたかを比較したグラフです。値上がりした銘柄が多いかどうかの参考になります。"/>
         {visualizationData && <RecentIpoChart vizData={visualizationData} />}
+</ReferenceGroup>
 
-        <ReferenceGroupHeader
+        <ReferenceGroup
           icon="📈" order="②" title="短期投資家向け" subtitle="ロックアップを読む：総合スコア・価格の妥当性・今後のイベント"
-          accent="#d97706"
-        />
+          accent="#d97706" level={level}
+        >
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
             <BarChart2 size={14} color="#d97706"/>
@@ -1311,18 +1354,26 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             ))}
           </div>
         </Card>
+        <BeginnerCaption level={level} text="株価が「割安か割高か」を判断するための指標（PER・PBR・時価総額など）をまとめた表です。"/>
         {visualizationData && <ValuationTable vizData={visualizationData} />}
+        <BeginnerCaption level={level} text="大株主が「いつまで株を売れないか」というルール（ロックアップ）をまとめた表です。この期間が終わると株が売られ、株価が下がりやすくなることがあります。"/>
         {visualizationData && <ShareholdersLockupTable vizData={visualizationData} />}
+        </ReferenceGroup>
 
-        <ReferenceGroupHeader
+        <ReferenceGroup
           icon="🌱" order="③" title="長期投資家向け" subtitle="10倍株を狙う：業績実績・株主構成・資金使途・事業リスク"
-          accent="#7c3aed"
-        />
+          accent="#7c3aed" level={level}
+        >
+        <BeginnerCaption level={level} text="これまでの売上・利益がどう推移してきたかを示すグラフです。"/>
         {visualizationData && <RevenueChart vizData={visualizationData} />}
+        <BeginnerCaption level={level} text="会社の経営状態を表す主要な数値（売上高・利益率など）の推移をまとめた表です。"/>
         {visualizationData && <KeyMetricsTable vizData={visualizationData} />}
+        <BeginnerCaption level={level} text="現在、株を「誰が」「どれくらいの割合」持っているかを示すグラフです。"/>
         {visualizationData && <ShareholdersChart vizData={visualizationData} />}
         {renderCompetitorFinancials()}
+        <BeginnerCaption level={level} text="上場で集めたお金を、会社が何に使う予定かをまとめた表です。"/>
         {visualizationData && <UseOfProceedsTable vizData={visualizationData} />}
+        </ReferenceGroup>
 
         {/* ⑱ 参考文献・確認先 */}
         {(analysis.sources||[]).length>0&&(
