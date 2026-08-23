@@ -1,15 +1,32 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/contexts/AppContext";
 
 const C = { nav: "#0d4f52", teal: "#66c3c6" };
 type FontSize = "sm" | "md" | "lg";
+type Level = "beginner" | "expert";
 
 export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
   const pathname = usePathname();
-  const { fontSize, setFontSize, lang, setLang } = useApp();
+  const router = useRouter();
+  const { fontSize, setFontSize, lang, setLang, level, setLevel } = useApp();
   const isAnalysis = pathname.startsWith("/analysis/");
+
+  // ヘッダーの初心者/中上級者切替は、サイト全体の「好み」を更新するだけでなく、
+  // 銘柄分析ページを閲覧中であれば、今見ている銘柄の該当バージョンへ
+  // その場で移動する(例: /analysis/1234 ⇔ /analysis/1234/beginner)
+  const handleLevelChange = (l: Level) => {
+    setLevel(l);
+    if (isAnalysis) {
+      const segments = pathname.split("/").filter(Boolean); // ["analysis","<id>"] または ["analysis","<id>","beginner"]
+      const id = segments[1];
+      if (id) {
+        const target = l === "beginner" ? `/analysis/${id}/beginner` : `/analysis/${id}`;
+        if (target !== pathname) router.push(target);
+      }
+    }
+  };
 
   const crumbs = isAnalysis ? [
     { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
@@ -31,6 +48,22 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
           </div>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 4px" }}>
+            {([
+              { key: "beginner" as Level, label: "📖" },
+              { key: "expert" as Level, label: "🎓" },
+            ]).map((opt) => (
+              <button key={opt.key} onClick={() => handleLevelChange(opt.key)}
+                title={opt.key === "beginner" ? "初心者向け表示" : "中・上級者向け表示"}
+                style={{
+                  fontSize: 13,
+                  fontWeight: level === opt.key ? 700 : 400,
+                  color: level === opt.key ? C.teal : "#a0d4d6",
+                  background: "none", border: "none", cursor: "pointer", padding: "2px 6px", borderRadius: 4,
+                  backgroundColor: level === opt.key ? "rgba(102,195,198,0.2)" : "transparent",
+                }}>{opt.label}</button>
+            ))}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 4px" }}>
           {(["sm", "md", "lg"] as FontSize[]).map((s) => (
               <button key={s} onClick={() => setFontSize(s)} style={{

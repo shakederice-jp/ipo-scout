@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Script from "next/script";
 import AppHeader from "@/components/AppHeader";
+import LevelIntroBanner from "@/components/LevelIntroBanner";
 import { AppProvider } from "@/contexts/AppContext";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppProvider>
           <AppHeader />
+          <LevelIntroBanner />
           <div className="app-content">{children}</div>
         </AppProvider>
       </body>

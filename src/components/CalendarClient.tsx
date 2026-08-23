@@ -56,7 +56,7 @@ const C = {
 
 export default function CalendarClient() {
   const today = new Date();
-  const { lang } = useApp();
+  const { lang, level } = useApp();
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -420,7 +420,7 @@ export default function CalendarClient() {
                 const dd = new Date(a.date);
                 const near = a.days <= 30;
                 return (
-                  <a key={i} href={`/analysis/${a.company.id}`} style={{
+                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.id}/beginner` : `/analysis/${a.company.id}`} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
                     padding:"10px 12px", borderRadius:10, textDecoration:"none",
                     backgroundColor: near ? "#fef2f2" : "#f8fafc",
