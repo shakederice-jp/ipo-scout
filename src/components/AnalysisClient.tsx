@@ -19,7 +19,7 @@ interface Analysis {
   axes:{ultra_short:AxisItem[];short:AxisItem[];long:AxisItem[]};
   sources:{label:string;url:string}[];
 }
-interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string; }
+interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string; }
 
 const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
@@ -298,17 +298,69 @@ function ScenarioCompareChart({scenarios,periodLabel,isLong}:{scenarios:Scenario
   );
 }
 
-function LockupTimeline({lockupPeriod}:{lockupPeriod:string}) {
+function LockupTimeline({lockupPeriod, lockup90Date, lockup180Date, vcRatio}:{lockupPeriod:string; lockup90Date?:string|null; lockup180Date?:string|null; vcRatio?:number|null}) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysUntil = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    return Math.ceil((d.getTime() - today.getTime()) / (1000*60*60*24));
+  };
+  const d90 = daysUntil(lockup90Date);
+  const d180 = daysUntil(lockup180Date);
+  const isNear = (d: number | null) => d !== null && d >= 0 && d <= 30;
+
+  const dateLabel = (dateStr?: string | null) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return `${d.getMonth()+1}月${d.getDate()}日`;
+  };
+
   return (
     <div style={{marginTop:10,padding:"16px 10px 8px"}}>
       <div style={{position:"relative",height:2,backgroundColor:"#e2e8f0",borderRadius:1,marginBottom:24}}>
         <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:PRIMARY,border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
         <div style={{position:"absolute",right:0,top:-5,width:12,height:12,borderRadius:"50%",backgroundColor:"#ef4444",border:"2px solid white",boxShadow:"0 0 0 1px #e2e8f0"}}/>
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom: (lockup90Date || lockup180Date) ? 14 : 0}}>
         <div style={{fontSize:9,fontWeight:700,color:TTEXT}}>🔔 上場日</div>
         <div style={{fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"right",maxWidth:"60%",lineHeight:1.4}}>🔓 解除：{lockupPeriod}</div>
       </div>
+
+      {(lockup90Date || lockup180Date) && (
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {[
+            { label: "90日ロックアップ解除", date: lockup90Date, days: d90 },
+            { label: "180日ロックアップ解除", date: lockup180Date, days: d180 },
+          ].filter(item => item.date).map((item, i) => {
+            const near = isNear(item.days);
+            const passed = item.days !== null && item.days < 0;
+            return (
+              <div key={i} style={{
+                display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
+                padding:"8px 10px", borderRadius:8,
+                backgroundColor: near ? "#fef2f2" : passed ? "#f8fafc" : "#f0fafa",
+                border: `1px solid ${near ? "#fecaca" : passed ? "#e2e8f0" : BORDER}`,
+              }}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:12}}>{near ? "⚠️" : "🔓"}</span>
+                  <span style={{fontSize:10,fontWeight:700,color: near ? "#b91c1c" : passed ? "#94a3b8" : "#0d4f52"}}>{item.label}</span>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:10,fontWeight:900,color: near ? "#b91c1c" : passed ? "#94a3b8" : "#082b2e"}}>{dateLabel(item.date)}</div>
+                  <div style={{fontSize:9,color: near ? "#dc2626" : "#94a3b8"}}>
+                    {passed ? "解除済み" : item.days === 0 ? "本日解除" : `あと${item.days}日`}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {vcRatio !== null && vcRatio !== undefined && vcRatio >= 15 && (isNear(d90) || isNear(d180)) && (
+            <div style={{fontSize:9,color:"#b91c1c",backgroundColor:"#fef2f2",borderRadius:6,padding:"6px 8px",lineHeight:1.6}}>
+              ⚠️ 大株主・VCの保有比率が約{vcRatio.toFixed(0)}%と高く、解除後の売り圧力に注意が必要です。
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -601,13 +653,19 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
 
   const wrap:React.CSSProperties={maxWidth:720,margin:"0 auto",padding:"0 16px"};
 
-  // 需給・VC分析（超短期ブロック用）の中身を関数化
-  const renderSupplyDemand=()=>{
+   // 需給・VC分析（超短期ブロック用）の中身を関数化
+   const renderSupplyDemand=()=>{
     const sd=(company as any).structured_data;
     const lockupPeriod=sd?.ipo_details?.lockup_period||"上場後180日";
     const floatRatio=sd?.ipo_details?.float_ratio||"参考値";
+    const lockup90Date=(company as any).lockup_90_date??null;
+    const lockup180Date=(company as any).lockup_180_date??null;
     const shareholders:any[]=sd?.shareholders||[];
     const valid=(Array.isArray(shareholders)?shareholders:[]).filter((s:any)=>parseFloat(String(s.ratio||'0').replace('%',''))>0);
+    // VC・事業会社の合計保有比率を、解除後の売り圧力注意喚起に使う
+    const vcRatio=valid.length>0
+      ? valid.filter((s:any)=>s.type==="VC"||s.type==="事業会社").reduce((sum:number,s:any)=>sum+parseFloat(String(s.ratio||'0').replace('%','')),0)
+      : null;
     const colors=["#f87171","#fb923c","#facc15","#4ade80","#60a5fa"];
     const chart=valid.length>0
       ?valid.slice(0,4).map((s:any,i:number)=>({label:s.name||`株主${i+1}`,pct:parseFloat(String(s.ratio||'0').replace('%','')),color:colors[i],lockup:s.lockup==="有"?"ロックアップあり":"上場時より流通"}))
@@ -651,7 +709,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           ))}
         </div>
-        <LockupTimeline lockupPeriod={lockupPeriod}/>
+        <LockupTimeline lockupPeriod={lockupPeriod} lockup90Date={lockup90Date} lockup180Date={lockup180Date} vcRatio={vcRatio}/>
       </Card>
     );
   };

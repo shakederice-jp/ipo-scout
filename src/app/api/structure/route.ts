@@ -187,19 +187,38 @@ ${rawText}
       }
     }
 
-        // 上場予定日をstructured_dataから抽出し、カレンダー表示用のlisting_date列にも保存
-        const updatePayload: any = {
-          structured_data: structured,
-          analysis_detail: null,
-        };
-        if (structured?.listing_date && /^\d{4}-\d{2}-\d{2}$/.test(structured.listing_date)) {
-          updatePayload.listing_date = structured.listing_date;
-        }
-        // 目論見書の実データに基づき、自動検出時の誤った業種推測を正しい内容に上書きする
-        if (structured?.sector) updatePayload.sector = structured.sector;
-        if (structured?.biz_type) updatePayload.biz_type = structured.biz_type;
-    
-        await supabase.from("ipo_companies").update(updatePayload).eq("id", company_id);
+               // 上場予定日をstructured_dataから抽出し、カレンダー表示用のlisting_date列にも保存
+               const updatePayload: any = {
+                structured_data: structured,
+                analysis_detail: null,
+              };
+              if (structured?.listing_date && /^\d{4}-\d{2}-\d{2}$/.test(structured.listing_date)) {
+                updatePayload.listing_date = structured.listing_date;
+              }
+              // 目論見書の実データに基づき、自動検出時の誤った業種推測を正しい内容に上書きする
+              if (structured?.sector) updatePayload.sector = structured.sector;
+              if (structured?.biz_type) updatePayload.biz_type = structured.biz_type;
+      
+              // ロックアップ解除日(90日後・180日後)を、上場日とlockup_periodから自動計算する
+              const listingDateForLockup = updatePayload.listing_date ?? structured?.listing_date;
+              if (listingDateForLockup && /^\d{4}-\d{2}-\d{2}$/.test(listingDateForLockup)) {
+                const lockupText: string = structured?.ipo_details?.lockup_period ?? "";
+                // "90日" "180日" のように数字+日、という記載を探す(見つからなければ標準の90/180日として計算する)
+                const daysMatch = lockupText.match(/(\d+)\s*日/);
+                const primaryDays = daysMatch ? parseInt(daysMatch[1], 10) : 180;
+      
+                const addDays = (dateStr: string, days: number) => {
+                  const d = new Date(dateStr);
+                  d.setDate(d.getDate() + days);
+                  return d.toISOString().slice(0, 10);
+                };
+      
+                updatePayload.lockup_90_date = addDays(listingDateForLockup, 90);
+                // 目論見書に記載された日数(多くは90日 or 180日)がもし90日以外なら、それを180日側の欄に反映する
+                updatePayload.lockup_180_date = addDays(listingDateForLockup, primaryDays === 90 ? 180 : primaryDays);
+              }
+      
+              await supabase.from("ipo_companies").update(updatePayload).eq("id", company_id);
 
     return NextResponse.json({
       success: true,
