@@ -29,11 +29,16 @@ export default function TrendsPage() {
 
   useEffect(() => {
     const fetchTrends = async () => {
+      // 以前は sector_score(スコア)を最優先で並べていたため、スコアが高い
+      // 古い記事(例: sector_score:9の8/8〜8/10の記事)がいつまでもページ最上部に
+      // 居座り続け、その後どれだけ新しい記事が追加されても(theme記事は
+      // sector_score:8固定のため)上に出てこない、という不具合が起きていた。
+      // 「毎日更新される最新ニュース一覧」なので、まず日付の新しい順に並べる。
       const { data } = await supabase
         .from("market_trends")
         .select("*")
-        .order("sector_score", { ascending: false })
         .order("fetched_at", { ascending: false })
+        .order("sector_score", { ascending: false })
         .limit(100);
       setTrends(data ?? []);
       setLoading(false);
