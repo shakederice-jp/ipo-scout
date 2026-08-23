@@ -13,6 +13,8 @@ type Company = {
   listing_date: string;
   ai_summary?: string;
   is_free?: boolean;
+  lockup_90_date?: string | null;
+  lockup_180_date?: string | null;
 };
 
 type CalendarNote = {
@@ -208,6 +210,28 @@ export default function CalendarClient() {
     setTimeout(() => setHighlighted(null), 1800);
   };
 
+  // ロックアップ解除アラート(60日以内に解除を迎える銘柄)の一覧を計算
+  const todayForLockup = new Date(); todayForLockup.setHours(0,0,0,0);
+  const daysUntilLockup = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    return Math.ceil((d.getTime() - todayForLockup.getTime()) / (1000*60*60*24));
+  };
+  type LockupAlert = { company: Company; label: string; date: string; days: number };
+  const lockupAlerts: LockupAlert[] = [];
+  companies.forEach(c => {
+    [
+      { label: "90日", date: c.lockup_90_date },
+      { label: "180日", date: c.lockup_180_date },
+    ].forEach(item => {
+      const days = daysUntilLockup(item.date);
+      if (item.date && days !== null && days >= 0 && days <= 60) {
+        lockupAlerts.push({ company: c, label: item.label, date: item.date, days });
+      }
+    });
+  });
+  lockupAlerts.sort((a, b) => a.days - b.days);
+
   return (
     <div style={{ minHeight:"100vh", backgroundColor:C.bg, fontFamily:"'Noto Sans JP',sans-serif" }}>
 
@@ -373,11 +397,47 @@ export default function CalendarClient() {
               </div>
             </div>
           </div>
-          </div>
+        </div>
 
-{/* ── IPO一覧（カレンダー下） ── */}
-{/* ── IPO一覧（カレンダー下） ── */}
-<div style={{ marginTop:16 }}>
+        {/* ── ロックアップ解除アラート一覧（60日以内に解除を迎える銘柄） ── */}
+        {lockupAlerts.length > 0 && (
+          <div style={{ marginTop:16, marginBottom:16, borderRadius:16, overflow:"hidden", border:"2px solid #ef4444" }}>
+            <div style={{ padding:"12px 16px", backgroundColor:"#ef4444", display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:18 }}>🚨</span>
+              <span style={{ fontWeight:900, fontSize:14, color:"white" }}>ロックアップ解除が近い銘柄</span>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)" }}>（60日以内・{lockupAlerts.length}件）</span>
+            </div>
+            <div style={{ backgroundColor:C.white, padding:"12px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+              {lockupAlerts.map((a, i) => {
+                const dd = new Date(a.date);
+                const near = a.days <= 30;
+                return (
+                  <a key={i} href={`/analysis/${a.company.id}`} style={{
+                    display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+                    padding:"10px 12px", borderRadius:10, textDecoration:"none",
+                    backgroundColor: near ? "#fef2f2" : "#f8fafc",
+                    border: `1px solid ${near ? "#fecaca" : "#e2e8f0"}`,
+                  }}>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:900, color:"#082b2e", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{a.company.name}</div>
+                      <div style={{ fontSize:10, color:"#64748b" }}>{a.label}ロックアップ解除・{dd.getMonth()+1}月{dd.getDate()}日</div>
+                    </div>
+                    <div style={{
+                      textAlign:"center", padding:"6px 12px", borderRadius:8, flexShrink:0,
+                      backgroundColor: near ? "#ef4444" : C.teal,
+                    }}>
+                      <div style={{ fontSize:16, fontWeight:900, color:"white", lineHeight:1 }}>{a.days === 0 ? "本日" : a.days}</div>
+                      {a.days !== 0 && <div style={{ fontSize:8, fontWeight:700, color:"white" }}>日後</div>}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── IPO一覧（カレンダー下） ── */}
+        <div style={{ marginTop:16 }}>
           <div style={{ marginBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
               <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>
