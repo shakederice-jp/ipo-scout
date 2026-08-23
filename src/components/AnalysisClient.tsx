@@ -19,7 +19,7 @@ interface Analysis {
   axes:{ultra_short:AxisItem[];short:AxisItem[];long:AxisItem[]};
   sources:{label:string;url:string}[];
 }
-interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string; }
+interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string;initial_price?:number|null;price_change_rate?:number|null;status?:string|null; }
 
 const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
@@ -992,6 +992,44 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           </Card>
         )}
+
+        {/* 初値実績カード：上場後、初値データが入力されている銘柄のみ表示 */}
+        {(company as any).initial_price != null && (
+          <Card style={{ border:`2px solid ${((company as any).price_change_rate ?? 0) >= 0 ? "#22c55e" : "#ef4444"}` }}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+              <span style={{fontSize:16}}>🔔</span>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>初値実績</span>
+              {(company as any).status && (
+                <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,backgroundColor:"#f1f5f9",color:"#475569"}}>{(company as any).status}</span>
+              )}
+            </div>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <div style={{flex:1,textAlign:"center",padding:"10px 8px",backgroundColor:"#f8fafc",borderRadius:10}}>
+                <div style={{fontSize:10,color:"#64748b",marginBottom:2}}>公募価格</div>
+                <div style={{fontSize:16,fontWeight:900,color:"#1e293b"}}>¥{((company as any).ipo_price ?? 0).toLocaleString()}</div>
+              </div>
+              <div style={{fontSize:18,color:"#94a3b8"}}>→</div>
+              <div style={{flex:1,textAlign:"center",padding:"10px 8px",backgroundColor: ((company as any).price_change_rate ?? 0) >= 0 ? "#f0fdf4" : "#fef2f2",borderRadius:10}}>
+                <div style={{fontSize:10,color:"#64748b",marginBottom:2}}>初値</div>
+                <div style={{fontSize:16,fontWeight:900,color: ((company as any).price_change_rate ?? 0) >= 0 ? "#15803d" : "#b91c1c"}}>
+                  ¥{((company as any).initial_price ?? 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+            {(company as any).price_change_rate != null && (
+              <div style={{marginTop:10,textAlign:"center",padding:"8px",borderRadius:10,backgroundColor: (company as any).price_change_rate >= 0 ? "#dcfce7" : "#fef2f2"}}>
+                <span style={{fontSize:20,fontWeight:900,color: (company as any).price_change_rate >= 0 ? "#15803d" : "#b91c1c"}}>
+                  {(company as any).price_change_rate >= 0 ? "▲ +" : "▼ "}{(company as any).price_change_rate}%
+                </span>
+                <span style={{fontSize:11,color:"#64748b",marginLeft:6}}>（公募価格比）</span>
+              </div>
+            )}
+            <p style={{fontSize:10,color:"#94a3b8",marginTop:10,lineHeight:1.6,textAlign:"center"}}>
+              上場後の実際の初値です。AIによる事前シナリオ予想と見比べてみましょう。
+            </p>
+          </Card>
+        )}
+
 
         {/* ⑫⑬ 株価シナリオ分析＋投資シミュレーション */}
         <Card>

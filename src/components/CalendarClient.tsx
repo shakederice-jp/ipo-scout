@@ -15,6 +15,8 @@ type Company = {
   is_free?: boolean;
   lockup_90_date?: string | null;
   lockup_180_date?: string | null;
+  initial_price?: number | null;
+  price_change_rate?: number | null;
 };
 
 type CalendarNote = {
@@ -495,14 +497,15 @@ export default function CalendarClient() {
                       const diff = ld.getTime() - today2.getTime();
                       if (diff < 0) return (
                         <>
-                          <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
+                          <div style={{ display:"flex", alignItems:"center", gap:4, justifyContent:"flex-end", marginBottom:2 }}>
+                            <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px" }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
+                            {company.price_change_rate != null && (
+                              <div style={{ fontSize:10, fontWeight:900, color: company.price_change_rate >= 0 ? "#15803d" : "#b91c1c", backgroundColor: company.price_change_rate >= 0 ? "#dcfce7" : "#fef2f2", borderRadius:4, padding:"1px 6px" }}>
+                                {company.price_change_rate >= 0 ? "▲+" : "▼"}{company.price_change_rate}%
+                              </div>
+                            )}
+                          </div>
                           <div style={{ fontSize:12, fontWeight:700, color:"#64748b" }}>{dateStr}</div>
-                        </>
-                      );
-                      if (diff === 0) return (
-                        <>
-                          <div style={{ fontSize:10, fontWeight:700, color:"#b91c1c", backgroundColor:"#fef2f2", borderRadius:4, padding:"1px 6px", marginBottom:2 }}>{lang === "ja" ? "本日上場🎉" : "Listed Today🎉"}</div>
-                          <div style={{ fontSize:12, fontWeight:700, color:"#b91c1c" }}>{dateStr}</div>
                         </>
                       );
                       return (
