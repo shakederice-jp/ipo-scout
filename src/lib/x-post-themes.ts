@@ -103,7 +103,14 @@ ${theme.includeProfileLinkCTA ? "\n投稿の最後に「プロフィール欄の
       .map(h => ({ title: h.title, url: (h as any).url ?? "", source: h.source }));
     return { content: parsed.content ?? raw, sourceLinks };
   } catch {
-    return { content: raw, sourceLinks: [] };
+    // JSONとして解析できなかった場合(出力が長さ制限で途中で切れた場合など)、
+    // 生のJSON断片("content":"...)がそのまま画面に表示されてしまわないよう、
+    // "content"キーの値部分だけを正規表現で救出する
+    const match = raw.match(/"content"\s*:\s*"([\s\S]*)/);
+    const rescued = match
+      ? match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"')
+      : raw;
+    return { content: rescued, sourceLinks: [] };
   }
 }
 

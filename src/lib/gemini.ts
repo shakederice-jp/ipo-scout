@@ -14,7 +14,9 @@ export async function generateWithGemini(prompt: string): Promise<string> {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.8,
-        maxOutputTokens: 800,
+        // 文体ルールで「1000〜1500文字程度」を要求しているのに対し、
+        // 以前は800トークンしか確保しておらず本文が途中で切れていたため引き上げ
+        maxOutputTokens: 3000,
       },
     }),
   });
