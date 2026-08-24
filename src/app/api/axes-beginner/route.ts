@@ -148,9 +148,10 @@ export async function POST(req: NextRequest) {
           max_tokens: maxTokens,
           messages: [{ role: "user", content: prompt }],
         }),
-        // Vercel Hobbyプランの関数タイムアウト上限(60秒)以内に、
-        // 途中切れ時の再試行(最大2回)を含めて収まるよう、1回あたりの待ち時間を短縮
-        signal: AbortSignal.timeout(25000),
+        // Vercel Hobbyプランの関数タイムアウト上限は60秒。1回の生成に40〜50秒
+        // かかることもあるため、同じ関数呼び出しの中で2回目を試すと合計で
+        // 60秒を超えてしまう。そのため1回だけ、上限ギリギリまで待つ。
+        signal: AbortSignal.timeout(50000),
       });
 
       if (!res.ok) {
@@ -164,10 +165,13 @@ export async function POST(req: NextRequest) {
       return { text, truncated };
     }
 
-    let result = await callOnce(3000);
+    // 同じ関数呼び出し内での2回目のリトライは廃止(60秒の壁と相性が悪いため)。
+    // かわりに最初から十分な上限(6000トークン)を渡し、途中切れ自体を起こりにくくする。
+    // それでも切れてしまった場合は、そのまま返す(admin画面側の自動リトライが
+    // 新しいリクエストとしてやり直すため、そちらで再挑戦できる)。
+    const result = await callOnce(6000);
     if (result.truncated) {
-      console.warn(`axes-beginner ${axisId}: max_tokensで打ち切り検知、再試行します`);
-      result = await callOnce(4500);
+      console.warn(`axes-beginner ${axisId}: 6000トークンでもmax_tokensで打ち切り(そのまま返します)`);
     }
     const reportBeginner = result.text;
 
