@@ -148,7 +148,9 @@ export async function POST(req: NextRequest) {
           max_tokens: maxTokens,
           messages: [{ role: "user", content: prompt }],
         }),
-        signal: AbortSignal.timeout(55000),
+        // Vercel Hobbyプランの関数タイムアウト上限(60秒)以内に、
+        // 途中切れ時の再試行(最大2回)を含めて収まるよう、1回あたりの待ち時間を短縮
+        signal: AbortSignal.timeout(25000),
       });
 
       if (!res.ok) {

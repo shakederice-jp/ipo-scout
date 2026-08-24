@@ -181,13 +181,22 @@ export default function AdminPage() {
     const allResults: any[] = [];
     for (let i = 0; i < axes.length; i++) {
       const axisId = axes[i];
-      setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}を初心者向けに書き直し中...`}));
-      try {
-        const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId }) });
-        const data = await res.json();
-        if (data.error) { setStep(stepNum, false, `❌ ${axisId}: ${data.error}`); return false; }
-        allResults.push({ id:axisId, report_beginner:data.report_beginner });
-      } catch { setStep(stepNum, false, `❌ ${axisId} 通信エラー`); return false; }
+      // タイムアウト等の一時的な失敗で軸1つぶんの作業がまるごと消えないよう、1回だけ自動で再試行する
+      let lastError: string | null = null;
+      let succeeded = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const attemptLabel = attempt === 1 ? "" : "（再試行中）";
+        setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}を初心者向けに書き直し中...${attemptLabel}`}));
+        try {
+          const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId }) });
+          const data = await res.json();
+          if (data.error) { lastError = data.error; continue; }
+          allResults.push({ id:axisId, report_beginner:data.report_beginner });
+          succeeded = true;
+          break;
+        } catch { lastError = "通信エラー"; }
+      }
+      if (!succeeded) { setStep(stepNum, false, `❌ ${axisId}: ${lastError}`); return false; }
     }
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
