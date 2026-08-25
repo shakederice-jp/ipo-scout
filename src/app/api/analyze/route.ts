@@ -1,11 +1,20 @@
 ﻿export const maxDuration = 90;
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// x_post_drafts / scheduled_posts へのinsertはRLS(行レベルセキュリティ)で
+// 保護されており、通常のanonキー(createSupabaseServerClient)からは書き込めない。
+// generate-x-drafts等の既存の書き込み処理と同じく、ここだけservice roleキーを使う。
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -310,7 +319,7 @@ export async function POST(req: NextRequest) {
           // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)
           // 注意: supabase-jsのinsert()は失敗してもthrowしない(エラーはerrorに入るだけ)ため、
           // 必ず{error}を確認して手動でthrowする(でないと失敗が握りつぶされて気づけない)
-          const { error: draftError } = await supabase.from("x_post_drafts").insert({
+          const { error: draftError } = await supabaseAdmin.from("x_post_drafts").insert({
             theme_number: 0,
             theme_label: "新規IPO承認",
             content: initialText,
@@ -326,7 +335,7 @@ export async function POST(req: NextRequest) {
           const day2 = toDateStr(addBusinessDays(new Date(), 2));
           const day4 = toDateStr(addBusinessDays(new Date(), 4));
 
-          const { error: scheduledError } = await supabase.from("scheduled_posts").insert([
+          const { error: scheduledError } = await supabaseAdmin.from("scheduled_posts").insert([
             { company_id: co.id, scheduled_date: day2, tweet_text: followupText, posted: false },
             { company_id: co.id, scheduled_date: day4, tweet_text: followupText, posted: false },
           ]);
