@@ -256,6 +256,8 @@ export async function POST(req: NextRequest) {
       }).eq("id", co.id);
 
       // X投稿ドラフトを作成 + 2営業日後・4営業日後の再掲を予約
+      // ↓ なぜ動いた/動かなかったのかをadmin画面で見えるようにするための診断メモ
+      let xDraftDebug = "";
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
           const revenue = (co as any).structured_data?.financials?.revenue_trend ?? "不明";
@@ -323,12 +325,16 @@ export async function POST(req: NextRequest) {
             { company_id: co.id, scheduled_date: day2, tweet_text: followupText, posted: false },
             { company_id: co.id, scheduled_date: day4, tweet_text: followupText, posted: false },
           ]);
+          xDraftDebug = imageUrl ? "success(画像あり)" : "success(画像なし)";
         } catch (e: any) {
+          xDraftDebug = `error: ${e?.message ?? String(e)}`;
           await notifyAdmin(`⚠️ Xドラフト作成エラー: ${co.name}（分析系）`, String(e), "warn");
         }
+      } else {
+        xDraftDebug = `skipped(ENABLED=${process.env.X_AUTOPOST_ENABLED ?? "未設定"} / insights件数=${summary.insights?.length ?? 0})`;
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, x_draft_debug: xDraftDebug });
     }
 
     // ===== 個別パートの生成 =====

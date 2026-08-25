@@ -132,8 +132,9 @@ export default function AdminPage() {
       const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep("3", false, `❌ 保存エラー: ${saveData.error}`); return; }
+      setStep("3", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
+      return;
     } catch { setStep("3", false, "❌ 保存通信エラー"); return; }
-    setStep("3", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク`);
   };
 
   const runAxes = async (period: string, label: string, stepNum: string) => {
