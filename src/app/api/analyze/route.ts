@@ -308,23 +308,31 @@ export async function POST(req: NextRequest) {
           }
 
           // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)
-          await supabase.from("x_post_drafts").insert({
+          // 注意: supabase-jsのinsert()は失敗してもthrowしない(エラーはerrorに入るだけ)ため、
+          // 必ず{error}を確認して手動でthrowする(でないと失敗が握りつぶされて気づけない)
+          const { error: draftError } = await supabase.from("x_post_drafts").insert({
             theme_number: 0,
             theme_label: "新規IPO承認",
             content: initialText,
             image_url: imageUrl,
             source_note: `IPO分析システム由来(${co.name})`,
           });
+          if (draftError) {
+            throw new Error(`x_post_drafts insert失敗: ${draftError.message} (code: ${draftError.code ?? "unknown"})`);
+          }
 
           // 2営業日後・4営業日後の再掲を予約(当日の朝ドラフト生成時に自動でx_post_draftsへ追加される)
           const followupText = buildTweetText("IPO再掲");
           const day2 = toDateStr(addBusinessDays(new Date(), 2));
           const day4 = toDateStr(addBusinessDays(new Date(), 4));
 
-          await supabase.from("scheduled_posts").insert([
+          const { error: scheduledError } = await supabase.from("scheduled_posts").insert([
             { company_id: co.id, scheduled_date: day2, tweet_text: followupText, posted: false },
             { company_id: co.id, scheduled_date: day4, tweet_text: followupText, posted: false },
           ]);
+          if (scheduledError) {
+            throw new Error(`scheduled_posts insert失敗: ${scheduledError.message} (code: ${scheduledError.code ?? "unknown"})`);
+          }
           xDraftDebug = imageUrl ? "success(画像あり)" : "success(画像なし)";
         } catch (e: any) {
           xDraftDebug = `error: ${e?.message ?? String(e)}`;
