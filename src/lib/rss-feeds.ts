@@ -20,25 +20,32 @@ export interface FeedHeadline {
 }
 
 export async function fetchAllHeadlines(): Promise<FeedHeadline[]> {
-  const results: FeedHeadline[] = [];
-
-  for (const source of RSS_SOURCES) {
-    try {
+  // 以前は4つのフィードを1つずつ順番に取得しており、1件あたり最大10秒の設定と
+  // 合わせると、遅いフィードが重なった場合に最大40秒近くかかることがあった。
+  // これがgenerate-x-draftsルート全体のタイムアウトの一因になっていたため、
+  // 互いに独立したフィード取得は並行で行い、一番遅い1件分(最大10秒)に近づける。
+  const perSourceResults = await Promise.allSettled(
+    RSS_SOURCES.map(async (source) => {
       const feed = await parser.parseURL(source.url);
-      for (const item of feed.items.slice(0, 15)) {
-        results.push({
-          source: source.name,
-          title: item.title ?? "",
-          summary: (item.contentSnippet ?? item.content ?? "").slice(0, 300),
-          pubDate: item.pubDate ?? "",
-          url: item.link ?? "",
-        });
-      }
-    } catch (err) {
-      console.error(`RSS取得失敗: ${source.name}`, err);
+      return feed.items.slice(0, 15).map((item) => ({
+        source: source.name,
+        title: item.title ?? "",
+        summary: (item.contentSnippet ?? item.content ?? "").slice(0, 300),
+        pubDate: item.pubDate ?? "",
+        url: item.link ?? "",
+      }));
+    })
+  );
+
+  const results: FeedHeadline[] = [];
+  perSourceResults.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      results.push(...r.value);
+    } else {
+      console.error(`RSS取得失敗: ${RSS_SOURCES[i].name}`, r.reason);
       // 1つのフィードが失敗しても他は続行する
     }
-  }
+  });
 
   return results;
 }
