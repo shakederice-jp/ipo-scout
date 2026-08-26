@@ -72,6 +72,46 @@ export async function GET(request: Request) {
   const results: { theme: number; status: string }[] = [];
   let trendsUpdated = false;
 
+  // 「新規IPO承認」ドラフト(画像URL付き)のうち、まだメールに載せていないものを先に処理して送信する。
+  // 以前はこの後に続く8テーマ分のAI記事生成が終わってから最後にまとめて送る作りだったが、
+  // AI生成に時間がかかりすぎるとVercelの関数タイムアウトで強制終了され、この部分まで
+  // 辿り着けないことがあった(GitHub Actions側はエラーに気づかず「成功」と表示してしまう)。
+  // そのため、時間のかかる処理より前に、独立した短い処理として先に済ませておく。
+  try {
+    const { data: ipoDrafts } = await supabase
+      .from("x_post_drafts")
+      .select("id, content, image_url, created_at")
+      .eq("theme_number", 0)
+      .eq("theme_label", "新規IPO承認")
+      .eq("included_in_digest", false)
+      .order("created_at", { ascending: false });
+
+    if (ipoDrafts && ipoDrafts.length > 0) {
+      const ipoBody = ipoDrafts.map(d =>
+        d.content + (d.image_url ? `\n\n🖼 画像: ${d.image_url}` : "")
+      ).join("\n\n" + "─".repeat(20) + "\n\n");
+
+      await notifyAdmin(
+        `🆕 新規IPO承認ドラフト(${ipoDrafts.length}件)`,
+        ipoBody,
+        "info"
+      );
+
+      // メール送信が成功した後で「送信済み」に更新する。
+      // (先に更新してしまうと、メール送信自体が失敗した場合に
+      //  ドラフトが送られないまま「送信済み」扱いになってしまうため)
+      const { error: markError } = await supabase
+        .from("x_post_drafts")
+        .update({ included_in_digest: true })
+        .in("id", ipoDrafts.map(d => d.id));
+      if (markError) {
+        console.error("新規IPOドラフトの送信済みフラグ更新に失敗:", markError.message);
+      }
+    }
+  } catch (err) {
+    console.error("新規IPOドラフトのメール送信に失敗:", err);
+  }
+
   try {
     const headlines = await fetchAllHeadlines();
 
@@ -189,37 +229,8 @@ export async function GET(request: Request) {
         emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
       }
 
-      // 「新規IPO承認」ドラフト(画像URL付き)のうち、まだメールに載せていないものがあれば含める。
-      // 以前は「作成日が今日かどうか」で判定していたが、UTC基準の日付とJST(日本時間)の
-      // 感覚がズレる境界時間帯があり、STEP4を実行したのに翌朝メールに載らないことがあった。
-      // そのため「送信済みかどうか」のフラグ(included_in_digest列)で管理する方式に変更する。
-      try {
-        const { data: ipoDrafts } = await supabase
-          .from("x_post_drafts")
-          .select("id, content, image_url, created_at")
-          .eq("theme_number", 0)
-          .eq("theme_label", "新規IPO承認")
-          .eq("included_in_digest", false)
-          .order("created_at", { ascending: false });
-
-        if (ipoDrafts && ipoDrafts.length > 0) {
-          const ipoBody = ipoDrafts.map(d =>
-            d.content + (d.image_url ? `\n\n🖼 画像: ${d.image_url}` : "")
-          ).join("\n\n" + "─".repeat(20) + "\n\n");
-          emailBody += `\n\n${"=".repeat(30)}\n🆕 新規IPO承認ドラフト(${ipoDrafts.length}件)\n${"=".repeat(30)}\n\n${ipoBody}`;
-
-          // メールに載せた分は「送信済み」に更新し、翌日以降のメールに重複して載らないようにする
-          const { error: markError } = await supabase
-            .from("x_post_drafts")
-            .update({ included_in_digest: true })
-            .in("id", ipoDrafts.map(d => d.id));
-          if (markError) {
-            console.error("新規IPOドラフトの送信済みフラグ更新に失敗:", markError.message);
-          }
-        }
-      } catch (err) {
-        console.error("新規IPOドラフトのメール組み込みに失敗:", err);
-      }
+      // 「新規IPO承認」ドラフトは、この関数の冒頭(時間のかかるAI生成より前)で
+      // 独立した専用メールとしてすでに送信済みのため、ここでは扱わない。
 
       if (ipoRepostCount > 0) {
         const { data: repostDrafts } = await supabase
