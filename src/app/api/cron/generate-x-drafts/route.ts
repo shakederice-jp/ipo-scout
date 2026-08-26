@@ -122,53 +122,44 @@ export async function GET(request: Request) {
       );
     }
 
-    // テーマ①: 大量保有報告書ウォッチ → マーケットトレンドに掲載
-    try {
-      const holdingsResult = await generateLargeHoldingsPost();
-      if (await saveThemeArticle("大量保有報告書ウォッチ", "その他", holdingsResult)) {
-        trendsUpdated = true;
-        results.push({ theme: 1, status: "success" });
-      } else {
-        results.push({ theme: 1, status: "skipped(該当書類なし)" });
+    // テーマ①〜⑧の生成を1件ずつ順番に(間に1秒待機を挟んで)実行していたが、
+    // 8テーマ分×最大2回のGemini呼び出しを直列で積み上げると簡単に1分半〜を超えてしまい、
+    // Vercelの関数タイムアウトで強制終了されることがあった(この場合、途中結果は保存されるが
+    // 最後まで到達できず、失敗テーマの記録やメール送信が行われないまま終わってしまう)。
+    // そのため、互いに依存しないテーマ生成は並行実行し、待機時間の合計より
+    // 一番遅い1テーマ分の時間に近づくようにする。1テーマの結果を関数化して共通化する。
+    async function runTheme(
+      themeNumber: number,
+      label: string,
+      skipReason: string,
+      generate: () => Promise<{ content: string; sourceLinks: { title: string; url: string; source: string }[] } | null>
+    ): Promise<{ theme: number; status: string }> {
+      try {
+        const result = await generate();
+        if (await saveThemeArticle(label, "その他", result)) {
+          return { theme: themeNumber, status: "success" };
+        }
+        return { theme: themeNumber, status: `skipped(${skipReason})` };
+      } catch (err) {
+        console.error(`テーマ${themeNumber}の生成に失敗:`, err);
+        return { theme: themeNumber, status: "failed" };
       }
-    } catch (err) {
-      console.error("テーマ1の生成に失敗:", err);
-      results.push({ theme: 1, status: "failed" });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const themeTasks: Promise<{ theme: number; status: string }>[] = [
+      runTheme(1, "大量保有報告書ウォッチ", "該当書類なし", generateLargeHoldingsPost),
+      runTheme(2, "IPOカレンダー", "該当銘柄なし", generateIpoCalendarPost),
+      runTheme(3, "週内の重要経済指標カレンダー", "該当イベントなし", generateEconomicCalendarPost),
+      ...RSS_THEMES.map((theme) =>
+        runTheme(theme.number, theme.label, "該当なし", () => generateThemedPost(theme, headlines))
+      ),
+    ];
 
-    // テーマ②: IPOカレンダー → マーケットトレンドに掲載
-    try {
-      const ipoResult = await generateIpoCalendarPost();
-      if (await saveThemeArticle("IPOカレンダー", "その他", ipoResult)) {
-        trendsUpdated = true;
-        results.push({ theme: 2, status: "success" });
-      } else {
-        results.push({ theme: 2, status: "skipped(該当銘柄なし)" });
-      }
-    } catch (err) {
-      console.error("テーマ2の生成に失敗:", err);
-      results.push({ theme: 2, status: "failed" });
+    const themeResults = await Promise.all(themeTasks);
+    for (const r of themeResults) {
+      results.push(r);
+      if (r.status === "success") trendsUpdated = true;
     }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // テーマ③: 週内の重要経済指標カレンダー → マーケットトレンドに掲載
-    try {
-      const econResult = await generateEconomicCalendarPost();
-      if (await saveThemeArticle("週内の重要経済指標カレンダー", "その他", econResult)) {
-        trendsUpdated = true;
-        results.push({ theme: 3, status: "success" });
-      } else {
-        results.push({ theme: 3, status: "skipped(該当イベントなし)" });
-      }
-    } catch (err) {
-      console.error("テーマ3の生成に失敗:", err);
-      results.push({ theme: 3, status: "failed" });
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
     let ipoRepostCount = 0;
@@ -194,26 +185,6 @@ export async function GET(request: Request) {
       }
     } catch (err) {
       console.error("IPO再掲ドラフトの生成に失敗:", err);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // テーマ④〜⑧: RSS由来 → マーケットトレンドに掲載
-    for (const theme of RSS_THEMES) {
-      try {
-        const themeResult = await generateThemedPost(theme, headlines);
-        if (await saveThemeArticle(theme.label, "その他", themeResult)) {
-          trendsUpdated = true;
-          results.push({ theme: theme.number, status: "success" });
-        } else {
-          results.push({ theme: theme.number, status: "skipped" });
-        }
-      } catch (err) {
-        console.error(`テーマ${theme.number}の生成に失敗:`, err);
-        results.push({ theme: theme.number, status: "failed" });
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     // 失敗したテーマがあれば、メールで気づけるようにまとめておく

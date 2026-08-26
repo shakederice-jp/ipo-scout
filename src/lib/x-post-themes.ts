@@ -197,12 +197,9 @@ export async function generateLargeHoldingsPost(): Promise<ThemedPostResult | nu
     yesterday.toISOString().slice(0, 10),
   ];
 
-  const allReports: any[] = [];
-  for (const date of dates) {
-    const docs = await fetchEdinetDocumentsForThemes(date);
-    const largeHoldings = docs.filter((d: any) => d.docTypeCode === "350");
-    allReports.push(...largeHoldings);
-  }
+  // 2日分のEDINET取得は互いに独立しているため、順番に待たず並行で取得する
+  const docsByDate = await Promise.all(dates.map((date) => fetchEdinetDocumentsForThemes(date)));
+  const allReports: any[] = docsByDate.flatMap((docs) => docs.filter((d: any) => d.docTypeCode === "350"));
 
   if (allReports.length === 0) {
     return null;

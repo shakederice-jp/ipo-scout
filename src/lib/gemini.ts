@@ -17,6 +17,11 @@ async function callGemini(prompt: string, maxOutputTokens: number): Promise<{ te
         maxOutputTokens,
       },
     }),
+    // 以前はタイムアウトの指定が一切なく、Gemini側の応答が遅れた場合に
+    // いつまでも待ち続けてしまい、呼び出し元(generate-x-drafts)全体が
+    // Vercelの実行時間上限に達して強制終了される原因になっていた。
+    // 1回あたりの待ち時間に上限を設け、遅い呼び出しが全体を巻き込まないようにする。
+    signal: AbortSignal.timeout(25000),
   });
 
   if (!res.ok) {
