@@ -189,22 +189,33 @@ export async function GET(request: Request) {
         emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
       }
 
-      // 本日分の「新規IPO承認」ドラフト(画像URL付き)があれば、メールに含める
+      // 「新規IPO承認」ドラフト(画像URL付き)のうち、まだメールに載せていないものがあれば含める。
+      // 以前は「作成日が今日かどうか」で判定していたが、UTC基準の日付とJST(日本時間)の
+      // 感覚がズレる境界時間帯があり、STEP4を実行したのに翌朝メールに載らないことがあった。
+      // そのため「送信済みかどうか」のフラグ(included_in_digest列)で管理する方式に変更する。
       try {
-        const todayStr = new Date().toISOString().split("T")[0];
         const { data: ipoDrafts } = await supabase
           .from("x_post_drafts")
-          .select("content, image_url, created_at")
+          .select("id, content, image_url, created_at")
           .eq("theme_number", 0)
           .eq("theme_label", "新規IPO承認")
-          .gte("created_at", `${todayStr}T00:00:00`)
+          .eq("included_in_digest", false)
           .order("created_at", { ascending: false });
 
         if (ipoDrafts && ipoDrafts.length > 0) {
           const ipoBody = ipoDrafts.map(d =>
             d.content + (d.image_url ? `\n\n🖼 画像: ${d.image_url}` : "")
           ).join("\n\n" + "─".repeat(20) + "\n\n");
-          emailBody += `\n\n${"=".repeat(30)}\n🆕 本日の新規IPO承認ドラフト(${ipoDrafts.length}件)\n${"=".repeat(30)}\n\n${ipoBody}`;
+          emailBody += `\n\n${"=".repeat(30)}\n🆕 新規IPO承認ドラフト(${ipoDrafts.length}件)\n${"=".repeat(30)}\n\n${ipoBody}`;
+
+          // メールに載せた分は「送信済み」に更新し、翌日以降のメールに重複して載らないようにする
+          const { error: markError } = await supabase
+            .from("x_post_drafts")
+            .update({ included_in_digest: true })
+            .in("id", ipoDrafts.map(d => d.id));
+          if (markError) {
+            console.error("新規IPOドラフトの送信済みフラグ更新に失敗:", markError.message);
+          }
         }
       } catch (err) {
         console.error("新規IPOドラフトのメール組み込みに失敗:", err);
