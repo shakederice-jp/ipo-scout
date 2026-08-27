@@ -1,5 +1,5 @@
 import { generateWithGemini } from "./gemini";
-import { FeedHeadline } from "./rss-feeds";
+import { createClient } from "@supabase/supabase-js";
 
 const STYLE_GUIDE = `
 # 文体ルール(厳守)
@@ -12,116 +12,17 @@ const STYLE_GUIDE = `
 - 見本のイメージ:「6273 SMC [決算]」→「📣半導体需要回復で大幅増収増益」→「📝売上高2,709億円(+35.4%)」のような形式
 `;
 
-interface ThemeConfig {
-  number: number;
-  label: string;
-  angleInstruction: string;
-  includeProfileLinkCTA: boolean;
-}
-
-export const RSS_THEMES: ThemeConfig[] = [
-  {
-    number: 4,
-    label: "旬の業種・テーマ特集",
-    angleInstruction:
-      "見出しの中で頻出しているキーワード(業種名・技術名など)を1つ選び、なぜ今そのテーマが注目されているのかを解説する投稿を作成してください。",
-    includeProfileLinkCTA: false,
-  },
-  {
-    number: 5,
-    label: "セクター別の資金流入",
-    angleInstruction:
-      "AIインフラ・半導体・防衛・エネルギー転換など、どのセクターに投資資金が向かっているかというテーマで投稿を作成してください。",
-    includeProfileLinkCTA: false,
-  },
-  {
-    number: 6,
-    label: "地域別の資金移動",
-    angleInstruction:
-      "新興国からの資金流出/流入、米国一極集中の動向など、地域間の資金移動というテーマで投稿を作成してください。",
-    includeProfileLinkCTA: false,
-  },
-  {
-    number: 7,
-    label: "投資家層の動き",
-    angleInstruction:
-      "ソブリンウェルスファンド、VC資金調達額の増減、機関投資家のポートフォリオ変化など、投資家層の動きというテーマで投稿を作成してください。",
-    includeProfileLinkCTA: false,
-  },
-  {
-    number: 8,
-    label: "マクロの節目",
-    angleInstruction:
-      "利上げ/利下げ観測と資金フローの関係など、マクロ経済の節目というテーマで投稿を作成してください。",
-    includeProfileLinkCTA: false,
-  },
-];
-
-function buildHeadlinesBlock(headlines: FeedHeadline[]): string {
-  return headlines
-    .map((h) => `- [${h.source}] ${h.title}: ${h.summary}`)
-    .join("\n");
-}
-
 export interface ThemedPostResult {
   content: string;
   sourceLinks: { title: string; url: string; source: string }[];
 }
-
-export async function generateThemedPost(
-  theme: ThemeConfig,
-  headlines: FeedHeadline[]
-): Promise<ThemedPostResult> {
-  const numberedHeadlines = headlines.map((h, i) => `${i + 1}. [${h.source}] ${h.title}: ${h.summary}`).join("\n");
-
-  const prompt = `
-あなたは日本の個人投資家向けメディアの編集者です。以下の海外ニュース見出し一覧から関連性の高いものを選び、テーマに沿った日本語のX(旧Twitter)投稿を1本作成してください。
-
-# テーマ
-${theme.angleInstruction}
-
-# 参考ニュース見出し(英語。内容を読み取り、日本語で独自にまとめ直すこと。原文の直訳・引用はしないこと。各見出しの先頭の番号を後で参照に使います)
-${numberedHeadlines}
-
-${STYLE_GUIDE}
-
-${theme.includeProfileLinkCTA ? "\n投稿の最後に「プロフィール欄のリンクから」等の一文をさりげなく加えてください。" : ""}
-
-出力はJSON形式のみとしてください。マークダウン・前置き・説明は一切不要です。
-{"content": "投稿文本体", "used_indices": [実際に参照した見出しの番号を配列で。例:[1,3,5]]}
-`;
-
-  const raw = await generateWithGemini(prompt);
-  try {
-    const jsonStart = raw.indexOf("{");
-    const jsonEnd = raw.lastIndexOf("}");
-    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-    const usedIndices: number[] = Array.isArray(parsed.used_indices) ? parsed.used_indices : [];
-    const sourceLinks = usedIndices
-      .map(i => headlines[i - 1])
-      .filter(Boolean)
-      .map(h => ({ title: h.title, url: (h as any).url ?? "", source: h.source }));
-    return { content: parsed.content ?? raw, sourceLinks };
-  } catch {
-    // JSONとして解析できなかった場合(出力が長さ制限で途中で切れた場合など)、
-    // 生のJSON断片("content":"...)がそのまま画面に表示されてしまわないよう、
-    // "content"キーの値部分だけを正規表現で救出する
-    const match = raw.match(/"content"\s*:\s*"([\s\S]*)/);
-    const rescued = match
-      ? match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"')
-      : raw;
-    return { content: rescued, sourceLinks: [] };
-  }
-}
-
-import { createClient } from "@supabase/supabase-js";
 
 const supabaseForThemes = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// テーマ②: IPOカレンダー(自社DB由来)
+// テーマ: IPOカレンダー(自社DB由来)
 export async function generateIpoCalendarPost(): Promise<ThemedPostResult | null> {
   const today = new Date();
   const twoWeeksLater = new Date();
@@ -129,7 +30,7 @@ export async function generateIpoCalendarPost(): Promise<ThemedPostResult | null
 
   const { data, error } = await supabaseForThemes
     .from("ipo_companies")
-    .select("ticker, name, exchange, sector, biz_type, listing_date, price_range_min, price_range_max")
+    .select("id, ticker, name, exchange, sector, biz_type, listing_date, price_range_min, price_range_max")
     .gte("listing_date", today.toISOString().split("T")[0])
     .lte("listing_date", twoWeeksLater.toISOString().split("T")[0])
     .order("listing_date", { ascending: true });
@@ -155,25 +56,207 @@ export async function generateIpoCalendarPost(): Promise<ThemedPostResult | null
 # 今後のIPOカレンダー
 ${listBlock}
 
-# 文体ルール(厳守)
-- 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
-- タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
-- 絵文字マーカー(📣📝▼など)を要所に使う
-- 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
-- - 全体で1000〜1500文字程度で、背景・根拠・数値・今後の見通しまで具体的に書き込む
-- URLは含めない
+${STYLE_GUIDE}
 - 投稿の最後に「プロフィール欄のリンクから」等の一文をさりげなく加えてください
 
 投稿文のみを出力してください。前置きや説明は不要です。
 `;
 
-const content = await generateWithGemini(prompt);
-const sourceLinks = data.map((c: any) => ({
-  title: c.name,
-  url: `https://ipo.finance-tower.com/analysis/${c.id}`,
-  source: "自社DB",
-}));
-return { content, sourceLinks };
+  const content = await generateWithGemini(prompt);
+  const sourceLinks = data.map((c: any) => ({
+    title: c.name,
+    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    source: "自社DB",
+  }));
+  return { content, sourceLinks };
+}
+
+// テーマ: 週内の重要経済指標カレンダー(自社DB由来)
+export async function generateEconomicCalendarPost(): Promise<ThemedPostResult | null> {
+  const today = new Date();
+  const oneWeekLater = new Date();
+  oneWeekLater.setDate(today.getDate() + 7);
+
+  const { data, error } = await supabaseForThemes
+    .from("economic_events")
+    .select("event_date, event_type, label")
+    .gte("event_date", today.toISOString().split("T")[0])
+    .lte("event_date", oneWeekLater.toISOString().split("T")[0])
+    .order("event_date", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    console.error("経済指標カレンダー取得失敗またはデータなし:", error);
+    return null;
+  }
+
+  const listBlock = data
+    .map((e) => `- ${e.event_date} ${e.event_type}:${e.label}`)
+    .join("\n");
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は今週(7日以内)に予定されている重要経済指標・イベントの一覧です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+
+# 今週の経済指標カレンダー
+${listBlock}
+
+# 記載のポイント
+- 各イベントが株式相場にどう影響しうるか、一般的な知識をもとに一言添えてください(記載のない詳細な数値予想などは書かないこと)
+- 個人投資家が「今週、何に注目すればいいか」がひと目で分かるようにしてください
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  const content = await generateWithGemini(prompt);
+  const sourceLinks: { title: string; url: string; source: string }[] = [];
+  return { content, sourceLinks };
+}
+
+// テーマ: 直近承認銘柄のスコア傾向分析(自社DB由来)
+// 直近2週間にAI分析が完了したIPO銘柄のスコアを集計する。
+// このアプリ独自の分析データベースがないと書けない記事にするのが狙い。
+export async function generateScoreTrendPost(): Promise<ThemedPostResult | null> {
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+  const { data, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, sector, listing_date, created_at, analysis_summary")
+    .gte("created_at", twoWeeksAgo.toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    console.error("スコア傾向分析: 取得失敗", error);
+    return null;
+  }
+
+  const scored = data
+    .map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      sector: c.sector || "業種不明",
+      listingDate: c.listing_date,
+      totalScore: c.analysis_summary?.total_score,
+      grade: c.analysis_summary?.grade,
+    }))
+    .filter((c) => typeof c.totalScore === "number");
+
+  if (scored.length === 0) return null;
+
+  const avg = Math.round(scored.reduce((s, c) => s + c.totalScore, 0) / scored.length);
+  const sorted = [...scored].sort((a, b) => b.totalScore - a.totalScore);
+  const top3 = sorted.slice(0, 3);
+
+  const sectorCount: Record<string, number> = {};
+  scored.forEach((c) => {
+    sectorCount[c.sector] = (sectorCount[c.sector] ?? 0) + 1;
+  });
+  const topSectorEntry = Object.entries(sectorCount).sort((a, b) => b[1] - a[1])[0];
+
+  const listBlock = scored
+    .map((c) => `- ${c.name}(${c.sector}) ${c.totalScore}点・${c.grade}グレード・上場日:${c.listingDate || "未定"}`)
+    .join("\n");
+
+  const prompt = `
+あなたは日本のIPO投資アナリストです。以下は直近2週間にAI分析が完了したIPO銘柄と、そのスコア(100点満点)・グレード(A〜E)の一覧です。この一覧をもとに、個人投資家向けのX(旧Twitter)投稿を1本作成してください。
+
+# 直近のIPO銘柄スコア一覧(${scored.length}銘柄、平均${avg}点)
+${listBlock}
+
+# 記載のポイント
+- 全体の平均スコア・スコア分布の傾向に触れること
+- 特に評価が高い銘柄を具体的に挙げ、理由(業種や特徴)を一言添えること(一覧にない情報を憶測で追加しないこと)
+- 業種別の傾向があれば触れること(例:${topSectorEntry ? topSectorEntry[0] : "特定業種"}が${topSectorEntry ? topSectorEntry[1] : ""}件で最多、など)
+- 最後に、個人投資家として次に何を確認すべきか一言添えること
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  const content = await generateWithGemini(prompt);
+  const sourceLinks = top3.map((c) => ({
+    title: c.name,
+    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    source: "自社分析",
+  }));
+
+  return { content, sourceLinks };
+}
+
+// テーマ: ロックアップ解除カレンダー(自社DB由来)
+// 上場前からの株主(VC・大株主など)が株式を売却できるようになる「ロックアップ解除日」が
+// 今後30日以内に来る銘柄を一覧化する。個人投資家が自分では追いにくい情報。
+export async function generateLockupCalendarPost(): Promise<ThemedPostResult | null> {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const in30Days = new Date();
+  in30Days.setDate(today.getDate() + 30);
+  const in30Str = in30Days.toISOString().slice(0, 10);
+
+  const { data, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, ticker, exchange, sector, listing_date, lockup_90_date, lockup_180_date, structured_data");
+
+  if (error || !data) {
+    console.error("ロックアップ解除カレンダー: 取得失敗", error);
+    return null;
+  }
+
+  type LockupEvent = {
+    id: string;
+    name: string;
+    sector: string;
+    date: string;
+    label: string;
+    targets: string;
+    floatRatio: string;
+  };
+  const events: LockupEvent[] = [];
+  data.forEach((c: any) => {
+    const targets = c.structured_data?.ipo_details?.lockup_targets || "不明";
+    const floatRatio = c.structured_data?.ipo_details?.float_ratio || "不明";
+    if (c.lockup_90_date && c.lockup_90_date >= todayStr && c.lockup_90_date <= in30Str) {
+      events.push({ id: c.id, name: c.name, sector: c.sector || "業種不明", date: c.lockup_90_date, label: "90日ロックアップ", targets, floatRatio });
+    }
+    if (c.lockup_180_date && c.lockup_180_date >= todayStr && c.lockup_180_date <= in30Str) {
+      events.push({ id: c.id, name: c.name, sector: c.sector || "業種不明", date: c.lockup_180_date, label: "180日ロックアップ", targets, floatRatio });
+    }
+  });
+
+  if (events.length === 0) return null;
+  events.sort((a, b) => a.date.localeCompare(b.date));
+
+  const listBlock = events
+    .map((e) => `- ${e.date} ${e.name}(${e.sector}) ${e.label}解除 対象:${e.targets} 流通比率:${e.floatRatio}`)
+    .join("\n");
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は今後30日以内にロックアップ解除(上場前からの株主が株式を売却できるようになる日)を迎えるIPO銘柄の一覧です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+
+# 直近のロックアップ解除カレンダー
+${listBlock}
+
+# 記載のポイント
+- ロックアップ解除が個人投資家にとってなぜ重要か(需給悪化=売り圧力増加の可能性)を簡潔に説明すること
+- 対象株主(VC・大株主など)や流通比率の情報がある銘柄は、売り圧力の大きさの目安として触れること
+- 一覧にない情報を憶測で追加しないこと
+- 特に注意すべき銘柄を1〜2つ挙げること
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  const content = await generateWithGemini(prompt);
+  const sourceLinks = events.map((e) => ({
+    title: e.name,
+    url: `https://ipo.finance-tower.com/analysis/${e.id}`,
+    source: "自社分析",
+  }));
+
+  return { content, sourceLinks };
 }
 
 const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
@@ -186,109 +269,100 @@ async function fetchEdinetDocumentsForThemes(date: string) {
   return data?.results ?? [];
 }
 
-// テーマ①: 大量保有報告書ウォッチ(EDINET由来、docTypeCode=350)
-export async function generateLargeHoldingsPost(): Promise<ThemedPostResult | null> {
+export interface ShareholderMovementResult {
+  externalId: string;
+  companyName: string;
+  sector: string;
+  result: ThemedPostResult;
+}
+
+// テーマ: 大株主・VC/PEの異動ウォッチ(EDINET・大量保有報告書ベース、docTypeCode=350)
+// 以前は対象銘柄コードが「不明」のまま記事化されることがあったため、
+// 証券コード(secCode)が特定できる提出だけを対象にする。
+// また、同じ提出書類(docID)を重複して記事化しないよう、事前にDBへ問い合わせて除外する。
+// 1件の提出につき1本の記事を作り(複数まとめて1本にしない)、最大3件/回まで生成する。
+export async function generateShareholderMovementPosts(): Promise<ShareholderMovementResult[]> {
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
+  const dates = [today.toISOString().slice(0, 10), yesterday.toISOString().slice(0, 10)];
 
-  const dates = [
-    today.toISOString().slice(0, 10),
-    yesterday.toISOString().slice(0, 10),
-  ];
-
-  // 2日分のEDINET取得は互いに独立しているため、順番に待たず並行で取得する
   const docsByDate = await Promise.all(dates.map((date) => fetchEdinetDocumentsForThemes(date)));
-  const allReports: any[] = docsByDate.flatMap((docs) => docs.filter((d: any) => d.docTypeCode === "350"));
+  const allReports: any[] = docsByDate.flatMap((docs) =>
+    docs.filter((d: any) => d.docTypeCode === "350" && d.secCode)
+  );
 
-  if (allReports.length === 0) {
-    return null;
-  }
+  if (allReports.length === 0) return [];
 
-  // 最大10件までに絞る(情報量が多すぎるとGeminiの出力が散漫になるため)
-  const sample = allReports.slice(0, 10);
+  const candidateIds = allReports.map((d) => `edinet-${d.docID}`).filter(Boolean);
+  const { data: existing } = await supabaseForThemes
+    .from("market_trends")
+    .select("external_id")
+    .in("external_id", candidateIds);
+  const existingIds = new Set((existing ?? []).map((r: any) => r.external_id));
 
-  const listBlock = sample
-    .map(
-      (d) =>
-        `- 提出者:${d.filerName || "不明"} / 対象銘柄コード:${d.subjectEdinetCode || d.secCode || "不明"} / 提出日:${d.submitDateTime || ""} / 概要:${d.docDescription || ""}`
-    )
-    .join("\n");
+  const fresh = allReports.filter((d) => !existingIds.has(`edinet-${d.docID}`));
+  if (fresh.length === 0) return [];
 
-  const prompt = `
-あなたは日本の個人投資家向けメディアの編集者です。以下は本日〜前日にEDINETへ提出された「大量保有報告書」の一覧です。この中から特に個人投資家の関心を引きそうな1〜2件を選び、X(旧Twitter)投稿を1本作成してください。
+  // 自社で追っているIPO銘柄と証券コードで照合(EDINETのsecCodeは5桁、うち先頭4桁が証券コード)
+  const { data: tracked } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("name, ticker, sector");
+  const trackedByTicker = new Map(
+    (tracked ?? [])
+      .filter((c: any) => c.ticker)
+      .map((c: any) => [String(c.ticker).slice(0, 4), c])
+  );
 
-# 大量保有報告書の提出情報
-${listBlock}
+  const enriched = fresh.map((d) => {
+    const secCode4 = String(d.secCode).slice(0, 4);
+    return { ...d, matchedCompany: trackedByTicker.get(secCode4) ?? null };
+  });
+
+  // 自社追跡銘柄との一致を優先し、最大3件まで
+  enriched.sort((a, b) => (b.matchedCompany ? 1 : 0) - (a.matchedCompany ? 1 : 0));
+  const sample = enriched.slice(0, 3);
+
+  const results: ShareholderMovementResult[] = [];
+  await Promise.all(
+    sample.map(async (d: any) => {
+      const companyName = d.matchedCompany?.name || d.filerName || `証券コード${d.secCode}`;
+      const isTracked = !!d.matchedCompany;
+
+      const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は本日〜前日にEDINETへ提出された「大量保有報告書」の情報です。この1件についてX(旧Twitter)投稿を1本作成してください。
+
+# 提出情報
+- 提出者:${d.filerName || "不明"}
+- 対象銘柄コード:${d.secCode}
+- 提出日:${d.submitDateTime || ""}
+- 概要:${d.docDescription || ""}
+${isTracked ? `- 補足:この銘柄(${companyName})は当メディアがIPO時から分析している銘柄です。` : ""}
 
 # 注意事項
-- 対象銘柄コードが不明な場合や情報が乏しい場合は、提出者名や概要から分かる範囲で言及してください
-- 保有割合や取得目的など、記載がない情報を憶測で書かないでください
+- 記載のない保有割合や取得目的を憶測で書かないでください
+- 個人投資家として何に注意すべきか(需給への影響など)を最後に一言添えてください
 
-# 文体ルール(厳守)
-- 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
-- タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
-- 絵文字マーカー(📣📝▼など)を要所に使う
-- 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
-- - 全体で1000〜1500文字程度で、背景・根拠・数値・今後の見通しまで具体的に書き込む
-- URLは含めない
+${STYLE_GUIDE}
 
 投稿文のみを出力してください。前置きや説明は不要です。
 `;
+      try {
+        const content = await generateWithGemini(prompt);
+        results.push({
+          externalId: `edinet-${d.docID}`,
+          companyName,
+          sector: d.matchedCompany?.sector || "大量保有報告",
+          result: {
+            content,
+            sourceLinks: [{ title: companyName, url: "https://disclosure2.edinet-fsa.go.jp/", source: "EDINET" }],
+          },
+        });
+      } catch (err) {
+        console.error(`大量保有報告書の記事生成失敗(${companyName}):`, err);
+      }
+    })
+  );
 
-const content = await generateWithGemini(prompt);
-const sourceLinks = sample.map((d: any) => ({
-  title: d.filerName || "不明",
-  url: `https://disclosure2.edinet-fsa.go.jp/`,
-  source: "EDINET",
-}));
-return { content, sourceLinks };
-}
-
-// テーマ③: 週内の重要経済指標カレンダー(自社DB由来)
-export async function generateEconomicCalendarPost(): Promise<ThemedPostResult | null> {
-    const today = new Date();
-    const oneWeekLater = new Date();
-    oneWeekLater.setDate(today.getDate() + 7);
-  
-    const { data, error } = await supabaseForThemes
-      .from("economic_events")
-      .select("event_date, event_type, label")
-      .gte("event_date", today.toISOString().split("T")[0])
-      .lte("event_date", oneWeekLater.toISOString().split("T")[0])
-      .order("event_date", { ascending: true });
-  
-    if (error || !data || data.length === 0) {
-      console.error("経済指標カレンダー取得失敗またはデータなし:", error);
-      return null;
-    }
-  
-    const listBlock = data
-      .map((e) => `- ${e.event_date} ${e.event_type}:${e.label}`)
-      .join("\n");
-  
-    const prompt = `
-  あなたは日本の個人投資家向けメディアの編集者です。以下は今週(7日以内)に予定されている重要経済指標・イベントの一覧です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
-  
-  # 今週の経済指標カレンダー
-  ${listBlock}
-  
-  # 記載のポイント
-  - 各イベントが株式相場にどう影響しうるか、一般的な知識をもとに一言添えてください(記載のない詳細な数値予想などは書かないこと)
-  - 個人投資家が「今週、何に注目すればいいか」がひと目で分かるようにしてください
-  
-  # 文体ルール(厳守)
-  - 「です・ます」「である」調は使わない。体言止め・IR速報風のレポート様式で統一する
-  - タイトル・見出し・箇条書きには番号や記号(▼①②③・など)を付けて項目立てする
-  - 絵文字マーカー(📣📝▼など)を要所に使う
-  - 意味段落のまとまりごとに改行・一行空けを入れ、詰め込みすぎない
-  - - 全体で1000〜1500文字程度で、背景・根拠・数値・今後の見通しまで具体的に書き込む
-  - URLは含めない
-  
-  投稿文のみを出力してください。前置きや説明は不要です。
-  `;
-  
-  const content = await generateWithGemini(prompt);
-  const sourceLinks: { title: string; url: string; source: string }[] = [];
-  return { content, sourceLinks };
+  return results;
 }

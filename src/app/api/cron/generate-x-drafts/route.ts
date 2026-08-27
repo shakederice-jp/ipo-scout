@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchAllHeadlines } from "@/lib/rss-feeds";
 import {
-  RSS_THEMES,
-  generateThemedPost,
   generateIpoCalendarPost,
-  generateLargeHoldingsPost,
   generateEconomicCalendarPost,
+  generateScoreTrendPost,
+  generateLockupCalendarPost,
+  generateShareholderMovementPosts,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
-// テーマ生成のたびにGemini呼び出し(再試行込みで最大2回/テーマ)が走るため、
-// Vercelの関数タイムアウトに余裕を持たせる(axes/analyzeルートと同じ考え方)
+// テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる
 export const maxDuration = 90;
 
 const supabase = createClient(
@@ -35,8 +33,15 @@ function extractCleanContent(raw: string): string {
   return raw;
 }
 
-async function saveThemeArticle(themeLabel: string, sector: string, result: { content: string; sourceLinks: { title: string; url: string; source: string }[] } | null) {
-  if (!result) return false;
+type SaveOutcome = "saved" | "skipped_duplicate" | "no_content";
+
+async function saveThemeArticle(
+  themeLabel: string,
+  sector: string,
+  result: { content: string; sourceLinks: { title: string; url: string; source: string }[] } | null,
+  externalId: string
+): Promise<SaveOutcome> {
+  if (!result) return "no_content";
   const { error } = await supabase.from("market_trends").insert({
     source: "大手町調査室九課",
     title: themeLabel,
@@ -50,17 +55,21 @@ async function saveThemeArticle(themeLabel: string, sector: string, result: { co
     content: extractCleanContent(result.content),
     source_links: result.sourceLinks,
     fetched_at: new Date().toISOString(),
+    external_id: externalId,
   });
   // 以前はここでinsertのエラーを確認しておらず、DB保存に失敗していても
-  // 常にtrue(=成功)を返してしまっていた。そのため上位のcronログには
-  // success:trueと表示されるのに、実際にはmarket_trendsに1件も
-  // 保存されない、という不整合が起きていた。エラー時は例外を投げ、
+  // 常にtrue(=成功)を返してしまっていた。エラー時は例外を投げ、
   // 呼び出し元のtry/catchで「failed」として記録・通知させる。
+  // ただし external_id の重複(ユニーク制約違反・code 23505)は
+  // 「同じ内容を本日すでに生成済み」という正常なケースなので、失敗扱いにしない。
   if (error) {
+    if (error.code === "23505") {
+      return "skipped_duplicate";
+    }
     console.error(`market_trends insert失敗 (${themeLabel}):`, error);
     throw new Error(`[${themeLabel}] Supabase insert失敗: ${error.message} (code: ${error.code ?? "unknown"})`);
   }
-  return true;
+  return "saved";
 }
 
 export async function GET(request: Request) {
@@ -73,10 +82,7 @@ export async function GET(request: Request) {
   let trendsUpdated = false;
 
   // 「新規IPO承認」ドラフト(画像URL付き)のうち、まだメールに載せていないものを先に処理して送信する。
-  // 以前はこの後に続く8テーマ分のAI記事生成が終わってから最後にまとめて送る作りだったが、
-  // AI生成に時間がかかりすぎるとVercelの関数タイムアウトで強制終了され、この部分まで
-  // 辿り着けないことがあった(GitHub Actions側はエラーに気づかず「成功」と表示してしまう)。
-  // そのため、時間のかかる処理より前に、独立した短い処理として先に済ませておく。
+  // 時間のかかるテーマ記事生成より前に、独立した短い処理として先に済ませておく。
   try {
     const { data: ipoDrafts } = await supabase
       .from("x_post_drafts")
@@ -113,32 +119,19 @@ export async function GET(request: Request) {
   }
 
   try {
-    const headlines = await fetchAllHeadlines();
-
-    if (headlines.length === 0) {
-      return NextResponse.json(
-        { error: "RSSフィードの取得に失敗しました(0件)" },
-        { status: 500 }
-      );
-    }
-
-    // テーマ①〜⑧の生成を1件ずつ順番に(間に1秒待機を挟んで)実行していたが、
-    // 8テーマ分×最大2回のGemini呼び出しを直列で積み上げると簡単に1分半〜を超えてしまい、
-    // Vercelの関数タイムアウトで強制終了されることがあった(この場合、途中結果は保存されるが
-    // 最後まで到達できず、失敗テーマの記録やメール送信が行われないまま終わってしまう)。
-    // そのため、互いに依存しないテーマ生成は並行実行し、待機時間の合計より
-    // 一番遅い1テーマ分の時間に近づくようにする。1テーマの結果を関数化して共通化する。
     async function runTheme(
       themeNumber: number,
       label: string,
+      sector: string,
       skipReason: string,
+      externalId: string,
       generate: () => Promise<{ content: string; sourceLinks: { title: string; url: string; source: string }[] } | null>
     ): Promise<{ theme: number; status: string }> {
       try {
         const result = await generate();
-        if (await saveThemeArticle(label, "その他", result)) {
-          return { theme: themeNumber, status: "success" };
-        }
+        const outcome = await saveThemeArticle(label, sector, result, externalId);
+        if (outcome === "saved") return { theme: themeNumber, status: "success" };
+        if (outcome === "skipped_duplicate") return { theme: themeNumber, status: "skipped(本日分は生成済み)" };
         return { theme: themeNumber, status: `skipped(${skipReason})` };
       } catch (err) {
         console.error(`テーマ${themeNumber}の生成に失敗:`, err);
@@ -146,19 +139,48 @@ export async function GET(request: Request) {
       }
     }
 
+    // JSTの日付文字列(YYYY-MM-DD)。1日1回だけ生成すればよいテーマの重複防止に使う。
+    // 以前UTC基準の日付境界でズレが起きたことがあるため、必ずAsia/Tokyoで計算する。
+    const jstDay = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+
+    // 1日1回でよいテーマは並行実行し、待機時間の合計より一番遅い1テーマ分の時間に近づける
     const themeTasks: Promise<{ theme: number; status: string }>[] = [
-      runTheme(1, "大量保有報告書ウォッチ", "該当書類なし", generateLargeHoldingsPost),
-      runTheme(2, "IPOカレンダー", "該当銘柄なし", generateIpoCalendarPost),
-      runTheme(3, "週内の重要経済指標カレンダー", "該当イベントなし", generateEconomicCalendarPost),
-      ...RSS_THEMES.map((theme) =>
-        runTheme(theme.number, theme.label, "該当なし", () => generateThemedPost(theme, headlines))
-      ),
+      runTheme(2, "IPOカレンダー", "IPOカレンダー", "該当銘柄なし", `ipo-calendar-${jstDay}`, generateIpoCalendarPost),
+      runTheme(3, "週内の重要経済指標カレンダー", "マクロ経済", "該当イベントなし", `econ-calendar-${jstDay}`, generateEconomicCalendarPost),
+      runTheme(9, "直近承認銘柄のスコア傾向", "IPOスコア分析", "対象銘柄なし", `score-trend-${jstDay}`, generateScoreTrendPost),
+      runTheme(10, "ロックアップ解除カレンダー", "IPO需給", "該当銘柄なし", `lockup-calendar-${jstDay}`, generateLockupCalendarPost),
     ];
 
     const themeResults = await Promise.all(themeTasks);
     for (const r of themeResults) {
       results.push(r);
       if (r.status === "success") trendsUpdated = true;
+    }
+
+    // テーマ①: 大株主・VC/PEの異動ウォッチ(EDINET由来)
+    // 1回の提出書類ごとに1本の記事になるため、複数件生成されることがある。
+    // docID単位で重複防止しているため、1日に何度cronが走っても同じ提出を2回記事化しない。
+    try {
+      const shareholderPosts = await generateShareholderMovementPosts();
+      if (shareholderPosts.length === 0) {
+        results.push({ theme: 1, status: "skipped(該当書類なし)" });
+      }
+      for (const post of shareholderPosts) {
+        const outcome = await saveThemeArticle(
+          `大株主・VC/PEの異動ウォッチ(${post.companyName})`,
+          post.sector,
+          post.result,
+          post.externalId
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({
+          theme: 1,
+          status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
+        });
+      }
+    } catch (err) {
+      console.error("大株主・VC/PEの異動ウォッチの生成に失敗:", err);
+      results.push({ theme: 1, status: "failed" });
     }
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
@@ -200,9 +222,6 @@ export async function GET(request: Request) {
         emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
       }
 
-      // 「新規IPO承認」ドラフトは、この関数の冒頭(時間のかかるAI生成より前)で
-      // 独立した専用メールとしてすでに送信済みのため、ここでは扱わない。
-
       if (ipoRepostCount > 0) {
         const { data: repostDrafts } = await supabase
           .from("x_post_drafts")
@@ -229,7 +248,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      headlinesFetched: headlines.length,
       trendsUpdated,
       ipoRepostCount,
       results,
