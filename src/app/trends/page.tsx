@@ -204,7 +204,7 @@ export default function TrendsPage() {
                     </p>
                     {Array.isArray(t.source_links) && t.source_links.length > 0 && (
                       <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#2a7a7e", marginBottom: 6 }}>🔗 参照記事</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#2a7a7e", marginBottom: 6 }}>🔗 情報源</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           {t.source_links.map((link: any, i: number) => (
                             link.url ? (
@@ -262,24 +262,8 @@ export default function TrendsPage() {
 
           {/* フッター */}
           <div style={{ marginTop: 32, padding: "20px", background: "white", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#2a7a7e", marginBottom: 10 }}>📰 情報源</div>
-            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 16 }}>
-              {[
-                { name: "PR TIMES", url: "https://prtimes.jp" },
-                { name: "ロイター日本語版", url: "https://jp.reuters.com" },
-                { name: "東洋経済オンライン", url: "https://toyokeizai.net" },
-                { name: "みんかぶ", url: "https://minkabu.jp" },
-                { name: "EDINET", url: "https://disclosure2.edinet-fsa.go.jp/" },
-              ].map(src => (
-                <a key={src.name} href={src.url} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, backgroundColor: "#f4fbfc",
-                    border: "1px solid #b3e8ea", color: "#2a7a7e", textDecoration: "none" }}>
-                  {src.name}
-                </a>
-              ))}
-            </div>
             <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 12px" }}>
-              ※ 各記事の著作権は各情報源に帰属します。当サイトは自社データおよび公開情報をもとに記事を作成しています。
+              ※ 各記事で実際に参照した情報源は、その記事内(🔗 情報源)に個別に表示しています。当サイトは自社データおよびEDINET等の公開情報をもとに記事を作成しています。
             </p>
             <Link href="/" style={{ fontSize: 12, color: "#66c3c6", textDecoration: "none" }}>
               ← IPO分析レポートトップに戻る
