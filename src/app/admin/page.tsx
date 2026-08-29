@@ -394,7 +394,7 @@ export default function AdminPage() {
     return (
       <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${isErr?"#fecaca":isDone?"#bbf7d0":"#e2e8f0"}`, background:isErr?"#fef2f2":isDone?"#f0fdf4":"#f8fafc" }}>
         <div style={{ fontWeight:900, color, fontSize:13, marginBottom:3 }}>{title}</div>
-        <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>{desc}</p>
+        <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px", whiteSpace:"pre-line" }}>{desc}</p>
         <button onClick={onClick} disabled={isLoading||disabled} style={btnStyle(color, isLoading||disabled)}>
           {isLoading?"⏳ 処理中...":isDone?"✅ 完了（再実行）":btnLabel}
         </button>
@@ -791,7 +791,7 @@ export default function AdminPage() {
                   <StepRow num="1" color="#3b82f6" title="STEP 1｜EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
                   <StepRow num="7" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="⑦ 市場・競合情報を収集する" onClick={handleStep7}/>
                   <StepRow num="2" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="② 財務データを構造化する" onClick={handleStep2}/>
-                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc="総合スコア→まずここに注目→株価シナリオの順に3回に分けて生成します（約40〜60秒）" btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
+                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc={"総合スコア→まずここに注目→株価シナリオの順に3回に分けて生成します（約40〜60秒）\nX投稿用の文章と画像が自動生成されます"} btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fecaca":stepResult["6"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fef2f2":stepResult["6"]?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#7c3aed", fontSize:13, marginBottom:3 }}>STEP 5｜9軸 詳細分析（一括実行）</div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>超短期・短期・長期の9軸をすべて自動で順番に分析します（約2〜4分）</p>
