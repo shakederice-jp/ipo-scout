@@ -42,7 +42,6 @@ export default function TrendsPage() {
   const [trends, setTrends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "featured">("featured");
-  const [activeSector, setActiveSector] = useState<string>("all");
 
   // カテゴリー別アーカイブ用の状態。カテゴリーを選ぶと、直近100件のウィンドウに
   // 縛られず、そのカテゴリーの過去記事をまとめて取得し直す。
@@ -107,34 +106,8 @@ export default function TrendsPage() {
     fetchCategoryArticles();
   }, [activeCategory]);
 
-  // セクター集計(直近100件が対象。カテゴリー選択中は対象外)
-  const sectorCounts = trends.reduce((acc, t) => {
-    const s = t.sector ?? "その他";
-    acc[s] = (acc[s] ?? 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // セクタースコア集計（平均）
-  const sectorScores = trends.reduce((acc, t) => {
-    const s = t.sector ?? "その他";
-    if (!acc[s]) acc[s] = { total: 0, count: 0 };
-    acc[s].total += t.sector_score ?? 5;
-    acc[s].count += 1;
-    return acc;
-  }, {} as Record<string, { total: number; count: number }>);
-
-  const topSectors = Object.entries(sectorScores)
-    .map(([sector, v]) => ({ sector, avg: Math.round((v as any).total / (v as any).count), count: (v as any).count }))
-    .sort((a, b) => b.avg - a.avg)
-    .slice(0, 5);
-
-  const filtered = trends.filter(t => {
-    if (activeSector !== "all" && t.sector !== activeSector) return false;
-    return true;
-  });
-
-  // カテゴリー選択中はアーカイブ一覧を、それ以外は通常の最新一覧を表示する
-  const articlesToShow = activeCategory ? categoryArticles : filtered;
+  // カテゴリー選択中はアーカイブ一覧を、それ以外は通常の最新一覧(更新順)を表示する
+  const articlesToShow = activeCategory ? categoryArticles : trends;
   const showLoading = activeCategory ? categoryLoading : loading;
 
   const updatedAt = trends[0]?.fetched_at
@@ -186,45 +159,17 @@ export default function TrendsPage() {
             </div>
           ) : (
             <>
-              {/* 注目セクターランキング */}
-              {topSectors.length > 0 && (
-                <div style={{ background: "white", borderRadius: 12, padding: 20, marginBottom: 20, border: "1px solid #b3e8ea" }}>
-                  <h2 style={{ fontSize: 13, fontWeight: 900, color: "#082b2e", margin: "0 0 14px" }}>
-                    🔥 今日の注目セクターランキング
-                  </h2>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {topSectors.map((s, i) => (
-                      <div key={s.sector}
-                        onClick={() => setActiveSector(activeSector === s.sector ? "all" : s.sector)}
-                        role="button" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#64748b", minWidth: 20 }}>
-                          {i + 1}
-                        </span>
-                        <span style={{ fontSize: 16 }}>{SECTOR_EMOJI[s.sector.split("/")[0].trim()] ?? "📌"}</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#082b2e", flex: 1 }}>{s.sector}</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <div style={{ width: 60, height: 6, borderRadius: 3, backgroundColor: "#e2e8f0", overflow: "hidden" }}>
-                            <div style={{ width: `${s.avg * 10}%`, height: "100%", backgroundColor: "#66c3c6", borderRadius: 3 }} />
-                          </div>
-                          <span style={{ fontSize: 11, color: "#64748b" }}>{s.avg}/10</span>
-                        </div>
-                        <span style={{ fontSize: 11, color: "#94a3b8" }}>{s.count}件</span>
-                      </div>
-                    ))}
+              {/* 今日の最新記事(更新順であることの案内) */}
+              {trends.length > 0 && (
+                <div style={{ background: "white", borderRadius: 12, padding: "14px 20px", marginBottom: 20,
+                  border: "1px solid #b3e8ea", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>📰</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#082b2e" }}>今日の最新記事</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>上にいくほど新しい記事です</div>
                   </div>
                 </div>
               )}
-
-              {/* セクターフィルター */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" as const }}>
-                {activeSector !== "all" && (
-                  <button onClick={() => setActiveSector("all")}
-                    style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #66c3c6", cursor: "pointer", fontSize: 12,
-                      backgroundColor: "#f0fdf4", color: "#0d4f52", fontWeight: 700 }}>
-                    {activeSector} ✕
-                  </button>
-                )}
-              </div>
             </>
           )}
 
