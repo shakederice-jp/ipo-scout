@@ -491,6 +491,18 @@ export default function AdminPage() {
                         {infoBackfillResult.results?.map((r:any,i:number)=>(
                           <div key={i} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:r.ok?"#f0fdf4":"#fef2f2", color:r.ok?"#166534":"#b91c1c" }}>
                             {r.ok?"✅":"❌"} {r.name}: {r.detail}
+                            {r.ok && r.url && (
+                              <div style={{ marginTop:6, display:"flex", gap:8, alignItems:"flex-start" }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
+                                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                                  <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
+                                  {r.analysisPath && (
+                                    <a href={r.analysisPath} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>この銘柄の分析ページで見る →</a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                         {typeof infoBackfillResult.remaining === "number" && (

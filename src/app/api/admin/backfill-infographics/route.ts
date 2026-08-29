@@ -29,9 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
   }
 
-  const results: { name: string; ok: boolean; detail: string }[] = [];
+  const results: { name: string; ok: boolean; detail: string; url?: string; analysisPath?: string }[] = [];
 
   for (const co of targets ?? []) {
+    // 分析ページのURL(/analysis/xxx)は、ティッカーコードがあればそれを、無ければidを使う(既存の遷移ロジックと同じ)
+    const analysisPath = `/analysis/${(co as any).ticker ?? co.id}`;
     try {
       const revenue = (co as any).structured_data?.financials?.revenue_trend ?? "不明";
       const profit = (co as any).structured_data?.financials?.profit_trend ?? "不明";
@@ -59,9 +61,9 @@ export async function POST(req: NextRequest) {
         .eq("id", co.id);
 
       if (updateError) {
-        results.push({ name: co.name, ok: false, detail: `保存失敗: ${updateError.message}` });
+        results.push({ name: co.name, ok: false, detail: `保存失敗: ${updateError.message}`, url: imageUrl });
       } else {
-        results.push({ name: co.name, ok: true, detail: "生成・保存OK" });
+        results.push({ name: co.name, ok: true, detail: "生成・保存OK", url: imageUrl, analysisPath });
       }
     } catch (e: any) {
       results.push({ name: co.name, ok: false, detail: e?.message ?? "unknown error" });
