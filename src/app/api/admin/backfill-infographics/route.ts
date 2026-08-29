@@ -63,9 +63,15 @@ export async function POST(req: NextRequest) {
       }
 
       const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
-      const insightBody =
-        summary.insights?.[0]?.body || (co as any).ai_summary || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`;
-      const hookText = ((co as any).ai_summary || insightBody || "").slice(0, 60);
+      // 2026/8/29、トレンド記事の本文には、独立した完結する紹介文(appeal_narrative、
+      // 600〜800字)を優先的に使う。以前はinsights[0].body(analysisページのカード用の
+      // 短いフック文で、わざと文の途中で終わる形式)を流用していたため、リンク先に
+      // 「続き」が実際には存在せず記事が尻切れに見える問題があった。appeal_narrativeが
+      // 無い古い分析結果(この変更より前に生成した銘柄)は、従来通りinsights[0].body等に
+      // フォールバックする。
+      const appealNarrative =
+        summary.appeal_narrative || summary.insights?.[0]?.body || (co as any).ai_summary || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`;
+      const hookText = ((co as any).ai_summary || summary.insights?.[0]?.body || appealNarrative || "").slice(0, 60);
 
       const imageUrl = await createInfographic({
         companyId: co.id,
@@ -93,7 +99,7 @@ export async function POST(req: NextRequest) {
       // (2026/8/29、ai_summaryだけの短い文章に変更したところ「文字数が減って
       // 冷たい感じになった」とのフィードバックを受け、Xの競合対策で作った文章に戻した)。
       const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
-      const introText = buildIpoIntroText(co as any, insightBody, "新規IPO承認");
+      const introText = buildIpoIntroText(co as any, appealNarrative, "新規IPO承認");
       const trendsContent = `${introText}\n\n${analysisUrl}`;
       const { error: trendsError } = await supabase.from("market_trends").upsert({
         source: "IPO分析システム",

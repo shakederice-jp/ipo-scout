@@ -28,7 +28,11 @@ async function callClaudeWithRetry(prompt: string, maxRetries: number = 1): Prom
     try {
       const msg = await claude.messages.create({
         model: "claude-sonnet-4-5",
-        max_tokens: 2000,
+        // 2026/8/29、「まずここに注目」に600〜800字のappeal_narrative(トレンド記事用の
+        // 紹介文)を追加した際、既存の3インサイト分(title/body/detail)+tweet_summaryだけで
+        // 2000トークンの上限にほぼ達しており、追加分がトークン上限で強制的に途中で
+        // 打ち切られる(＝文が完結しないまま終わる)リスクがあったため、余裕を持たせて4000に引き上げた。
+        max_tokens: 4000,
         messages: [
           { role: "user", content: prompt },
           { role: "assistant", content: '{' }
@@ -171,6 +175,12 @@ ${dataNote}
    - 結論を言い切らず、最後は「その理由は」「その裏にあるのは」等、続き(detail)を読みたくなる余白(オープンループ)を残して終える
    - 断定的な投資助言(「買うべき」「今が買い時」等)や、実データに無い誇張・煽り文句は禁止。あくまで事実ベースで、書き方・見せ方でフックを作ること
    - detailは従来通り、根拠を丁寧に説明する分析文体を維持すること(bodyだけがフック調で良い)
+5. appeal_narrativeは、X投稿・マーケットトレンドページ用の紹介文で、bodyとは全く別の独立した文章として作成すること。600〜800字程度。以下を満たすこと:
+   - これは記事単体として完結した読み物であり、この後に別ページ(分析ページ)へのリンクを添えるだけなので、bodyのように文の途中や「その理由は、」のような言いかけで終えてはならない。必ず主語・述語のそろった文で締めくくり、最後まで書き切ること
+   - 冒頭は実データの中で最もインパクトのある対比・数値で読者の関心を引き、「しかし」「一方で」等でギャップ(強みと懸念点の両方)を示しつつ、そのギャップの理由・背景まできちんと書き切ること
+   - 淡々とした箇条書き的な説明ではなく、一つのまとまった文章として、読み手を引き込みながら最後まで完結させること(尻切れにしない)
+   - 断定的な投資助言(「買うべき」「今が買い時」等)や、実データに無い誇張・煽り文句は禁止。あくまで事実ベースで、書き方・構成でフックを作ること
+   - 文字数は600〜800字を目安とし、この範囲に収まるよう最後まで書き切ってから終えること(文字数超過を避けるために文を切り詰めて終えるのではなく、全体の分量を調整すること)
 
 【出力形式】必ず以下の構造のみで完結させること:
 {
@@ -179,7 +189,8 @@ ${dataNote}
     {"title": "インサイトタイトル2（20字以内）", "body": "同上（100字以内、ルール4のフック調）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"},
     {"title": "インサイトタイトル3（20字以内）", "body": "同上（100字以内、ルール4のフック調）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"}
   ],
-  "tweet_summary": "40字以内の要約文（ですます調）"
+  "tweet_summary": "40字以内の要約文（ですます調）",
+  "appeal_narrative": "600〜800字程度の紹介文。上記ルール5の通り、必ず文を完結させること。ですます調"
 }`;
 }
 
@@ -255,6 +266,12 @@ export async function POST(req: NextRequest) {
         grade_reason:      r.grade_reason ?? {},
         insights:          Array.isArray(r.insights) ? r.insights.slice(0,3) : [],
         tweet_summary:     r.tweet_summary ?? "",
+        // X投稿・マーケットトレンドページ用の紹介文(600〜800字、完結した文章)。
+        // 2026/8/29追加。以前はinsights[0].body(analysis画面のカード用の短いフック文、
+        // わざと文の途中で終わるオープンループ形式)をそのまま流用していたが、リンク先の
+        // 分析ページにその「続き」が実際には存在せず、記事が尻切れに見える問題があったため、
+        // 独立した完結する紹介文として分けた。
+        appeal_narrative:  r.appeal_narrative ?? "",
         scenarios_short:   Array.isArray(r.scenarios_short) ? r.scenarios_short.slice(0,3) : [],
         scenarios_long:    Array.isArray(r.scenarios_long) ? r.scenarios_long.slice(0,3) : [],
         axes_scores:       r.axes_scores ?? {},
@@ -290,9 +307,12 @@ export async function POST(req: NextRequest) {
           const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
           // 文章の組み立ては src/lib/ipo-intro-text.ts に共通化してある
-          // (過去銘柄向けの管理画面ツールからも同じ文章を組み立てられるようにするため)
+          // (過去銘柄向けの管理画面ツールからも同じ文章を組み立てられるようにするため)。
+          // 2026/8/29、appeal_narrative(600〜800字の完結した紹介文)を優先的に使うよう変更。
+          // 万一AIが省略した場合のみ、従来通りinsights[0].bodyにフォールバックする。
           function buildTweetText(titleLabel: string) {
-            return buildIpoIntroText(co as any, summary.insights[0].body, titleLabel);
+            const body = summary.appeal_narrative || summary.insights[0].body;
+            return buildIpoIntroText(co as any, body, titleLabel);
           }
 
           const initialText = buildTweetText("新規IPO承認");
@@ -444,7 +464,7 @@ export async function POST(req: NextRequest) {
       try {
         const retryMsg = await claude.messages.create({
           model: "claude-sonnet-4-5",
-          max_tokens: 2000,
+          max_tokens: 4000,
           messages: [{ role: "user", content: prompt }, { role: "assistant", content: '{' }],
         });
         parsed = repairJson('{' + ((retryMsg.content[0] as any).text ?? ""));
