@@ -5,14 +5,20 @@ export const runtime = "edge";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const companyName = searchParams.get("companyName") ?? "";
-  const backgroundUrl = searchParams.get("backgroundUrl") ?? "";
-  const listingDate = searchParams.get("listingDate") ?? "未定";
-  const exchange = searchParams.get("exchange") ?? "不明";
-  const ticker = searchParams.get("ticker") ?? "未定";
-  const revenue = searchParams.get("revenue") ?? "不明";
-  const profit = searchParams.get("profit") ?? "不明";
-  const underwriter = searchParams.get("underwriter") ?? "未定";
+  // 注意: URLSearchParams.get()は、パラメータが「存在しない」場合はnullを返すが、
+  // 「空文字列として存在する」場合は空文字列そのものを返す。
+  // ??はnull/undefinedにしか反応しないため、空文字列が渡されると
+  // フォールバック文言(「不明」等)に置き換わらず、そのまま空欄で描画されてしまう
+  // (実際に市場・コードの欄が空欄になる不具合の原因だった)。
+  // そのため、ここではすべて||を使い、空文字列もフォールバック対象にする。
+  const companyName = searchParams.get("companyName") || "";
+  const backgroundUrl = searchParams.get("backgroundUrl") || "";
+  const listingDate = searchParams.get("listingDate") || "未定";
+  const exchange = searchParams.get("exchange") || "不明";
+  const ticker = searchParams.get("ticker") || "未定";
+  const revenue = searchParams.get("revenue") || "不明";
+  const profit = searchParams.get("profit") || "不明";
+  const underwriter = searchParams.get("underwriter") || "未定";
 
   const fontUrl = new URL("/fonts/NotoSansJP-Bold.ttf", req.url).toString();
   const fontData = await fetch(fontUrl).then((res) => res.arrayBuffer());
@@ -80,14 +86,15 @@ export async function GET(req: NextRequest) {
                   props: {
                     style: {
                       display: "flex",
+                      alignItems: "flex-start",
                       backgroundColor: "rgba(255,255,255,0.92)",
                       borderRadius: "8px",
                       padding: "14px 24px",
-                      fontSize: 26,
+                      fontSize: r.value.length > 20 ? 18 : 26,
                     },
                     children: [
-                      { type: "div", props: { style: { color: "#1E3A66", width: "180px" }, children: r.label } },
-                      { type: "div", props: { style: { color: "#0D1B33" }, children: r.value } },
+                      { type: "div", props: { style: { color: "#1E3A66", width: "180px", flexShrink: 0 }, children: r.label } },
+                      { type: "div", props: { style: { color: "#0D1B33", flex: 1, wordBreak: "break-word" as any, lineHeight: 1.4 }, children: r.value } },
                     ],
                   },
                 })),

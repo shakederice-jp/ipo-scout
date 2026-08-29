@@ -269,9 +269,12 @@ export async function POST(req: NextRequest) {
       let xDraftDebug = "";
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
-          const revenue = (co as any).structured_data?.financials?.revenue_trend ?? "不明";
-          const profit  = (co as any).structured_data?.financials?.profit_trend ?? "不明";
-          const underwriter = (co as any).analysis_market?.lead_underwriter ?? "未定";
+          // 注意: DBの値が空文字列の場合、??はnull/undefinedにしか反応しないため
+          // フォールバック文言に置き換わらない(インフォグラフィックの市場・コード欄が
+          // 空欄になっていた不具合の原因)。そのため||を使う。
+          const revenue = (co as any).structured_data?.financials?.revenue_trend || "不明";
+          const profit  = (co as any).structured_data?.financials?.profit_trend || "不明";
+          const underwriter = (co as any).analysis_market?.lead_underwriter || "未定";
 
           function addBusinessDays(start: Date, days: number): Date {
             const result = new Date(start);
@@ -287,9 +290,9 @@ export async function POST(req: NextRequest) {
 
           function buildTweetText(titleLabel: string) {
             return `【${titleLabel}】\n${co.name}\n\n` +
-              `・上場日：${co.listing_date ?? "未定"}\n` +
-              `・市場：${co.exchange ?? "不明"}\n` +
-              `・コード：${(co as any).ticker ?? "未定"}\n` +
+              `・上場日：${co.listing_date || "未定"}\n` +
+              `・市場：${co.exchange || "不明"}\n` +
+              `・コード：${(co as any).ticker || "未定"}\n` +
               `・売上：${revenue}\n` +
               `・利益：${profit}\n` +
               `・主幹事：${underwriter}\n\n` +
@@ -305,9 +308,9 @@ export async function POST(req: NextRequest) {
             imageUrl = await createInfographic({
               companyId: co.id,
               companyName: co.name,
-              listingDate: co.listing_date ?? "未定",
-              exchange: co.exchange ?? "不明",
-              ticker: (co as any).ticker ?? "未定",
+              listingDate: co.listing_date || "未定",
+              exchange: co.exchange || "不明",
+              ticker: (co as any).ticker || "未定",
               revenue,
               profit,
               underwriter,

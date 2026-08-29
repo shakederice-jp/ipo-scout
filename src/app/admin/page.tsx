@@ -20,6 +20,9 @@ export default function AdminPage() {
   const [dbCheckResult, setDbCheckResult] = useState<any | null>(null);
   const [infoBackfillLoading, setInfoBackfillLoading] = useState(false);
   const [infoBackfillResult, setInfoBackfillResult] = useState<any | null>(null);
+  const [infoForceLoading, setInfoForceLoading] = useState(false);
+  const [infoForceResult, setInfoForceResult] = useState<any | null>(null);
+  const [infoForceOffset, setInfoForceOffset] = useState(0);
 
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
@@ -323,10 +326,21 @@ export default function AdminPage() {
   const handleInfographicBackfill = async () => {
     setInfoBackfillLoading(true); setInfoBackfillResult(null);
     try {
-      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9"} });
+      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9","Content-Type":"application/json"}, body: JSON.stringify({}) });
       setInfoBackfillResult(await res.json());
     } catch(e) { setInfoBackfillResult({ error:String(e) }); }
     setInfoBackfillLoading(false);
+  };
+
+  const handleInfographicForceRegen = async () => {
+    setInfoForceLoading(true); setInfoForceResult(null);
+    try {
+      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9","Content-Type":"application/json"}, body: JSON.stringify({ force:true, offset:infoForceOffset }) });
+      const data = await res.json();
+      setInfoForceResult(data);
+      if (typeof data.nextOffset === "number") setInfoForceOffset(data.nextOffset);
+    } catch(e) { setInfoForceResult({ error:String(e) }); }
+    setInfoForceLoading(false);
   };
 
   const handleDbCheck = async () => {
@@ -508,6 +522,45 @@ export default function AdminPage() {
                         {typeof infoBackfillResult.remaining === "number" && (
                           <div style={{ marginTop:6, fontWeight:700, color:infoBackfillResult.remaining===0?"#166534":"#92400e" }}>
                             {infoBackfillResult.remaining===0?"✅ すべての銘柄で生成済みです":`残り: ${infoBackfillResult.remaining}件`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔁 既存インフォグラフィックの修正版への作り直し <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（市場・コード欄が空欄になる不具合を修正。過去に生成済みの画像を上書きします）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>
+                      押すたびに新しい上場日順で3件ずつ、既にある画像も上書きで作り直します。
+                      {infoForceResult?.total ? ` これまでに${infoForceOffset}/${infoForceResult.total}件処理済み。` : ""}
+                      全銘柄分を作り直すまで、必要な回数だけ押してください。
+                    </p>
+                    <button onClick={handleInfographicForceRegen} disabled={infoForceLoading} style={btnStyle("#b91c1c", infoForceLoading)}>
+                      {infoForceLoading?"再生成中...":"次の3件を修正版で作り直す"}
+                    </button>
+                    {infoForceResult && (
+                      <div style={{ marginTop:8, fontSize:11 }}>
+                        {infoForceResult.error && <div style={{ color:"#b91c1c" }}>❌ {infoForceResult.error}</div>}
+                        {infoForceResult.results?.map((r:any,i:number)=>(
+                          <div key={i} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:r.ok?"#f0fdf4":"#fef2f2", color:r.ok?"#166534":"#b91c1c" }}>
+                            {r.ok?"✅":"❌"} {r.name}: {r.detail}
+                            {r.ok && r.url && (
+                              <div style={{ marginTop:6, display:"flex", gap:8, alignItems:"flex-start" }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
+                                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                                  <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
+                                  {r.analysisPath && (
+                                    <a href={r.analysisPath} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>この銘柄の分析ページで見る →</a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {infoForceResult.total != null && (
+                          <div style={{ marginTop:6, fontWeight:700, color:infoForceOffset>=infoForceResult.total?"#166534":"#92400e" }}>
+                            {infoForceOffset>=infoForceResult.total?"✅ 全銘柄の作り直しが完了しました":`進捗: ${infoForceOffset}/${infoForceResult.total}件`}
                           </div>
                         )}
                       </div>
