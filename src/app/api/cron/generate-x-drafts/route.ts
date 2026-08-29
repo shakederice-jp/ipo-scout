@@ -19,6 +19,11 @@ const supabase = createClient(
 
 const TRENDS_URL = "https://ipo.finance-tower.com/trends";
 
+// 各特集記事の末尾に固定で付けるリンク。Xはマークダウン記法([text](url))を解釈せず
+// 記号がそのまま文字として表示されてしまうため、あえてマークダウンにはせず、
+// 裸のURL(https://...)をそのまま書く形にする。Xは裸のURLを自動でリンク化してくれる。
+const X_SHARE_FOOTER = `\n\n${"─".repeat(20)}\n📊 IPO Scout｜AI駆動のIPO分析・投資判断支援サービス\n${TRENDS_URL}`;
+
 // contentが二重にJSON化されてしまっている場合(AIの出力揺れ対策)に、正しい本文だけを取り出す
 function extractCleanContent(raw: string): string {
   const trimmed = raw.trim();
@@ -52,7 +57,7 @@ async function saveThemeArticle(
     ai_comment: null,
     is_featured: true,
     is_theme_article: true,
-    content: extractCleanContent(result.content),
+    content: extractCleanContent(result.content) + X_SHARE_FOOTER,
     source_links: result.sourceLinks,
     fetched_at: new Date().toISOString(),
     external_id: externalId,
