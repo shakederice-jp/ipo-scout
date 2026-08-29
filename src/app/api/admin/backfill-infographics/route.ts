@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         results.push({
           name: co.name,
           ok: true,
-          detail: (force ? "再生成・保存OK" : "生成・保存OK") + (trendsError ? "(トレンド記事の保存は失敗)" : "・トレンドページにも反映済み"),
+          detail: (force ? "再生成・保存OK" : "生成・保存OK") + (trendsError ? `(トレンド記事の保存は失敗: ${trendsError.message})` : "・トレンドページにも反映済み"),
           url: imageUrl,
           downloadPath,
         });

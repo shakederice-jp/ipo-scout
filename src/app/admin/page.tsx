@@ -505,20 +505,13 @@ export default function AdminPage() {
                         {infoBackfillResult.results?.map((r:any,i:number)=>(
                           <div key={i} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:r.ok?"#f0fdf4":"#fef2f2", color:r.ok?"#166534":"#b91c1c" }}>
                             {r.ok?"✅":"❌"} {r.name}: {r.detail}
-                            {r.ok && r.url && (
-                              <div style={{ marginTop:6, display:"flex", gap:8, alignItems:"flex-start" }}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
-                                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                                  <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
-                                  {r.downloadPath && (
-                                    <a href={r.downloadPath} style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>⬇ 画像を保存(Xへの投稿用)</a>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         ))}
+                        {infoBackfillResult.results?.some((r:any)=>r.ok) && (
+                          <div style={{ marginTop:6, fontSize:10, color:"#64748b" }}>
+                            生成した画像・記事はこのadmin画面には表示されません。<a href="/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
+                          </div>
+                        )}
                         {typeof infoBackfillResult.remaining === "number" && (
                           <div style={{ marginTop:6, fontWeight:700, color:infoBackfillResult.remaining===0?"#166534":"#92400e" }}>
                             {infoBackfillResult.remaining===0?"✅ すべての銘柄で生成済みです":`残り: ${infoBackfillResult.remaining}件`}
@@ -544,20 +537,13 @@ export default function AdminPage() {
                         {infoForceResult.results?.map((r:any,i:number)=>(
                           <div key={i} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:r.ok?"#f0fdf4":"#fef2f2", color:r.ok?"#166534":"#b91c1c" }}>
                             {r.ok?"✅":"❌"} {r.name}: {r.detail}
-                            {r.ok && r.url && (
-                              <div style={{ marginTop:6, display:"flex", gap:8, alignItems:"flex-start" }}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
-                                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                                  <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
-                                  {r.downloadPath && (
-                                    <a href={r.downloadPath} style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>⬇ 画像を保存(Xへの投稿用)</a>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         ))}
+                        {infoForceResult.results?.some((r:any)=>r.ok) && (
+                          <div style={{ marginTop:6, fontSize:10, color:"#64748b" }}>
+                            生成した画像・記事はこのadmin画面には表示されません。<a href="/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
+                          </div>
+                        )}
                         {infoForceResult.total != null && (
                           <div style={{ marginTop:6, fontWeight:700, color:infoForceOffset>=infoForceResult.total?"#166534":"#92400e" }}>
                             {infoForceOffset>=infoForceResult.total?"✅ 全銘柄の作り直しが完了しました":`進捗: ${infoForceOffset}/${infoForceResult.total}件`}

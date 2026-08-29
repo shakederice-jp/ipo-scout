@@ -323,6 +323,9 @@ export async function POST(req: NextRequest) {
           // (2026/8/29追加。文章はX投稿用のものをそのまま流用する方針)。
           // external_idで一意にしているため、同じ銘柄が再分析された場合は
           // insertではなくupsertで上書きする(重複記事にならないように)。
+          // 失敗した場合はadmin画面のSTEP4結果表示(xDraftDebug)にも理由を出す
+          // (Vercelのログを見られないユーザーでも原因が分かるようにするため)。
+          let trendsDebug = "";
           try {
             const { error: trendsError } = await supabaseAdmin.from("market_trends").upsert({
               source: "IPO分析システム",
@@ -343,9 +346,11 @@ export async function POST(req: NextRequest) {
               external_id: `new-ipo-intro-${co.id}`,
             }, { onConflict: "external_id" });
             if (trendsError) {
+              trendsDebug = `トレンド記事保存失敗: ${trendsError.message}`;
               console.error("market_trends(新規IPO紹介)保存失敗:", trendsError.message);
             }
           } catch (e: any) {
+            trendsDebug = `トレンド記事保存エラー: ${e?.message}`;
             console.error("market_trends(新規IPO紹介)保存エラー:", e?.message);
           }
 
@@ -375,7 +380,7 @@ export async function POST(req: NextRequest) {
           if (scheduledError) {
             throw new Error(`scheduled_posts insert失敗: ${scheduledError.message} (code: ${scheduledError.code ?? "unknown"})`);
           }
-          xDraftDebug = imageUrl ? "success(画像あり)" : "success(画像なし)";
+          xDraftDebug = (imageUrl ? "success(画像あり)" : "success(画像なし)") + (trendsDebug ? ` / ${trendsDebug}` : "");
         } catch (e: any) {
           xDraftDebug = `error: ${e?.message ?? String(e)}`;
           await notifyAdmin(`⚠️ Xドラフト作成エラー: ${co.name}（分析系）`, String(e), "warn");
