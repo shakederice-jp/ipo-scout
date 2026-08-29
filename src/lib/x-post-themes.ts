@@ -263,10 +263,28 @@ const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
 
 async function fetchEdinetDocumentsForThemes(date: string) {
   const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY_FOR_THEMES}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data?.results ?? [];
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) {
+      console.error(`EDINET取得失敗(status ${res.status}): date=${date}`);
+      return [];
+    }
+    // EDINET側が一時的にメンテナンス画面などのHTMLを200で返すことがあり、
+    // その場合 res.json() がSyntaxErrorを投げて呼び出し元のテーマ全体が
+    // 失敗扱いになっていた。JSONとして解釈できない場合はエラーにせず、
+    // 「今回は取得できなかった」として空配列を返す。
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      return data?.results ?? [];
+    } catch {
+      console.error(`EDINET応答がJSONではありません: date=${date}, 先頭200文字: ${text.slice(0, 200)}`);
+      return [];
+    }
+  } catch (err) {
+    console.error(`EDINET取得中にエラー: date=${date}`, err);
+    return [];
+  }
 }
 
 export interface ShareholderMovementResult {
