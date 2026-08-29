@@ -56,6 +56,46 @@ export default function TrendsPage() {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
+  // お気に入り保存(有料プラン会員限定)のボタン状態と通知トースト
+  const [favoriteStatus, setFavoriteStatus] = useState<Record<string, "saving" | "saved">>({});
+  const [favoriteMessage, setFavoriteMessage] = useState<string | null>(null);
+
+  const handleFavorite = async (t: any) => {
+    setFavoriteStatus(prev => ({ ...prev, [t.id]: "saving" }));
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marketTrendsId: t.id,
+          title: t.title,
+          content: t.content,
+          sector: t.sector,
+          sourceLinks: t.source_links,
+          fetchedAt: t.fetched_at,
+        }),
+      });
+      if (res.status === 401) {
+        setFavoriteMessage("お気に入り保存にはログインが必要です");
+      } else if (res.status === 403) {
+        setFavoriteMessage("お気に入り保存は有料プラン会員限定の機能です(記事の単体購入のみの方は対象外です)");
+      } else if (!res.ok) {
+        setFavoriteMessage("保存に失敗しました。時間をおいて再度お試しください");
+      } else {
+        setFavoriteStatus(prev => ({ ...prev, [t.id]: "saved" }));
+        setFavoriteMessage("お気に入りに保存しました");
+        return;
+      }
+    } catch {
+      setFavoriteMessage("保存に失敗しました。時間をおいて再度お試しください");
+    }
+    setFavoriteStatus(prev => {
+      const next = { ...prev };
+      delete next[t.id];
+      return next;
+    });
+  };
+
   useEffect(() => {
     const fetchTrends = async () => {
       // 以前は sector_score(スコア)を最優先で並べていたため、スコアが高い
@@ -219,6 +259,18 @@ export default function TrendsPage() {
                     <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.9, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>
                       {t.content}
                     </p>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: Array.isArray(t.source_links) && t.source_links.length > 0 ? 12 : 0 }}>
+                      <button
+                        onClick={() => handleFavorite(t)}
+                        disabled={favoriteStatus[t.id] === "saving" || favoriteStatus[t.id] === "saved"}
+                        style={{ fontSize: 11, padding: "6px 12px", borderRadius: 20,
+                          border: "1px solid #f59e0b",
+                          backgroundColor: favoriteStatus[t.id] === "saved" ? "#fef3c7" : "white",
+                          color: "#d97706", fontWeight: 700,
+                          cursor: favoriteStatus[t.id] === "saving" ? "default" : "pointer" }}>
+                        {favoriteStatus[t.id] === "saved" ? "★ お気に入り済み" : favoriteStatus[t.id] === "saving" ? "保存中..." : "☆ お気に入りに追加"}
+                      </button>
+                    </div>
                     {Array.isArray(t.source_links) && t.source_links.length > 0 && (
                       <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#2a7a7e", marginBottom: 6 }}>🔗 情報源</div>
@@ -313,7 +365,21 @@ export default function TrendsPage() {
                 </button>
               ))}
             </div>
+            <div style={{ padding: "0 14px 14px" }}>
+              <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, lineHeight: 1.6 }}>
+                ※「今日の最新記事」欄は直近100件までの表示です。それより前の記事も、上のカテゴリーからいつでも遡って読めます。<br />
+                有料プラン会員は、記事を「お気に入り」に保存して期限なく読み返せます(記事の単体購入のみの方は対象外です)。
+              </p>
+            </div>
           </div>
+
+          <a href="/trends/favorites" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #f59e0b" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#082b2e" }}>⭐ お気に入り記事</div>
+              <div style={{ fontSize: 10, color: "#d97706", marginTop: 2 }}>保存した記事を読み返す(有料プラン会員限定)</div>
+            </div>
+            <span style={{ fontSize: 16, color: "#f59e0b" }}>→</span>
+          </a>
 
           <a href="/" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #66c3c6" }}>
             <div>
@@ -325,6 +391,18 @@ export default function TrendsPage() {
         </aside>
 
       </div>
+
+      {favoriteMessage && (
+        <div style={{ position: "fixed", bottom: 20, right: 20, backgroundColor: "#082b2e", color: "white",
+          padding: "10px 16px", borderRadius: 10, fontSize: 12, zIndex: 50, boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+          display: "flex", alignItems: "center", gap: 10, maxWidth: 320 }}>
+          <span>{favoriteMessage}</span>
+          <button onClick={() => setFavoriteMessage(null)}
+            style={{ background: "none", border: "none", color: "#a0d4d6", cursor: "pointer", fontSize: 12, padding: 0 }}>
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
