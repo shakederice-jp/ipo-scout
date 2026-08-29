@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
+import { createInfographic } from "@/lib/infographic";
 
 export async function GET(req: NextRequest) {
     const auth = req.headers.get("x-admin-password");
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-  const results: Record<string, { ok: boolean; detail: string }> = {};
+  const results: Record<string, { ok: boolean; detail: string; url?: string }> = {};
 
   // Supabase接続チェック
   try {
@@ -46,6 +47,38 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     results.last_cron = { ok: false, detail: e?.message };
   }
+
+  // インフォグラフィック生成チェック(実際にテスト用の1枚を生成してみて、パイプライン全体が動くか確認する)
+  try {
+    if (!process.env.FAL_KEY) {
+      results.infographic = { ok: false, detail: "FAL_KEY(fal.aiのAPIキー)がVercelの環境変数に設定されていません" };
+    } else {
+      const testUrl = await createInfographic({
+        companyId: "healthcheck-test",
+        companyName: "テスト株式会社",
+        listingDate: "2026-12-31",
+        exchange: "グロース",
+        ticker: "9999",
+        revenue: "10.0億円",
+        profit: "1.0億円",
+        underwriter: "テスト証券",
+      });
+      results.infographic = testUrl
+        ? { ok: true, detail: "生成成功(下の画像を確認してください)", url: testUrl }
+        : { ok: false, detail: "生成に失敗しました。詳細はVercelのFunction Logsを確認してください" };
+    }
+  } catch (e: any) {
+    results.infographic = { ok: false, detail: e?.message ?? String(e) };
+  }
+
+  // 新規IPO承認時にインフォグラフィックを自動生成するかどうかのフラグ。
+  // 上のテストが成功していても、このフラグがtrueでなければ実運用では自動生成されない。
+  results.x_autopost_flag = {
+    ok: process.env.X_AUTOPOST_ENABLED === "true",
+    detail: process.env.X_AUTOPOST_ENABLED === "true"
+      ? "有効(新規IPO承認時に自動生成されます)"
+      : `現在の設定値: ${process.env.X_AUTOPOST_ENABLED ?? "(未設定)"} → 有効になっていないため、新規IPO承認時に自動生成されません`,
+  };
 
   const allOk = Object.values(results).every(r => r.ok);
   return NextResponse.json({ ok: allOk, results, checked_at: new Date().toISOString() });

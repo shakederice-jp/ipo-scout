@@ -454,7 +454,14 @@ export default function AdminPage() {
                         {healthResult.ok?"✅ 全システム正常":"⚠️ 一部に問題があります"}
                         {healthResult.results && Object.entries(healthResult.results).map(([key,val]:[string,any])=>(
                           <div key={key} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:val.ok?"#f0fdf4":"#fef2f2" }}>
-                            {val.ok?"✅":"❌"} {{"supabase":"Supabase DB","claude":"Claude API","edinet":"EDINET API","last_cron":"直近Cron"}[key]??key}: {val.detail}
+                            {val.ok?"✅":"❌"} {{"supabase":"Supabase DB","claude":"Claude API","edinet":"EDINET API","last_cron":"直近Cron","infographic":"インフォグラフィック生成テスト","x_autopost_flag":"新規IPO時の自動生成フラグ"}[key]??key}: {val.detail}
+                            {key==="infographic" && val.ok && val.url && (
+                              <div style={{ marginTop:6 }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={val.url} alt="テスト生成されたインフォグラフィック" style={{ width:160, height:160, borderRadius:8, border:"1px solid #b3e8ea", display:"block" }} />
+                                <a href={val.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>原寸で開く →</a>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
