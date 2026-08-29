@@ -18,6 +18,8 @@ export default function AdminPage() {
   const [healthResult, setHealthResult] = useState<any | null>(null);
   const [dbCheckLoading, setDbCheckLoading] = useState(false);
   const [dbCheckResult, setDbCheckResult] = useState<any | null>(null);
+  const [infoBackfillLoading, setInfoBackfillLoading] = useState(false);
+  const [infoBackfillResult, setInfoBackfillResult] = useState<any | null>(null);
 
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
@@ -318,6 +320,15 @@ export default function AdminPage() {
     setHealthLoading(false);
   };
 
+  const handleInfographicBackfill = async () => {
+    setInfoBackfillLoading(true); setInfoBackfillResult(null);
+    try {
+      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9"} });
+      setInfoBackfillResult(await res.json());
+    } catch(e) { setInfoBackfillResult({ error:String(e) }); }
+    setInfoBackfillLoading(false);
+  };
+
   const handleDbCheck = async () => {
     setDbCheckLoading(true); setDbCheckResult(null);
     try {
@@ -464,6 +475,29 @@ export default function AdminPage() {
                             )}
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🖼 インフォグラフィック一括生成 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（サイト表示機能の追加前に分析済みだった銘柄の分を、後追いで生成）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>1回のクリックで最大3件ずつ生成します。「残り」が0になるまで、必要な回数だけ押してください。</p>
+                    <button onClick={handleInfographicBackfill} disabled={infoBackfillLoading} style={btnStyle("#d97706", infoBackfillLoading)}>
+                      {infoBackfillLoading?"生成中...":"未生成の銘柄を3件生成"}
+                    </button>
+                    {infoBackfillResult && (
+                      <div style={{ marginTop:8, fontSize:11 }}>
+                        {infoBackfillResult.error && <div style={{ color:"#b91c1c" }}>❌ {infoBackfillResult.error}</div>}
+                        {infoBackfillResult.results?.map((r:any,i:number)=>(
+                          <div key={i} style={{ marginTop:4, padding:"4px 8px", borderRadius:6, background:r.ok?"#f0fdf4":"#fef2f2", color:r.ok?"#166534":"#b91c1c" }}>
+                            {r.ok?"✅":"❌"} {r.name}: {r.detail}
+                          </div>
+                        ))}
+                        {typeof infoBackfillResult.remaining === "number" && (
+                          <div style={{ marginTop:6, fontWeight:700, color:infoBackfillResult.remaining===0?"#166534":"#92400e" }}>
+                            {infoBackfillResult.remaining===0?"✅ すべての銘柄で生成済みです":`残り: ${infoBackfillResult.remaining}件`}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

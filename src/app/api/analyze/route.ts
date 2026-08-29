@@ -316,6 +316,17 @@ export async function POST(req: NextRequest) {
             console.error("インフォグラフィック生成失敗:", e?.message);
           }
 
+          // サイト上(分析ページ)にも表示するため、生成できた場合はipo_companies側にも保存しておく
+          if (imageUrl) {
+            const { error: imgSaveError } = await supabaseAdmin
+              .from("ipo_companies")
+              .update({ infographic_url: imageUrl })
+              .eq("id", co.id);
+            if (imgSaveError) {
+              console.error("infographic_url保存失敗:", imgSaveError.message);
+            }
+          }
+
           // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)
           // 注意: supabase-jsのinsert()は失敗してもthrowしない(エラーはerrorに入るだけ)ため、
           // 必ず{error}を確認して手動でthrowする(でないと失敗が握りつぶされて気づけない)
