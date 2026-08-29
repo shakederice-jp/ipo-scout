@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createInfographic } from "@/lib/infographic";
-import { buildIpoIntroText } from "@/lib/ipo-intro-text";
+import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
 
 export const maxDuration = 90;
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   let query = supabase
     .from("ipo_companies")
-    .select("id, name, sector, analysis_summary, listing_date, exchange, ticker, structured_data, analysis_market")
+    .select("id, name, sector, analysis_summary, listing_date, exchange, ticker, structured_data, analysis_market, ai_summary")
     .order("listing_date", { ascending: false });
   query = force ? query.range(offset, offset + 2) : query.is("infographic_url", null).limit(3);
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const hook: string = summary.tweet_summary || summary.insights?.[0]?.body || "AIがこの銘柄を分析しました。";
+      const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
 
       const imageUrl = await createInfographic({
         companyId: co.id,
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         sector: (co as any).sector ?? "",
         grade: summary.grade,
         score: summary.total_score,
-        hook,
+        chartData,
       });
 
       if (!imageUrl) {
@@ -83,19 +83,24 @@ export async function POST(req: NextRequest) {
         .eq("id", co.id);
 
       // マーケットトレンドページの「新規IPO紹介」カテゴリーに表示する記事も
-      // あわせて作成・更新する(文章はX投稿用のものと同じ組み立てロジックを流用)。
-      const introText = buildIpoIntroText(co as any, summary.insights?.[0]?.body ?? hook, "新規IPO承認");
+      // あわせて作成・更新する。文章は、STEP4のスコア生成時に既に作られているai_summary
+      // (トップページ掲載用・120字以内、この銘柄の最大の魅力を核心から語る文章)を流用する
+      // (2026/8/29、「本文は銘柄の魅力をコンパクトにまとめた文章にしてほしい」との要望を受けて変更)。
+      const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
+      const appealText =
+        ((co as any).ai_summary || summary.insights?.[0]?.body || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`) +
+        `\n\n続きはこちら → ${analysisUrl}`;
       const { error: trendsError } = await supabase.from("market_trends").upsert({
         source: "IPO分析システム",
         title: `新規IPO紹介(${co.name})`,
-        url: `https://ipo.finance-tower.com/analysis/${co.id}`,
+        url: analysisUrl,
         summary: null,
         sector: (co as any).sector || "その他",
         sector_score: 8,
         ai_comment: null,
         is_featured: true,
         is_theme_article: true,
-        content: introText,
+        content: appealText,
         image_url: imageUrl,
         source_links: [
           { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
+import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -291,8 +292,10 @@ export async function POST(req: NextRequest) {
           const initialText = buildTweetText("新規IPO承認");
 
           // インフォグラフィック画像を生成(X投稿専用のフック画像。
-          // サイトの詳細データではなく、AIスコアとひとことインサイトだけを見せる設計。
+          // 2026/8/29、スコア+ひとことインサイトの引用文デザインから、
+          // STEP3で抽出済みの財務データを使った「売上高の推移」棒グラフ中心のデザインに変更。
           // 失敗しても投稿自体は続行する)
+          const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
           let imageUrl: string | null = null;
           try {
             imageUrl = await createInfographic({
@@ -301,7 +304,7 @@ export async function POST(req: NextRequest) {
               sector: co.sector ?? "",
               grade: summary.grade || "C",
               score: summary.total_score ?? 65,
-              hook: summary.tweet_summary || summary.insights?.[0]?.body || "AIがこの銘柄を分析しました。",
+              chartData,
             });
           } catch (e: any) {
             console.error("インフォグラフィック生成失敗:", e?.message);
@@ -320,24 +323,32 @@ export async function POST(req: NextRequest) {
           }
 
           // マーケットトレンドページの「新規IPO紹介」カテゴリーに表示するための記事を保存
-          // (2026/8/29追加。文章はX投稿用のものをそのまま流用する方針)。
+          // (2026/8/29追加)。文章は当初X投稿用の文章(項目の羅列)をそのまま流用していたが、
+          // 「本文はこの銘柄の魅力をコンパクトにまとめた文章にしてほしい」という要望を受け、
+          // STEP4のスコア生成時に既に作られているai_summary(トップページ掲載用・120字以内、
+          // この銘柄の最大の魅力を核心から語る文章)を流用する形に変更した。
+          // (新たにAI呼び出しを増やさずに済むよう、既存の生成物を再利用している)
           // external_idで一意にしているため、同じ銘柄が再分析された場合は
           // insertではなくupsertで上書きする(重複記事にならないように)。
           // 失敗した場合はadmin画面のSTEP4結果表示(xDraftDebug)にも理由を出す
           // (Vercelのログを見られないユーザーでも原因が分かるようにするため)。
+          const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
+          const appealText =
+            (r.ai_summary || summary.insights?.[0]?.body || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`) +
+            `\n\n続きはこちら → ${analysisUrl}`;
           let trendsDebug = "";
           try {
             const { error: trendsError } = await supabaseAdmin.from("market_trends").upsert({
               source: "IPO分析システム",
               title: `新規IPO紹介(${co.name})`,
-              url: `https://ipo.finance-tower.com/analysis/${co.id}`,
+              url: analysisUrl,
               summary: null,
               sector: co.sector || "その他",
               sector_score: 8,
               ai_comment: null,
               is_featured: true,
               is_theme_article: true,
-              content: initialText,
+              content: appealText,
               image_url: imageUrl,
               source_links: [
                 { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },

@@ -49,8 +49,9 @@ export async function GET(req: NextRequest) {
   }
 
   // インフォグラフィック生成チェック(実際にテスト用の1枚を生成してみて、パイプライン全体が動くか確認する)
-  // 2026/8/29、fal.aiへの依存(FAL_KEY)を廃止し、CSSグラデーションのみの背景に変更したため、
-  // このチェックはSupabase Storageへのアップロードまで含めた自前パイプラインのみをテストする。
+  // 2026/8/29、fal.aiへの依存(FAL_KEY)を廃止し、CSSグラデーションのみの背景に変更。
+  // さらに同日、デザインを「売上高の推移」棒グラフ中心に変更したため、
+  // テストデータにもダミーの売上推移を渡してグラフ描画までテストする。
   try {
     const testUrl = await createInfographic({
       companyId: "healthcheck-test",
@@ -58,7 +59,12 @@ export async function GET(req: NextRequest) {
       sector: "サービス業",
       grade: "B",
       score: 72,
-      hook: "これはヘルスチェック用のテストデータです。",
+      chartData: [
+        { label: "22/3期", value: 3.2 },
+        { label: "23/3期", value: 5.8 },
+        { label: "24/3期", value: 9.1 },
+        { label: "25/3期", value: 14.6 },
+      ],
     });
     results.infographic = testUrl
       ? { ok: true, detail: "生成成功(下の画像を確認してください)", url: testUrl }
