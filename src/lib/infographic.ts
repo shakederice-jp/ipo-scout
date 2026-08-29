@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-const FAL_KEY = process.env.FAL_KEY!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipo.finance-tower.com";
 
 const getSupabase = () => createClient(
@@ -8,63 +7,31 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// このインフォグラフィックはX投稿専用のフック画像。
+// 役割は「見た人が一瞬でこの銘柄の魅力に気づき、サイトで続きを読みたくなる」こと。
+// そのため会社の詳細データ(売上・利益・主幹事など)は載せず、AIスコア(グレード)と
+// ひとことインサイト(hook)の2点だけを大きく見せるデザインにしている
+// (2026/8/29、以前の6項目データ表デザインから全面刷新)。
 export interface InfographicData {
   companyId: string;
   companyName: string;
-  listingDate: string;
-  exchange: string;
-  ticker: string;
-  revenue: string;
-  profit: string;
-  underwriter: string;
+  sector?: string;
+  grade: string;   // A〜E
+  score: number;   // 0〜100
+  hook: string;    // 40字程度のひとことインサイト(tweet_summary相当)
 }
 
-// FLUX.1 schnell(fal.ai)で、文字を含まないシンプルな背景デザインを生成する
-async function generateBackgroundUrl(companyName: string): Promise<string> {
-  const prompt = `Minimalist flat vector business infographic background, no text, no letters, no numbers. `
-    + `Clean navy blue and cream color scheme, subtle geometric shapes, financial chart icon motifs, `
-    + `professional Japanese IR report style, empty space in the center and bottom for text overlay, 1200x1200 square format.`;
-
-  const res = await fetch("https://fal.run/fal-ai/flux/schnell", {
-    method: "POST",
-    headers: {
-      "Authorization": `Key ${FAL_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: "square_hd",
-      num_inference_steps: 4,
-      num_images: 1,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`FLUX画像生成エラー: ${err.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const imageUrl = data?.images?.[0]?.url;
-  if (!imageUrl) throw new Error("FLUX画像生成: URLが返却されませんでした");
-  return imageUrl;
-}
-
-// 背景生成 → og-infographicページで文字合成 → Supabase Storageへのアップロードまでを一括で行う
+// og-infographicルートで文字を合成 → Supabase Storageへアップロードするところまでを一括で行う。
+// 背景は外部の画像生成API(fal.ai)には依存せず、og-infographic側でCSSグラデーションのみで
+// 組んでいる(取得失敗によるレイアウト崩れや、絵柄が毎回変わって見づらくなることを避けるため)。
 export async function createInfographic(data: InfographicData): Promise<string | null> {
   try {
-    const backgroundUrl = await generateBackgroundUrl(data.companyName);
-
     const params = new URLSearchParams({
       companyName: data.companyName,
-      backgroundUrl,
-      listingDate: data.listingDate,
-      exchange: data.exchange,
-      ticker: data.ticker,
-      revenue: data.revenue,
-      profit: data.profit,
-      underwriter: data.underwriter,
+      sector: data.sector ?? "",
+      grade: data.grade,
+      score: String(data.score),
+      hook: data.hook,
     });
 
     const ogRes = await fetch(`${APP_URL}/api/og-infographic?${params.toString()}`, {
@@ -73,7 +40,7 @@ export async function createInfographic(data: InfographicData): Promise<string |
 
     if (!ogRes.ok) {
       const err = await ogRes.text();
-      throw new Error(`文字合成エラー: ${err.slice(0, 200)}`);
+      throw new Error(`画像合成エラー: ${err.slice(0, 200)}`);
     }
 
     const finalBuffer = Buffer.from(await ogRes.arrayBuffer());

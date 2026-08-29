@@ -19,7 +19,7 @@ interface Analysis {
   axes:{ultra_short:AxisItem[];short:AxisItem[];long:AxisItem[]};
   sources:{label:string;url:string}[];
 }
-interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string;initial_price?:number|null;price_change_rate?:number|null;status?:string|null;infographic_url?:string|null; }
+interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string;initial_price?:number|null;price_change_rate?:number|null;status?:string|null; }
 
 const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
@@ -912,30 +912,6 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           </div>
         </div>
-
-        {/* インフォグラフィック画像(新規IPO承認時に自動生成されたもの。無い銘柄では非表示) */}
-        {company.infographic_url && (
-          <Card>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-              <BarChart2 size={14} color={PRIMARY}/>
-              <span style={{fontWeight:900,fontSize:14,color:DARK}}>この銘柄のインフォグラフィック</span>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={company.infographic_url} alt={`${company.name}のインフォグラフィック`}
-              style={{width:"100%",maxWidth:360,borderRadius:12,border:`1px solid ${BORDER}`,display:"block",margin:"0 auto"}}/>
-            <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
-              <a href={`/api/download-infographic?url=${encodeURIComponent(company.infographic_url)}&name=${encodeURIComponent(`${company.name}-infographic.png`)}`}
-                style={{flex:1,textAlign:"center",padding:"8px 12px",backgroundColor:PRIMARY,color:DARK,borderRadius:8,fontWeight:800,fontSize:12,textDecoration:"none"}}>
-                ⬇ 画像を保存
-              </a>
-              <a href={company.infographic_url} target="_blank" rel="noopener noreferrer"
-                style={{flex:1,textAlign:"center",padding:"8px 12px",backgroundColor:"white",color:TTEXT,border:`1px solid ${BORDER}`,borderRadius:8,fontWeight:800,fontSize:12,textDecoration:"none"}}>
-                原寸で開く →
-              </a>
-            </div>
-            <p style={{fontSize:10,color:"#94a3b8",marginTop:8,lineHeight:1.6}}>※ この画像はSNSでのシェアなど、ご自由にお使いいただけます。</p>
-          </Card>
-        )}
 
         {/* このレポートの読み方（総論→各論→参考資料という設計思想の案内） */}
         <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",borderRadius:10,

@@ -49,24 +49,20 @@ export async function GET(req: NextRequest) {
   }
 
   // インフォグラフィック生成チェック(実際にテスト用の1枚を生成してみて、パイプライン全体が動くか確認する)
+  // 2026/8/29、fal.aiへの依存(FAL_KEY)を廃止し、CSSグラデーションのみの背景に変更したため、
+  // このチェックはSupabase Storageへのアップロードまで含めた自前パイプラインのみをテストする。
   try {
-    if (!process.env.FAL_KEY) {
-      results.infographic = { ok: false, detail: "FAL_KEY(fal.aiのAPIキー)がVercelの環境変数に設定されていません" };
-    } else {
-      const testUrl = await createInfographic({
-        companyId: "healthcheck-test",
-        companyName: "テスト株式会社",
-        listingDate: "2026-12-31",
-        exchange: "グロース",
-        ticker: "9999",
-        revenue: "10.0億円",
-        profit: "1.0億円",
-        underwriter: "テスト証券",
-      });
-      results.infographic = testUrl
-        ? { ok: true, detail: "生成成功(下の画像を確認してください)", url: testUrl }
-        : { ok: false, detail: "生成に失敗しました。詳細はVercelのFunction Logsを確認してください" };
-    }
+    const testUrl = await createInfographic({
+      companyId: "healthcheck-test",
+      companyName: "テスト株式会社",
+      sector: "サービス業",
+      grade: "B",
+      score: 72,
+      hook: "これはヘルスチェック用のテストデータです。",
+    });
+    results.infographic = testUrl
+      ? { ok: true, detail: "生成成功(下の画像を確認してください)", url: testUrl }
+      : { ok: false, detail: "生成に失敗しました。詳細はVercelのFunction Logsを確認してください" };
   } catch (e: any) {
     results.infographic = { ok: false, detail: e?.message ?? String(e) };
   }

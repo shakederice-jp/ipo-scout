@@ -270,8 +270,7 @@ export async function POST(req: NextRequest) {
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
           // 注意: DBの値が空文字列の場合、??はnull/undefinedにしか反応しないため
-          // フォールバック文言に置き換わらない(インフォグラフィックの市場・コード欄が
-          // 空欄になっていた不具合の原因)。そのため||を使う。
+          // フォールバック文言に置き換わらない不具合が過去にあった。そのため||を使う。
           const revenue = (co as any).structured_data?.financials?.revenue_trend || "不明";
           const profit  = (co as any).structured_data?.financials?.profit_trend || "不明";
           const underwriter = (co as any).analysis_market?.lead_underwriter || "未定";
@@ -302,24 +301,25 @@ export async function POST(req: NextRequest) {
 
           const initialText = buildTweetText("新規IPO承認");
 
-          // インフォグラフィック画像を生成(客観的データのみ・失敗しても投稿自体は続行する)
+          // インフォグラフィック画像を生成(X投稿専用のフック画像。
+          // サイトの詳細データではなく、AIスコアとひとことインサイトだけを見せる設計。
+          // 失敗しても投稿自体は続行する)
           let imageUrl: string | null = null;
           try {
             imageUrl = await createInfographic({
               companyId: co.id,
               companyName: co.name,
-              listingDate: co.listing_date || "未定",
-              exchange: co.exchange || "不明",
-              ticker: (co as any).ticker || "未定",
-              revenue,
-              profit,
-              underwriter,
+              sector: co.sector ?? "",
+              grade: summary.grade || "C",
+              score: summary.total_score ?? 65,
+              hook: summary.tweet_summary || summary.insights?.[0]?.body || "AIがこの銘柄を分析しました。",
             });
           } catch (e: any) {
             console.error("インフォグラフィック生成失敗:", e?.message);
           }
 
-          // サイト上(分析ページ)にも表示するため、生成できた場合はipo_companies側にも保存しておく
+          // 管理画面での確認・過去銘柄分の手動X投稿用にipo_companies側にも保存しておく
+          // (サイトの分析ページには表示しない。2026/8/29、表示は行わない方針に変更)
           if (imageUrl) {
             const { error: imgSaveError } = await supabaseAdmin
               .from("ipo_companies")

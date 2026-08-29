@@ -494,8 +494,8 @@ export default function AdminPage() {
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🖼 インフォグラフィック一括生成 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（サイト表示機能の追加前に分析済みだった銘柄の分を、後追いで生成）</span></div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>1回のクリックで最大3件ずつ生成します。「残り」が0になるまで、必要な回数だけ押してください。</p>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🖼 インフォグラフィック一括生成 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（X投稿用の画像がまだ無い銘柄の分を生成。サイトには表示されません）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>1回のクリックで最大3件ずつ生成します。「残り」が0になるまで、必要な回数だけ押してください。AI分析が未完了の銘柄はスキップされます。</p>
                     <button onClick={handleInfographicBackfill} disabled={infoBackfillLoading} style={btnStyle("#d97706", infoBackfillLoading)}>
                       {infoBackfillLoading?"生成中...":"未生成の銘柄を3件生成"}
                     </button>
@@ -511,8 +511,8 @@ export default function AdminPage() {
                                 <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
                                 <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                                   <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
-                                  {r.analysisPath && (
-                                    <a href={r.analysisPath} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>この銘柄の分析ページで見る →</a>
+                                  {r.downloadPath && (
+                                    <a href={r.downloadPath} style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>⬇ 画像を保存(Xへの投稿用)</a>
                                   )}
                                 </div>
                               </div>
@@ -529,7 +529,7 @@ export default function AdminPage() {
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔁 既存インフォグラフィックの修正版への作り直し <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（市場・コード欄が空欄になる不具合を修正。過去に生成済みの画像を上書きします）</span></div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔁 既存インフォグラフィックの作り直し <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（デザインをAIスコア+ひとことインサイト中心に刷新。過去に生成済みの画像を新デザインで上書きします）</span></div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>
                       押すたびに新しい上場日順で3件ずつ、既にある画像も上書きで作り直します。
                       {infoForceResult?.total ? ` これまでに${infoForceOffset}/${infoForceResult.total}件処理済み。` : ""}
@@ -550,8 +550,8 @@ export default function AdminPage() {
                                 <img src={r.url} alt={`${r.name}のインフォグラフィック`} style={{ width:80, height:80, borderRadius:6, border:"1px solid #b3e8ea", display:"block", flexShrink:0 }} />
                                 <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                                   <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#66c3c6" }}>画像を原寸で開く →</a>
-                                  {r.analysisPath && (
-                                    <a href={r.analysisPath} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>この銘柄の分析ページで見る →</a>
+                                  {r.downloadPath && (
+                                    <a href={r.downloadPath} style={{ fontSize:10, color:"#0d4f52", fontWeight:700 }}>⬇ 画像を保存(Xへの投稿用)</a>
                                   )}
                                 </div>
                               </div>
