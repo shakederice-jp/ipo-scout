@@ -12,8 +12,10 @@ const getSupabase = () => createClient(
 // 2026/8/29、「余白が多く目を引かない。売上推移などを実際にグラフ化してほしい」という
 // フィードバックを受け、AIスコア(グレード)+ひとことインサイトの引用文デザインから、
 // STEP3で抽出済みの財務データ(key_metrics)を使った「売上高の推移」棒グラフを
-// メインに据えたデザインに変更した。文章による魅力訴求は、この画像ではなく
-// マーケットトレンドページの記事本文(ai_summary)側の役割にしている。
+// メインに据えたデザインに変更した。
+// 同日さらに「グラフだけでは見劣りする」との指摘を受け、hook(ai_summary等の
+// 短い魅力訴求文)をグラフの上に引用カードとして表示する形に戻し、データの視覚化と
+// 文章での魅力訴求を1枚の画像の中で両立させている。
 export interface InfographicData {
   companyId: string;
   companyName: string;
@@ -21,6 +23,7 @@ export interface InfographicData {
   grade: string;   // A〜E
   score: number;   // 0〜100
   chartData?: { label: string; value: number }[]; // 売上高の推移(億円換算)。src/lib/ipo-revenue-chart.tsのbuildRevenueChartData()で作る
+  hook?: string;    // ひとことインサイト(ai_summary等)。画像内に短い引用カードとして表示される
 }
 
 // og-infographicルートで文字を合成 → Supabase Storageへアップロードするところまでを一括で行う。
@@ -34,6 +37,7 @@ export async function createInfographic(data: InfographicData): Promise<string |
       grade: data.grade,
       score: String(data.score),
       ...(data.chartData && data.chartData.length > 0 ? { chartData: JSON.stringify(data.chartData) } : {}),
+      ...(data.hook ? { hook: data.hook } : {}),
     });
 
     const ogRes = await fetch(`${APP_URL}/api/og-infographic?${params.toString()}`, {

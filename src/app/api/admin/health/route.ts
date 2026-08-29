@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
         { label: "24/3期", value: 9.1 },
         { label: "25/3期", value: 14.6 },
       ],
+      hook: "国内シェアNo.1のニッチ市場で、4期連続の増収増益を続ける成長企業。",
     });
     results.infographic = testUrl
       ? { ok: true, detail: "生成成功(下の画像を確認してください)", url: testUrl }

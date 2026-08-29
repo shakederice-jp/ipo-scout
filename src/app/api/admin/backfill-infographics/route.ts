@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createInfographic } from "@/lib/infographic";
 import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
+import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 
 export const maxDuration = 90;
 
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest) {
       }
 
       const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
+      const insightBody =
+        summary.insights?.[0]?.body || (co as any).ai_summary || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`;
+      const hookText = ((co as any).ai_summary || insightBody || "").slice(0, 60);
 
       const imageUrl = await createInfographic({
         companyId: co.id,
@@ -70,6 +74,7 @@ export async function POST(req: NextRequest) {
         grade: summary.grade,
         score: summary.total_score,
         chartData,
+        hook: hookText,
       });
 
       if (!imageUrl) {
@@ -83,13 +88,13 @@ export async function POST(req: NextRequest) {
         .eq("id", co.id);
 
       // マーケットトレンドページの「新規IPO紹介」カテゴリーに表示する記事も
-      // あわせて作成・更新する。文章は、STEP4のスコア生成時に既に作られているai_summary
-      // (トップページ掲載用・120字以内、この銘柄の最大の魅力を核心から語る文章)を流用する
-      // (2026/8/29、「本文は銘柄の魅力をコンパクトにまとめた文章にしてほしい」との要望を受けて変更)。
+      // あわせて作成・更新する。本文は、X投稿用に組み立てている詳しい紹介文
+      // (上場日・市場・コード・売上・利益・主幹事+AIの一言)をそのまま使う
+      // (2026/8/29、ai_summaryだけの短い文章に変更したところ「文字数が減って
+      // 冷たい感じになった」とのフィードバックを受け、Xの競合対策で作った文章に戻した)。
       const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
-      const appealText =
-        ((co as any).ai_summary || summary.insights?.[0]?.body || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`) +
-        `\n\n続きはこちら → ${analysisUrl}`;
+      const introText = buildIpoIntroText(co as any, insightBody, "新規IPO承認");
+      const trendsContent = `${introText}\n\n${analysisUrl}`;
       const { error: trendsError } = await supabase.from("market_trends").upsert({
         source: "IPO分析システム",
         title: `新規IPO紹介(${co.name})`,
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
         ai_comment: null,
         is_featured: true,
         is_theme_article: true,
-        content: appealText,
+        content: trendsContent,
         image_url: imageUrl,
         source_links: [
           { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },

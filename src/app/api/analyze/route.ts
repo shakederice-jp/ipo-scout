@@ -296,6 +296,7 @@ export async function POST(req: NextRequest) {
           // STEP3で抽出済みの財務データを使った「売上高の推移」棒グラフ中心のデザインに変更。
           // 失敗しても投稿自体は続行する)
           const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
+          const hookText = (r.ai_summary || summary.insights[0].body || "").slice(0, 60);
           let imageUrl: string | null = null;
           try {
             imageUrl = await createInfographic({
@@ -305,6 +306,7 @@ export async function POST(req: NextRequest) {
               grade: summary.grade || "C",
               score: summary.total_score ?? 65,
               chartData,
+              hook: hookText,
             });
           } catch (e: any) {
             console.error("インフォグラフィック生成失敗:", e?.message);
@@ -333,9 +335,11 @@ export async function POST(req: NextRequest) {
           // 失敗した場合はadmin画面のSTEP4結果表示(xDraftDebug)にも理由を出す
           // (Vercelのログを見られないユーザーでも原因が分かるようにするため)。
           const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
-          const appealText =
-            (r.ai_summary || summary.insights?.[0]?.body || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`) +
-            `\n\n続きはこちら → ${analysisUrl}`;
+          // 本文はX投稿でも使っている「上場日・市場・コード・売上・利益・主幹事+AIの一言」の
+          // 詳しい紹介文(initialText)をそのまま使う。2026/8/29、ai_summaryだけの短い文章に
+          // 変更したところ「文字数が減って冷たい感じになった」とのフィードバックを受け、
+          // Xの競合対策で作った文章に戻し、末尾に分析ページへのリンクを付けた。
+          const trendsContent = `${initialText}\n\n${analysisUrl}`;
           let trendsDebug = "";
           try {
             const { error: trendsError } = await supabaseAdmin.from("market_trends").upsert({
@@ -348,7 +352,7 @@ export async function POST(req: NextRequest) {
               ai_comment: null,
               is_featured: true,
               is_theme_article: true,
-              content: appealText,
+              content: trendsContent,
               image_url: imageUrl,
               source_links: [
                 { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },
