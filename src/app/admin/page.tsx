@@ -494,8 +494,8 @@ export default function AdminPage() {
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🖼 インフォグラフィック一括生成 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（X投稿用の画像がまだ無い銘柄の分を生成。サイトには表示されません）</span></div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>1回のクリックで最大3件ずつ生成します。「残り」が0になるまで、必要な回数だけ押してください。AI分析が未完了の銘柄はスキップされます。</p>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🖼 インフォグラフィック一括生成 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（過去に分析済みでまだ紹介記事が無い銘柄の分を生成。マーケットトレンドページの「🆕 新規IPO紹介」に表示されます）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>1回のクリックで最大3件ずつ生成します。「残り」が0になるまで、必要な回数だけ押してください。AI分析が未完了の銘柄はスキップされます。※今後新しく分析する銘柄は、分析時に自動で生成・掲載されるためこの操作は不要です。</p>
                     <button onClick={handleInfographicBackfill} disabled={infoBackfillLoading} style={btnStyle("#d97706", infoBackfillLoading)}>
                       {infoBackfillLoading?"生成中...":"未生成の銘柄を3件生成"}
                     </button>
@@ -529,7 +529,7 @@ export default function AdminPage() {
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔁 既存インフォグラフィックの作り直し <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（デザインをAIスコア+ひとことインサイト中心に刷新。過去に生成済みの画像を新デザインで上書きします）</span></div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🔁 既存インフォグラフィックの作り直し <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（デザインをAIスコア+ひとことインサイト中心に刷新。過去に生成済みの画像とトレンドページの紹介記事を新デザインで上書きします）</span></div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>
                       押すたびに新しい上場日順で3件ずつ、既にある画像も上書きで作り直します。
                       {infoForceResult?.total ? ` これまでに${infoForceOffset}/${infoForceResult.total}件処理済み。` : ""}

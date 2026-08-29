@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
+import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -269,12 +270,6 @@ export async function POST(req: NextRequest) {
       let xDraftDebug = "";
       if (process.env.X_AUTOPOST_ENABLED === "true" && summary.insights?.[0]) {
         try {
-          // 注意: DBの値が空文字列の場合、??はnull/undefinedにしか反応しないため
-          // フォールバック文言に置き換わらない不具合が過去にあった。そのため||を使う。
-          const revenue = (co as any).structured_data?.financials?.revenue_trend || "不明";
-          const profit  = (co as any).structured_data?.financials?.profit_trend || "不明";
-          const underwriter = (co as any).analysis_market?.lead_underwriter || "未定";
-
           function addBusinessDays(start: Date, days: number): Date {
             const result = new Date(start);
             let added = 0;
@@ -287,16 +282,10 @@ export async function POST(req: NextRequest) {
           }
           const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
+          // 文章の組み立ては src/lib/ipo-intro-text.ts に共通化してある
+          // (過去銘柄向けの管理画面ツールからも同じ文章を組み立てられるようにするため)
           function buildTweetText(titleLabel: string) {
-            return `【${titleLabel}】\n${co.name}\n\n` +
-              `・上場日：${co.listing_date || "未定"}\n` +
-              `・市場：${co.exchange || "不明"}\n` +
-              `・コード：${(co as any).ticker || "未定"}\n` +
-              `・売上：${revenue}\n` +
-              `・利益：${profit}\n` +
-              `・主幹事：${underwriter}\n\n` +
-              `${summary.insights[0].body}\n\n` +
-              `続きは分析アプリで👆\n\n#IPO #新規上場`;
+            return buildIpoIntroText(co as any, summary.insights[0].body, titleLabel);
           }
 
           const initialText = buildTweetText("新規IPO承認");
@@ -328,6 +317,36 @@ export async function POST(req: NextRequest) {
             if (imgSaveError) {
               console.error("infographic_url保存失敗:", imgSaveError.message);
             }
+          }
+
+          // マーケットトレンドページの「新規IPO紹介」カテゴリーに表示するための記事を保存
+          // (2026/8/29追加。文章はX投稿用のものをそのまま流用する方針)。
+          // external_idで一意にしているため、同じ銘柄が再分析された場合は
+          // insertではなくupsertで上書きする(重複記事にならないように)。
+          try {
+            const { error: trendsError } = await supabaseAdmin.from("market_trends").upsert({
+              source: "IPO分析システム",
+              title: `新規IPO紹介(${co.name})`,
+              url: `https://ipo.finance-tower.com/analysis/${co.id}`,
+              summary: null,
+              sector: co.sector || "その他",
+              sector_score: 8,
+              ai_comment: null,
+              is_featured: true,
+              is_theme_article: true,
+              content: initialText,
+              image_url: imageUrl,
+              source_links: [
+                { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },
+              ],
+              fetched_at: new Date().toISOString(),
+              external_id: `new-ipo-intro-${co.id}`,
+            }, { onConflict: "external_id" });
+            if (trendsError) {
+              console.error("market_trends(新規IPO紹介)保存失敗:", trendsError.message);
+            }
+          } catch (e: any) {
+            console.error("market_trends(新規IPO紹介)保存エラー:", e?.message);
           }
 
           // 初回分をX投稿ドラフトに追加(次回の朝メールにまとめて含まれる)

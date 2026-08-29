@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createInfographic } from "@/lib/infographic";
+import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 
 export const maxDuration = 90;
 
-// インフォグラフィックはX投稿専用のフック画像(サイトの分析ページには表示しない)。
+// インフォグラフィックと、それに添える紹介文(X投稿用の文章をそのまま流用)は、
+// マーケットトレンドページの「🆕 新規IPO紹介」カテゴリーに表示される
+// (2026/8/29、サイトの分析ページへの表示はやめ、こちらに一本化した)。
 // この管理ツールは、まだ画像を持っていない銘柄からまとめて(1回あたり最大3件)
-// 生成・保存する。手動でXに投稿したい過去銘柄がある場合などに使う。
+// 生成・保存する。過去に分析済みでまだ紹介記事になっていない銘柄をトレンドページに
+// 反映させたい場合などに使う。
 // 1回のクリックで終わらない場合は、残り件数が0になるまで繰り返し押してもらう想定。
 //
 // force=true が指定された場合は「未生成の銘柄」ではなく「listing_dateが新しい順の銘柄」を
 // offset位置から3件対象にし、infographic_urlが既にあっても上書きで再生成する。
-// デザインを刷新した際(2026/8/29)などに、既存画像を新デザインで作り直すために使う。
+// デザインを刷新した際(2026/8/29)などに、既存画像・記事を新デザインで作り直すために使う。
 // offsetは呼び出し側(管理画面)が3件ずつ進める。
 export async function POST(req: NextRequest) {
   const auth = req.headers.get("x-admin-password");
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   let query = supabase
     .from("ipo_companies")
-    .select("id, name, sector, analysis_summary")
+    .select("id, name, sector, analysis_summary, listing_date, exchange, ticker, structured_data, analysis_market")
     .order("listing_date", { ascending: false });
   query = force ? query.range(offset, offset + 2) : query.is("infographic_url", null).limit(3);
 
@@ -78,12 +82,43 @@ export async function POST(req: NextRequest) {
         .update({ infographic_url: imageUrl })
         .eq("id", co.id);
 
+      // マーケットトレンドページの「新規IPO紹介」カテゴリーに表示する記事も
+      // あわせて作成・更新する(文章はX投稿用のものと同じ組み立てロジックを流用)。
+      const introText = buildIpoIntroText(co as any, summary.insights?.[0]?.body ?? hook, "新規IPO承認");
+      const { error: trendsError } = await supabase.from("market_trends").upsert({
+        source: "IPO分析システム",
+        title: `新規IPO紹介(${co.name})`,
+        url: `https://ipo.finance-tower.com/analysis/${co.id}`,
+        summary: null,
+        sector: (co as any).sector || "その他",
+        sector_score: 8,
+        ai_comment: null,
+        is_featured: true,
+        is_theme_article: true,
+        content: introText,
+        image_url: imageUrl,
+        source_links: [
+          { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },
+        ],
+        fetched_at: new Date().toISOString(),
+        external_id: `new-ipo-intro-${co.id}`,
+      }, { onConflict: "external_id" });
+      if (trendsError) {
+        console.error(`market_trends(新規IPO紹介)保存失敗(${co.name}):`, trendsError.message);
+      }
+
       const downloadPath = `/api/download-infographic?url=${encodeURIComponent(imageUrl)}&name=${encodeURIComponent(`${co.name}-infographic.png`)}`;
 
       if (updateError) {
         results.push({ name: co.name, ok: false, detail: `保存失敗: ${updateError.message}`, url: imageUrl });
       } else {
-        results.push({ name: co.name, ok: true, detail: force ? "再生成・保存OK" : "生成・保存OK", url: imageUrl, downloadPath });
+        results.push({
+          name: co.name,
+          ok: true,
+          detail: (force ? "再生成・保存OK" : "生成・保存OK") + (trendsError ? "(トレンド記事の保存は失敗)" : "・トレンドページにも反映済み"),
+          url: imageUrl,
+          downloadPath,
+        });
       }
     } catch (e: any) {
       results.push({ name: co.name, ok: false, detail: e?.message ?? "unknown error" });

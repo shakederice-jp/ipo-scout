@@ -24,6 +24,7 @@ const SECTOR_EMOJI: Record<string, string> = {
 // カテゴリー(=記事のテーマ)一覧。right="true"のものはタイトルの前方一致で判定する
 // (「大株主・VC/PEの異動ウォッチ(◯◯社)」のように銘柄名が末尾に付くため)。
 const CATEGORIES: { label: string; emoji: string; prefix?: boolean }[] = [
+  { label: "新規IPO紹介", emoji: "🆕", prefix: true },
   { label: "直近承認銘柄のスコア傾向", emoji: "📊" },
   { label: "ロックアップ解除カレンダー", emoji: "🔓" },
   { label: "IPOカレンダー", emoji: "📅" },
@@ -59,6 +60,18 @@ export default function TrendsPage() {
   // お気に入り保存(有料プラン会員限定)のボタン状態と通知トースト
   const [favoriteStatus, setFavoriteStatus] = useState<Record<string, "saving" | "saved">>({});
   const [favoriteMessage, setFavoriteMessage] = useState<string | null>(null);
+
+  // 「新規IPO紹介」記事の文章(X投稿用)をワンタップでコピーするためのボタン用。
+  // navigator.clipboard が使えない環境(古いブラウザ等)向けに、失敗時は
+  // テキストエリア+選択状態にする代替手段を用意しておく。
+  const handleCopyText = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setFavoriteMessage("文章をコピーしました。Xの投稿画面に貼り付けてください");
+    } catch {
+      setFavoriteMessage("コピーに失敗しました。お手数ですが文章を選択してコピーしてください");
+    }
+  };
 
   const handleFavorite = async (t: any) => {
     setFavoriteStatus(prev => ({ ...prev, [t.id]: "saving" }));
@@ -256,10 +269,30 @@ export default function TrendsPage() {
                       </span>
                     </div>
                     <h3 style={{ fontSize: 15, fontWeight: 900, color: "#082b2e", margin: "0 0 12px" }}>{t.title}</h3>
+                    {t.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.image_url} alt={t.title} style={{ width: "100%", maxWidth: 360, borderRadius: 12, marginBottom: 14, display: "block" }} />
+                    )}
                     <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.9, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>
                       {t.content}
                     </p>
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: Array.isArray(t.source_links) && t.source_links.length > 0 ? 12 : 0 }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" as const, gap: 8, marginBottom: Array.isArray(t.source_links) && t.source_links.length > 0 ? 12 : 0 }}>
+                      {t.image_url && (
+                        <>
+                          <button
+                            onClick={() => handleCopyText(t.content)}
+                            style={{ fontSize: 11, padding: "6px 12px", borderRadius: 20, border: "1px solid #66c3c6",
+                              backgroundColor: "white", color: "#0d4f52", fontWeight: 700, cursor: "pointer" }}>
+                            📋 文章をコピー(X投稿用)
+                          </button>
+                          <a
+                            href={`/api/download-infographic?url=${encodeURIComponent(t.image_url)}&name=${encodeURIComponent(`${t.title}.png`)}`}
+                            style={{ fontSize: 11, padding: "6px 12px", borderRadius: 20, border: "1px solid #66c3c6",
+                              backgroundColor: "white", color: "#0d4f52", fontWeight: 700, textDecoration: "none" }}>
+                            🖼 画像を保存
+                          </a>
+                        </>
+                      )}
                       <button
                         onClick={() => handleFavorite(t)}
                         disabled={favoriteStatus[t.id] === "saving" || favoriteStatus[t.id] === "saved"}
