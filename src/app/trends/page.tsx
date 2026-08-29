@@ -108,14 +108,14 @@ export default function TrendsPage() {
         .select("*")
         .order("fetched_at", { ascending: false })
         .order("sector_score", { ascending: false })
-        .limit(100);
+        .limit(20);
       setTrends(data ?? []);
       setLoading(false);
     };
     fetchTrends();
 
     // カテゴリーごとの件数(サイドバー表示用)。1件ずつでも過去記事があると
-    // 分かるように、直近100件のウィンドウとは別に、DB全体から数える。
+    // 分かるように、直近20件のウィンドウとは別に、DB全体から数える。
     const fetchCategoryCounts = async () => {
       const counts: Record<string, number> = {};
       await Promise.all(
@@ -144,7 +144,7 @@ export default function TrendsPage() {
         .from("market_trends")
         .select("*")
         .order("fetched_at", { ascending: false })
-        .limit(200);
+        .limit(60);
       const { data } = cat.prefix ? await base.ilike("title", `${cat.label}%`) : await base.eq("title", cat.label);
       setCategoryArticles(data ?? []);
       setCategoryLoading(false);
@@ -367,7 +367,7 @@ export default function TrendsPage() {
             </div>
             <div style={{ padding: "0 14px 14px" }}>
               <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, lineHeight: 1.6 }}>
-                ※「今日の最新記事」欄は直近100件までの表示です。それより前の記事も、上のカテゴリーからいつでも遡って読めます。<br />
+                ※「今日の最新記事」欄は直近20件までの表示です。それより前の記事も、上のカテゴリーからいつでも遡って読めます。<br />
                 有料プラン会員は、記事を「お気に入り」に保存して期限なく読み返せます(記事の単体購入のみの方は対象外です)。
               </p>
             </div>

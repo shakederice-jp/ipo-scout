@@ -133,6 +133,19 @@ export async function GET(request: Request) {
       generate: () => Promise<{ content: string; sourceLinks: { title: string; url: string; source: string }[] } | null>
     ): Promise<{ theme: number; status: string }> {
       try {
+        // 本日分が既に保存済みなら、Gemini呼び出し(generate)自体を行わずにスキップする。
+        // 以前はここで毎回generate()を呼んでおり、既に成功済みの日でも2回目・3回目のcronで
+        // 無駄にGeminiを呼び直し、そこでタイムアウト等が起きると「失敗」として通知されていた
+        // (実際にはその日の記事は既に保存済みで、サイト上は何も困っていない誤検知だった)。
+        const { data: existing } = await supabase
+          .from("market_trends")
+          .select("id")
+          .eq("external_id", externalId)
+          .maybeSingle();
+        if (existing) {
+          return { theme: themeNumber, status: "skipped(本日分は生成済み)" };
+        }
+
         const result = await generate();
         const outcome = await saveThemeArticle(label, sector, result, externalId);
         if (outcome === "saved") return { theme: themeNumber, status: "success" };
