@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
             // フッター: CTA
             { type: "div", props: { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", backgroundColor: "rgba(0,0,0,0.22)", padding: "30px 64px" },
               children: [
-                { type: "div", props: { style: { display: "flex", fontSize: 28, color: "#ffffff", fontWeight: 700 }, children: "続きはIPO Scoutで読む" } },
+                { type: "div", props: { style: { display: "flex", fontSize: 24, color: "#ffffff", fontWeight: 700 }, children: "続きは大手町調査室９課公式HPで読む" } },
                 { type: "div", props: { style: { display: "flex", fontSize: 28, color: "#66c3c6", fontWeight: 700 }, children: "→" } },
               ] } },
           ],
