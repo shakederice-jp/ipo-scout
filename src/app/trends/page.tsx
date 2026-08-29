@@ -31,6 +31,12 @@ const CATEGORIES: { label: string; emoji: string; prefix?: boolean }[] = [
   { label: "大株主・VC/PEの異動ウォッチ", emoji: "🏛️", prefix: true },
 ];
 
+// テーマ記事のtitleから、対応するカテゴリー(右カラムのカテゴリーと同じ定義)を判定する。
+// 記事上部のバッジ表示とサイドバーのカテゴリー名を共通化するために使う。
+function categoryForArticle(title: string) {
+  return CATEGORIES.find((c) => (c.prefix ? title.startsWith(c.label) : title === c.label)) ?? null;
+}
+
 const cardStyle: React.CSSProperties = {
   backgroundColor: "white",
   borderRadius: 16,
@@ -182,18 +188,29 @@ export default function TrendsPage() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {articlesToShow.map(t => (
-                t.is_theme_article ? (
+              {articlesToShow.map(t => {
+                const cat = t.is_theme_article ? categoryForArticle(t.title) : null;
+                return t.is_theme_article ? (
                   // テーマ記事(長文解説): 本文全体 + 参照記事リンク一覧
                   <div key={t.id} style={{ background: "white", borderRadius: 12, padding: 20,
                     border: "1px solid #66c3c6", boxShadow: "0 2px 8px rgba(102,195,198,0.15)" }}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#fef3c7", color: "#d97706", fontWeight: 700 }}>
                         📝 特集記事
                       </span>
-                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d", fontWeight: 700 }}>
-                        {SECTOR_EMOJI[t.sector?.split("/")[0].trim()] ?? "📌"} {t.sector}
-                      </span>
+                      {cat ? (
+                        // カテゴリーバッジ: 右カラムのカテゴリー名と共通化し、クリックでそのカテゴリーの記事一覧に飛べるようにする
+                        <button
+                          onClick={() => { setActiveCategory(cat.label); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d",
+                            fontWeight: 700, border: "none", cursor: "pointer" }}>
+                          {cat.emoji} {cat.label}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d", fontWeight: 700 }}>
+                          {SECTOR_EMOJI[t.sector?.split("/")[0].trim()] ?? "📌"} {t.sector}
+                        </span>
+                      )}
                       <span style={{ fontSize: 10, color: "#94a3b8" }}>
                         {new Date(t.fetched_at).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric" })}
                       </span>
@@ -255,8 +272,8 @@ export default function TrendsPage() {
                       </p>
                     )}
                   </div>
-                )
-              ))}
+                );
+              })}
             </div>
           )}
 
