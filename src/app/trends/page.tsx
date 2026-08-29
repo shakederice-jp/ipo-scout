@@ -164,7 +164,7 @@ export default function TrendsPage() {
               </h1>
             </div>
             <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-              IPO・スタートアップ・資金調達の最新動向を毎日3回自動更新
+              IPO・スタートアップ・資金調達の最新動向を毎日3回情報をチェックし、動きがあった時だけ更新
               {updatedAt && <span style={{ marginLeft: 8, color: "#66c3c6" }}>最終更新: {updatedAt}</span>}
             </p>
           </div>
