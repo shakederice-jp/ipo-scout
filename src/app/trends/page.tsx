@@ -38,6 +38,53 @@ function categoryForArticle(title: string) {
   return CATEGORIES.find((c) => (c.prefix ? title.startsWith(c.label) : title === c.label)) ?? null;
 }
 
+// 記事本文(content)は、Xにそのままコピペしても崩れないようにプレーンテキストで
+// 保存している(URLも裸のURLのまま)。そのため画面表示ではリンクにならず、
+// 「続きは大手町調査室９課公式HPで読む」の文字や末尾のURLがただの文字列に見えてしまっていた。
+// ここでは保存データ自体は変えず、表示時だけ「CTAの文言」と「本文中の裸のURL」を
+// クリックできるリンクに変換する(2026/8/29)。
+const TRENDS_CTA_PHRASE = "続きは大手町調査室９課公式HPで読む";
+function renderTrendContent(content: string): React.ReactNode {
+  const urlRegex = /https?:\/\/\S+/g;
+  const firstUrlMatch = content.match(urlRegex);
+  const primaryUrl = firstUrlMatch ? firstUrlMatch[0] : null;
+  if (!primaryUrl) return content;
+
+  const linkStyle: React.CSSProperties = { color: "#0d4f52", fontWeight: 700, textDecoration: "underline", wordBreak: "break-all" };
+  const parts: React.ReactNode[] = [];
+  let remaining = content;
+  let key = 0;
+
+  // CTAの文言が含まれていれば、その文言自体を分析ページへのリンクにする
+  const ctaIndex = remaining.indexOf(TRENDS_CTA_PHRASE);
+  if (ctaIndex !== -1) {
+    parts.push(remaining.slice(0, ctaIndex));
+    parts.push(
+      <a key={`cta-${key++}`} href={primaryUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+        {TRENDS_CTA_PHRASE}
+      </a>
+    );
+    remaining = remaining.slice(ctaIndex + TRENDS_CTA_PHRASE.length);
+  }
+
+  // 残りの部分にある裸のURLもリンクにする(CTAが無い記事や、末尾に単独で出てくるURL行向け)
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  urlRegex.lastIndex = 0;
+  while ((m = urlRegex.exec(remaining)) !== null) {
+    parts.push(remaining.slice(lastIndex, m.index));
+    parts.push(
+      <a key={`url-${key++}`} href={m[0]} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+        {m[0]}
+      </a>
+    );
+    lastIndex = m.index + m[0].length;
+  }
+  parts.push(remaining.slice(lastIndex));
+
+  return parts;
+}
+
 const cardStyle: React.CSSProperties = {
   backgroundColor: "white",
   borderRadius: 16,
@@ -274,7 +321,7 @@ export default function TrendsPage() {
                       <img src={t.image_url} alt={t.title} style={{ width: "100%", maxWidth: 360, borderRadius: 12, marginBottom: 14, display: "block" }} />
                     )}
                     <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.9, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>
-                      {t.content}
+                      {renderTrendContent(t.content)}
                     </p>
                     <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" as const, gap: 8, marginBottom: Array.isArray(t.source_links) && t.source_links.length > 0 ? 12 : 0 }}>
                       {t.image_url && (
