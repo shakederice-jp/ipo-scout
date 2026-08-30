@@ -50,8 +50,10 @@ export async function GET(req: NextRequest) {
 
   // インフォグラフィック生成チェック(実際にテスト用の1枚を生成してみて、パイプライン全体が動くか確認する)
   // 2026/8/29、fal.aiへの依存(FAL_KEY)を廃止し、CSSグラデーションのみの背景に変更。
-  // さらに同日、デザインを「売上高の推移」棒グラフ中心に変更したため、
-  // テストデータにもダミーの売上推移を渡してグラフ描画までテストする。
+  // さらに同日、デザインを「売上高の推移」棒グラフ中心に変更し、その後
+  // 「売上は伸びているが利益は赤字」を同時に見せられるよう経常利益(profit)も
+  // グラフに追加したため、テストデータにも黒字/赤字が混在するダミーの利益推移を渡し、
+  // 色分け(黒字=水色バー・赤字=赤バー)の描画までテストする。
   try {
     const testUrl = await createInfographic({
       companyId: "healthcheck-test",
@@ -60,10 +62,10 @@ export async function GET(req: NextRequest) {
       grade: "B",
       score: 72,
       chartData: [
-        { label: "22/3期", value: 3.2 },
-        { label: "23/3期", value: 5.8 },
-        { label: "24/3期", value: 9.1 },
-        { label: "25/3期", value: 14.6 },
+        { label: "22/3期", value: 3.2, profit: -0.6 },
+        { label: "23/3期", value: 5.8, profit: -0.3 },
+        { label: "24/3期", value: 9.1, profit: 0.4 },
+        { label: "25/3期", value: 14.6, profit: 1.2 },
       ],
       hook: "国内シェアNo.1のニッチ市場で、4期連続の増収増益を続ける成長企業。",
     });

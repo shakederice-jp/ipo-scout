@@ -22,7 +22,7 @@ export interface InfographicData {
   sector?: string;
   grade: string;   // A〜E
   score: number;   // 0〜100
-  chartData?: { label: string; value: number }[]; // 売上高の推移(億円換算)。src/lib/ipo-revenue-chart.tsのbuildRevenueChartData()で作る
+  chartData?: { label: string; value: number; profit?: number | null }[]; // 売上高・経常利益の推移(億円換算)。src/lib/ipo-revenue-chart.tsのbuildRevenueChartData()で作る
   hook?: string;    // ひとことインサイト(ai_summary等)。画像内に短い引用カードとして表示される
 }
 
