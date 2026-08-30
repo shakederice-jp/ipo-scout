@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
   const nameFontSize = companyName.length > 9 ? 44 : companyName.length > 6 ? 52 : 62;
 
   // 売上高の棒グラフの寸法(px)。value(億円)をこの最大高さに正規化する。
-  const MAX_BAR_HEIGHT = 190;
+  const MAX_BAR_HEIGHT = 166;
   const maxValue = chartData.length > 0 ? Math.max(...chartData.map((p) => p.value)) : 0;
   const growthLabel = buildGrowthLabel(chartData);
 
@@ -169,29 +169,21 @@ export async function GET(req: NextRequest) {
                 children: AXIS_GROUPS.map((g) => ({
                   type: "div",
                   props: {
-                    style: { display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1, backgroundColor: g.bg, borderRadius: 16, padding: "14px 18px", border: `2px solid ${g.color}` },
+                    style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, backgroundColor: g.bg, borderRadius: 16, padding: "18px 10px", border: `2px solid ${g.color}` },
                     children: [
+                      { type: "div", props: { style: { display: "flex", fontSize: 32, marginBottom: 4 }, children: g.icon } },
+                      { type: "div", props: { style: { display: "flex", fontSize: 23, fontWeight: 700, color: "#ffffff", marginBottom: 6, textAlign: "center" as const }, children: g.label } },
                       {
                         type: "div",
                         props: {
-                          style: { display: "flex", flexDirection: "column", alignItems: "flex-start" },
-                          children: [
-                            { type: "div", props: { style: { display: "flex", fontSize: 26, marginBottom: 2 }, children: g.icon } },
-                            { type: "div", props: { style: { display: "flex", fontSize: 16, fontWeight: 700, color: "#ffffff" }, children: g.label } },
-                          ],
-                        },
-                      },
-                      {
-                        type: "div",
-                        props: {
-                          style: { display: "flex", alignItems: "baseline", gap: 3 },
+                          style: { display: "flex", alignItems: "baseline", gap: 3, justifyContent: "center" },
                           children:
                             g.value != null
                               ? [
-                                  { type: "div", props: { style: { display: "flex", fontSize: 46, fontWeight: 700, color: g.color, lineHeight: 1 }, children: `${g.value}` } },
-                                  { type: "div", props: { style: { display: "flex", fontSize: 15, color: "rgba(255,255,255,0.65)" }, children: "/100" } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 54, fontWeight: 700, color: g.color, lineHeight: 1 }, children: `${g.value}` } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 16, color: "rgba(255,255,255,0.65)" }, children: "/100" } },
                                 ]
-                              : [{ type: "div", props: { style: { display: "flex", fontSize: 28, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
+                              : [{ type: "div", props: { style: { display: "flex", fontSize: 32, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
                         },
                       },
                     ],
