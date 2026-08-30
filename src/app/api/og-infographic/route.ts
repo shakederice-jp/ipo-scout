@@ -169,21 +169,29 @@ export async function GET(req: NextRequest) {
                 children: AXIS_GROUPS.map((g) => ({
                   type: "div",
                   props: {
-                    style: { display: "flex", flexDirection: "column", alignItems: "center", flex: 1, backgroundColor: g.bg, borderRadius: 14, padding: "10px 8px", border: `1.5px solid ${g.color}` },
+                    style: { display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1, backgroundColor: g.bg, borderRadius: 16, padding: "14px 18px", border: `2px solid ${g.color}` },
                     children: [
-                      { type: "div", props: { style: { display: "flex", fontSize: 18, marginBottom: 2 }, children: g.icon } },
-                      { type: "div", props: { style: { display: "flex", fontSize: 13, fontWeight: 700, color: "#ffffff", marginBottom: 2 }, children: g.label } },
                       {
                         type: "div",
                         props: {
-                          style: { display: "flex", alignItems: "baseline", gap: 2 },
+                          style: { display: "flex", flexDirection: "column", alignItems: "flex-start" },
+                          children: [
+                            { type: "div", props: { style: { display: "flex", fontSize: 26, marginBottom: 2 }, children: g.icon } },
+                            { type: "div", props: { style: { display: "flex", fontSize: 16, fontWeight: 700, color: "#ffffff" }, children: g.label } },
+                          ],
+                        },
+                      },
+                      {
+                        type: "div",
+                        props: {
+                          style: { display: "flex", alignItems: "baseline", gap: 3 },
                           children:
                             g.value != null
                               ? [
-                                  { type: "div", props: { style: { display: "flex", fontSize: 24, fontWeight: 700, color: g.color }, children: `${g.value}` } },
-                                  { type: "div", props: { style: { display: "flex", fontSize: 12, color: "rgba(255,255,255,0.6)" }, children: "/100" } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 46, fontWeight: 700, color: g.color, lineHeight: 1 }, children: `${g.value}` } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 15, color: "rgba(255,255,255,0.65)" }, children: "/100" } },
                                 ]
-                              : [{ type: "div", props: { style: { display: "flex", fontSize: 18, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
+                              : [{ type: "div", props: { style: { display: "flex", fontSize: 28, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
                         },
                       },
                     ],
