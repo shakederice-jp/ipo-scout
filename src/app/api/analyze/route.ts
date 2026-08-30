@@ -7,6 +7,7 @@ import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
+import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -324,6 +325,15 @@ export async function POST(req: NextRequest) {
           // 失敗しても投稿自体は続行する)
           const chartData = buildRevenueChartData((co as any).structured_data?.key_metrics);
           const hookText = (r.ai_summary || summary.insights[0].body || "").slice(0, 60);
+          // 超短期・短期・長期の投資家向けスコア。STEP5(9軸詳細分析)が未実行の場合は
+          // co.analysis_axes_short/mid/longがすべて空のため、3つともnullになる
+          // (このSTEP4の時点ではSTEP5がまだ実行されていないことが多く、その場合は
+          // インフォグラフィック側でこの項目自体を表示しない)。
+          const axisScores = computeAxisGroupScores(
+            (co as any).analysis_axes_short,
+            (co as any).analysis_axes_mid,
+            (co as any).analysis_axes_long
+          );
           let imageUrl: string | null = null;
           try {
             imageUrl = await createInfographic({
@@ -334,6 +344,7 @@ export async function POST(req: NextRequest) {
               score: summary.total_score ?? 65,
               chartData,
               hook: hookText,
+              axisScores,
             });
           } catch (e: any) {
             console.error("インフォグラフィック生成失敗:", e?.message);

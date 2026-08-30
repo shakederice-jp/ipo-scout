@@ -25,6 +25,14 @@ export const runtime = "edge";
 // (グレード+点数)はこのアプリの一番の売りであるため、以前好評だった大きな円バッジの
 // デザインに戻し、より目立つようにした。
 //
+// 2026/8/29 さらに追加: 分析ページの9軸詳細分析(超短期・短期・長期)のスコアも
+// 見せたいとの要望を受け、超短期/短期/長期の3枚の小さなスコアカードと、
+// 「公式サイトでは超短期・短期・長期それぞれの投資家向けにIPO分析を行っています」
+// という固定の案内文を追加した。このスコアはSTEP5(9軸詳細分析)を実行して初めて
+// 算出できるため、STEP4完了直後の自動生成時点ではまだ存在しないことが多い
+// (その場合はこのセクション自体を表示しない。既存銘柄でSTEP5実行済みなら、
+// 「インフォグラフィックの作り直し」で反映できる)。
+//
 // 背景は外部の画像生成(fal.ai)に依存すると、取得失敗時にレイアウトが崩れたり
 // 生成のたびに絵柄が変わって見づらくなるため、CSSのグラデーションのみで組む
 // (サイト本体のブランドカラーと統一・失敗しない・軽い)。
@@ -59,6 +67,13 @@ function parseChartData(raw: string | null): ChartPoint[] {
   }
 }
 
+// axisUltraShort/axisShort/axisLong(0〜100の整数)をパースする。無い・不正な値はnullを返す。
+function parseAxisScore(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : null;
+}
+
 // 初期値→最新値の伸び率から、グラフの見出しになる「成長ヘッドライン」を作る。
 // 例: "📈 4期で9.6倍成長"。ほぼ横ばい(±5%以内)の場合は表示しない(誇張を避けるため)。
 function buildGrowthLabel(chartData: ChartPoint[]): string | null {
@@ -89,6 +104,10 @@ export async function GET(req: NextRequest) {
   const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, Math.round(scoreRaw))) : 0;
   const chartData = parseChartData(searchParams.get("chartData"));
   const hook = truncate(searchParams.get("hook") || "", 42);
+  const axisUltraShort = parseAxisScore(searchParams.get("axisUltraShort"));
+  const axisShort = parseAxisScore(searchParams.get("axisShort"));
+  const axisLong = parseAxisScore(searchParams.get("axisLong"));
+  const hasAxisScores = axisUltraShort != null || axisShort != null || axisLong != null;
 
   // 会社名の長さに応じてフォントサイズを落とし、幅からはみ出さないようにする
   const nameFontSize = companyName.length > 9 ? 44 : companyName.length > 6 ? 52 : 62;
@@ -116,14 +135,69 @@ export async function GET(req: NextRequest) {
         props: {
           style: {
             display: "flex",
-            margin: "20px 64px 0",
-            padding: "16px 26px",
+            margin: "16px 64px 0",
+            padding: "14px 26px",
             backgroundColor: "rgba(255,255,255,0.09)",
             borderRadius: 16,
             borderLeft: "6px solid #f5a623",
           },
           children: [
             { type: "div", props: { style: { display: "flex", fontSize: 24, fontWeight: 700, color: "#ffffff", lineHeight: 1.4 }, children: `💡 ${hook}` } },
+          ],
+        },
+      }
+    : null;
+
+  // 超短期・短期・長期の投資家向けスコア(9軸詳細分析の各グループ平均点)。
+  // データが無いグループは「―」を表示する(未実行の可能性があり、確定的に「無い」と
+  // 断定できないため、他の箇所と同様に「未定」等の文言は使わない)。
+  const AXIS_GROUPS: { key: string; label: string; icon: string; color: string; bg: string; value: number | null }[] = [
+    { key: "ultraShort", label: "超短期", icon: "⚡", color: "#ff8577", bg: "rgba(239,68,68,0.16)", value: axisUltraShort },
+    { key: "short", label: "短期", icon: "📈", color: "#f5c451", bg: "rgba(245,166,35,0.16)", value: axisShort },
+    { key: "long", label: "長期", icon: "🏛", color: "#c4b5fd", bg: "rgba(167,139,250,0.16)", value: axisLong },
+  ];
+  const axisScoreSection = hasAxisScores
+    ? {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", margin: "16px 64px 0" },
+          children: [
+            {
+              type: "div",
+              props: {
+                style: { display: "flex", flexDirection: "row", gap: 14 },
+                children: AXIS_GROUPS.map((g) => ({
+                  type: "div",
+                  props: {
+                    style: { display: "flex", flexDirection: "column", alignItems: "center", flex: 1, backgroundColor: g.bg, borderRadius: 14, padding: "10px 8px", border: `1.5px solid ${g.color}` },
+                    children: [
+                      { type: "div", props: { style: { display: "flex", fontSize: 18, marginBottom: 2 }, children: g.icon } },
+                      { type: "div", props: { style: { display: "flex", fontSize: 13, fontWeight: 700, color: "#ffffff", marginBottom: 2 }, children: g.label } },
+                      {
+                        type: "div",
+                        props: {
+                          style: { display: "flex", alignItems: "baseline", gap: 2 },
+                          children:
+                            g.value != null
+                              ? [
+                                  { type: "div", props: { style: { display: "flex", fontSize: 24, fontWeight: 700, color: g.color }, children: `${g.value}` } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 12, color: "rgba(255,255,255,0.6)" }, children: "/100" } },
+                                ]
+                              : [{ type: "div", props: { style: { display: "flex", fontSize: 18, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
+                        },
+                      },
+                    ],
+                  },
+                })),
+              },
+            },
+            {
+              type: "div",
+              props: {
+                style: { display: "flex", fontSize: 14, color: "rgba(255,255,255,0.6)", marginTop: 8, textAlign: "center" as const, justifyContent: "center" },
+                children: "🔍 公式サイトでは超短期・短期・長期、それぞれの投資家向けにIPO分析を行っています",
+              },
+            },
           ],
         },
       }
@@ -298,6 +372,8 @@ export async function GET(req: NextRequest) {
                   ] } },
                 scoreCircle,
               ] } },
+            // 超短期・短期・長期の投資家向けスコア(axisScoresが渡された場合のみ)
+            ...(axisScoreSection ? [axisScoreSection] : []),
             // ひとことインサイト(hookが渡された場合のみ)
             ...(hookSection ? [hookSection] : []),
             // メイン: 売上高・経常利益推移グラフ(またはフォールバック)

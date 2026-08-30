@@ -24,6 +24,7 @@ export interface InfographicData {
   score: number;   // 0〜100
   chartData?: { label: string; value: number; profit?: number | null }[]; // 売上高・経常利益の推移(億円換算)。src/lib/ipo-revenue-chart.tsのbuildRevenueChartData()で作る
   hook?: string;    // ひとことインサイト(ai_summary等)。画像内に短い引用カードとして表示される
+  axisScores?: { ultraShort: number | null; short: number | null; long: number | null }; // 超短期・短期・長期の投資家向けスコア。src/lib/ipo-axis-scores.tsのcomputeAxisGroupScores()で作る。STEP5(9軸詳細分析)未実行の銘柄はすべてnull
 }
 
 // og-infographicルートで文字を合成 → Supabase Storageへアップロードするところまでを一括で行う。
@@ -38,6 +39,9 @@ export async function createInfographic(data: InfographicData): Promise<string |
       score: String(data.score),
       ...(data.chartData && data.chartData.length > 0 ? { chartData: JSON.stringify(data.chartData) } : {}),
       ...(data.hook ? { hook: data.hook } : {}),
+      ...(data.axisScores?.ultraShort != null ? { axisUltraShort: String(data.axisScores.ultraShort) } : {}),
+      ...(data.axisScores?.short != null ? { axisShort: String(data.axisScores.short) } : {}),
+      ...(data.axisScores?.long != null ? { axisLong: String(data.axisScores.long) } : {}),
     });
 
     const ogRes = await fetch(`${APP_URL}/api/og-infographic?${params.toString()}`, {

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createInfographic } from "@/lib/infographic";
 import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
+import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
 
 export const maxDuration = 90;
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   let query = supabase
     .from("ipo_companies")
-    .select("id, name, sector, analysis_summary, listing_date, exchange, ticker, structured_data, analysis_market, ai_summary")
+    .select("id, name, sector, analysis_summary, listing_date, exchange, ticker, structured_data, analysis_market, ai_summary, analysis_axes_short, analysis_axes_mid, analysis_axes_long")
     .order("listing_date", { ascending: false });
   query = force ? query.range(offset, offset + 2) : query.is("infographic_url", null).limit(3);
 
@@ -72,6 +73,13 @@ export async function POST(req: NextRequest) {
       const appealNarrative =
         summary.appeal_narrative || summary.insights?.[0]?.body || (co as any).ai_summary || `${co.name}のIPOです。詳しい分析はサイトでご覧いただけます。`;
       const hookText = ((co as any).ai_summary || summary.insights?.[0]?.body || appealNarrative || "").slice(0, 60);
+      // 超短期・短期・長期の投資家向けスコア。この管理ツールは既存銘柄向けのため、
+      // STEP5(9軸詳細分析)が実行済みであれば正しく反映される(未実行ならnullのまま)。
+      const axisScores = computeAxisGroupScores(
+        (co as any).analysis_axes_short,
+        (co as any).analysis_axes_mid,
+        (co as any).analysis_axes_long
+      );
 
       const imageUrl = await createInfographic({
         companyId: co.id,
@@ -81,6 +89,7 @@ export async function POST(req: NextRequest) {
         score: summary.total_score,
         chartData,
         hook: hookText,
+        axisScores,
       });
 
       if (!imageUrl) {
