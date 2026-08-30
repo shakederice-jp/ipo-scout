@@ -169,21 +169,29 @@ export async function GET(req: NextRequest) {
                 children: AXIS_GROUPS.map((g) => ({
                   type: "div",
                   props: {
-                    style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, backgroundColor: g.bg, borderRadius: 16, padding: "18px 10px", border: `2px solid ${g.color}` },
+                    style: { display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14, flex: 1, backgroundColor: g.bg, borderRadius: 16, padding: "16px 12px", border: `2px solid ${g.color}` },
                     children: [
-                      { type: "div", props: { style: { display: "flex", fontSize: 32, marginBottom: 4 }, children: g.icon } },
-                      { type: "div", props: { style: { display: "flex", fontSize: 23, fontWeight: 700, color: "#ffffff", marginBottom: 6, textAlign: "center" as const }, children: g.label } },
                       {
                         type: "div",
                         props: {
-                          style: { display: "flex", alignItems: "baseline", gap: 3, justifyContent: "center" },
+                          style: { display: "flex", flexDirection: "column", alignItems: "center" },
+                          children: [
+                            { type: "div", props: { style: { display: "flex", fontSize: 28, marginBottom: 2 }, children: g.icon } },
+                            { type: "div", props: { style: { display: "flex", fontSize: 20, fontWeight: 700, color: "#ffffff", textAlign: "center" as const }, children: g.label } },
+                          ],
+                        },
+                      },
+                      {
+                        type: "div",
+                        props: {
+                          style: { display: "flex", alignItems: "baseline", gap: 3 },
                           children:
                             g.value != null
                               ? [
-                                  { type: "div", props: { style: { display: "flex", fontSize: 54, fontWeight: 700, color: g.color, lineHeight: 1 }, children: `${g.value}` } },
-                                  { type: "div", props: { style: { display: "flex", fontSize: 16, color: "rgba(255,255,255,0.65)" }, children: "/100" } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 50, fontWeight: 700, color: g.color, lineHeight: 1 }, children: `${g.value}` } },
+                                  { type: "div", props: { style: { display: "flex", fontSize: 15, color: "rgba(255,255,255,0.65)" }, children: "/100" } },
                                 ]
-                              : [{ type: "div", props: { style: { display: "flex", fontSize: 32, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
+                              : [{ type: "div", props: { style: { display: "flex", fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.4)" }, children: "―" } }],
                         },
                       },
                     ],
