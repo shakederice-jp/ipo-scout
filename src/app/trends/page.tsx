@@ -225,7 +225,7 @@ export default function TrendsPage() {
 
       <style>{`
         @media (max-width: 700px) {
-          .trends-sidebar { flex: 1 1 100% !important; min-width: 0 !important; max-width: 100% !important; }
+          .trends-sidebar { flex: 1 1 100% !important; min-width: 0 !important; max-width: 100% !important; order: -1; }
         }
       `}</style>
 
