@@ -156,31 +156,6 @@ export default async function Home({
 
         </aside>
       </div>
-
-
-      {/* フッター */}
-      <footer style={{ borderTop:"1px solid #b3e8ea", backgroundColor:"white", padding:"24px 16px", textAlign:"center" }}>
-        <div style={{ display:"flex", justifyContent:"center", gap:16, marginBottom:10 }}>
-        <a href="/tokushoho" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>特定商取引法に基づく表記</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/privacy" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>プライバシーポリシー</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/contact" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>お問い合わせ</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/guide" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>このサイトの使い方</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/plans" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>料金プラン</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/trends" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>📡 マーケットトレンド</a>
-          <span style={{ color:"#e2e8f0" }}>|</span>
-          <a href="/ipo-guide" style={{ fontSize:11, color:"#66c3c6", textDecoration:"none" }}>💡 IPO投資の法則</a>
-        </div>
-        <p style={{ fontSize:10, color:"#94a3b8", lineHeight:1.7, margin:0 }}>
-          本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br/>
-          最終的な投資判断はご自身の責任のもとで行ってください。<br/>
-          © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製を禁じます。
-        </p>
-      </footer>
     </div>
   );
 }
