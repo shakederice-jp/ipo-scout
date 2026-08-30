@@ -79,6 +79,9 @@ export default function ContactPage() {
             バグのご報告・分析内容へのご質問・機能改善のご提案など、お気づきの点をお気軽にお聞かせください。
             いただいたご意見はサービス向上に役立ててまいります。
           </p>
+          <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.9, marginTop: 10 }}>
+            なお、誠に勝手ながら、お寄せいただきましたご報告・ご質問・ご提案等につきましては、個別のご返信やお礼状の送付を差し控えさせていただいております。日頃より貴重なお声をお寄せいただいておりますことに、この場をお借りして厚く御礼申し上げます。
+          </p>
         </div>
 
         <div style={{ backgroundColor: "white", borderRadius: 16, border: `1px solid ${C.border}`, padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
