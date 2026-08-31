@@ -48,6 +48,16 @@ export default function AdminPage() {
   const [econType, setEconType] = useState("FOMC");
   const [econLabel, setEconLabel] = useState("");
   const [econLoading, setEconLoading] = useState(false);
+  const [manualAddName, setManualAddName] = useState("");
+  const [manualAddTicker, setManualAddTicker] = useState("");
+  const [manualAddExchange, setManualAddExchange] = useState("グロース");
+  const [manualAddListingDate, setManualAddListingDate] = useState("");
+  const [manualAddEdinetDocId, setManualAddEdinetDocId] = useState("");
+  const [manualAddSector, setManualAddSector] = useState("");
+  const [manualAddBizType, setManualAddBizType] = useState("");
+  const [manualAddSummary, setManualAddSummary] = useState("");
+  const [manualAddLoading, setManualAddLoading] = useState(false);
+  const [manualAddResult, setManualAddResult] = useState<string | null>(null);
   const [econResult, setEconResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -381,6 +391,45 @@ export default function AdminPage() {
     } catch {}
   };
 
+  // 2026/8/31追記: EDINET自動検出の見落とし(Skyfall等)に備えた手動登録ツール。
+  // 通常は新規IPOはEDINET自動スキャンで登録されるが、スキャン窓(直近5日)を過ぎて
+  // 見落とされた銘柄は自動では二度と登録されないため、その救済手段としてここから
+  // 手動でipo_companiesに新規行を追加できるようにした。会社名だけ入力すれば登録でき、
+  // 登録後は下の「銘柄分析」で通常通り①〜⑥のステップを実行すればよい。
+  const handleManualAddCompany = async () => {
+    if (!manualAddName.trim()) { setManualAddResult("❌ 会社名を入力してください"); return; }
+    setManualAddLoading(true); setManualAddResult(null);
+    try {
+      const res = await fetch("/api/admin/add-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: manualAddName.trim(),
+          ticker: manualAddTicker.trim() || null,
+          exchange: manualAddExchange || null,
+          listing_date: manualAddListingDate || null,
+          edinet_doc_id: manualAddEdinetDocId.trim() || null,
+          sector: manualAddSector.trim() || null,
+          biz_type: manualAddBizType.trim() || null,
+          ai_summary: manualAddSummary.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setManualAddResult(`❌ ${data.error}`);
+      } else {
+        setManualAddResult(`✅ 「${data.company?.name ?? manualAddName}」を登録しました。下の「銘柄分析」で選択して、①から順に実行してください。`);
+        setManualAddName(""); setManualAddTicker(""); setManualAddListingDate("");
+        setManualAddEdinetDocId(""); setManualAddSector(""); setManualAddBizType(""); setManualAddSummary("");
+        const updated = await fetch("/api/admin/companies").then(r => r.json());
+        if (Array.isArray(updated)) setCompanies(updated);
+      }
+    } catch {
+      setManualAddResult("❌ 通信エラー");
+    }
+    setManualAddLoading(false);
+  };
+
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
   const labelStyle = { fontSize:"11px", fontWeight:"700" as const, color:"#2a7a7e", marginBottom:"4px", display:"block" as const };
   const sectionStyle = { background:"white", borderRadius:"12px", padding:"20px", marginBottom:"12px", border:"1px solid #d1f5f7" };
@@ -469,6 +518,36 @@ export default function AdminPage() {
               </button>
               {manualOpen && (
                 <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:14 }}>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>➕ 新規銘柄を手動登録 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（EDINET自動検出から見落とされた銘柄の救済用。会社名だけでも登録できます）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>登録後は下の「🔬 銘柄分析」で上場月から選び、通常通り①〜⑥のステップを実行してください。</p>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:10 }}>
+                      <div><label style={labelStyle}>会社名 *</label><input value={manualAddName} onChange={e=>setManualAddName(e.target.value)} placeholder="例：Skyfall" style={inputStyle}/></div>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <div style={{ flex:1 }}><label style={labelStyle}>証券コード</label><input value={manualAddTicker} onChange={e=>setManualAddTicker(e.target.value)} placeholder="例：625A" style={inputStyle}/></div>
+                        <div style={{ flex:1 }}>
+                          <label style={labelStyle}>上場市場</label>
+                          <select value={manualAddExchange} onChange={e=>setManualAddExchange(e.target.value)} style={inputStyle}>
+                            <option value="グロース">グロース</option>
+                            <option value="スタンダード">スタンダード</option>
+                            <option value="プライム">プライム</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div><label style={labelStyle}>上場日</label><input type="date" value={manualAddListingDate} onChange={e=>setManualAddListingDate(e.target.value)} style={inputStyle}/></div>
+                      <div><label style={labelStyle}>EDINET書類ID（空白で①実行時に自動検索）</label><input value={manualAddEdinetDocId} onChange={e=>setManualAddEdinetDocId(e.target.value)} placeholder="例：S100XXXX" style={inputStyle}/></div>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <div style={{ flex:1 }}><label style={labelStyle}>業種</label><input value={manualAddSector} onChange={e=>setManualAddSector(e.target.value)} placeholder="例：サービス業" style={inputStyle}/></div>
+                        <div style={{ flex:1 }}><label style={labelStyle}>事業内容</label><input value={manualAddBizType} onChange={e=>setManualAddBizType(e.target.value)} placeholder="例：〇〇の運営" style={inputStyle}/></div>
+                      </div>
+                      <div><label style={labelStyle}>ひとことAI概要（任意）</label><input value={manualAddSummary} onChange={e=>setManualAddSummary(e.target.value)} placeholder="任意の紹介文" style={inputStyle}/></div>
+                    </div>
+                    <button onClick={handleManualAddCompany} disabled={manualAddLoading||!manualAddName.trim()} style={btnStyle("#166534", manualAddLoading||!manualAddName.trim())}>
+                      {manualAddLoading?"登録中...":"➕ 登録する"}
+                    </button>
+                    {manualAddResult && <p style={{ marginTop:8, fontSize:11, color:manualAddResult.startsWith("❌")?"#dc2626":"#166534" }}>{manualAddResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
                     <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🩺 システムヘルスチェック</div>
                     <button onClick={handleHealthCheck} disabled={healthLoading} style={btnStyle("#0d4f52", healthLoading)}>
