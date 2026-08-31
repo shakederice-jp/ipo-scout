@@ -9,36 +9,54 @@
 // 2026/8/29 追記: 「売上は伸びているが利益は赤字」という構造を同時に見せたいとの要望を受け、
 // 経常利益(ordinary_profit)もあわせて抽出するようにした。経常損失は目論見書上
 // "△195,336千円" のように△(または▲・マイナス)付きで記載されるため、符号付きで
-// パースするparseSignedThousandYen()を新設した(売上高用のparseThousandYenは
-// 「0以下は記載なし扱い」で除外する仕様のため、赤字を表現できる符号付き専用の関数が必要)。
+// パースする関数を用意した(売上高用のパースは「0以下は記載なし扱い」で除外する仕様のため、
+// 赤字を表現できる符号付き専用の処理が必要)。
+//
+// 2026/8/31追記(重要な修正): オリバー社で「売上高が0.2億円・0.4億円」のようにあり得ないほど
+// 小さい数字でグラフ表示される不具合が発覚し調査した結果、以前の実装は「key_metricsの数値は
+// 必ず千円単位で書かれている」と決め打ちして千円→億円換算(÷100,000)していたことが原因と判明した。
+// 実際にはオリバー社のように、目論見書の表が千円ではなく「百万円」単位で記載されている
+// 企業もある(規模の大きい会社ほどこの傾向がある)。STEP3のAI抽出自体は文字列に
+// "22,124百万円" のように正しい単位を残して抽出できていたが、グラフ側のパース処理が
+// その単位表記を見ずに常に千円として扱っていたため、百万円企業だけ実際の1/1000の
+// 大きさで表示されてしまっていた(百万円は千円の1000倍のため)。
+// 対策として、文字列中の単位表記("百万円"→千円→万円→億円→円、の優先順で判定)を見て
+// 億円への換算係数を切り替えるparseYenToOku()に統一した。単位表記が無い場合のみ、
+// 従来通り千円を仮定する(後方互換)。
 
-export interface RevenueChartPoint {
-  label: string; // 例: "25/3期"
-  value: number; // 売上高・億円換算・小数点1桁
-  profit: number | null; // 経常利益・億円換算・小数点1桁。赤字はマイナス値。読み取れない場合はnull
+// 億円に換算する際の「この単位の何個分で1億円になるか」の対応表。
+// 判定は上から順に行うため、"百万円"は"万円"より先に判定する必要がある
+// ("百万円"という文字列自体に"万円"が部分文字列として含まれるため)。
+const YEN_UNIT_DENOMINATORS: { suffix: string; perOku: number }[] = [
+  { suffix: "百万円", perOku: 100 },       // 1億円 = 100百万円
+  { suffix: "千円", perOku: 100000 },      // 1億円 = 100,000千円
+  { suffix: "万円", perOku: 10000 },       // 1億円 = 10,000万円
+  { suffix: "億円", perOku: 1 },
+  { suffix: "円", perOku: 100000000 },     // 単位無し(素の円)の場合
+];
+
+function detectOkuDenominator(raw: string): number {
+  for (const u of YEN_UNIT_DENOMINATORS) {
+    if (raw.includes(u.suffix)) return u.perOku;
+  }
+  return 100000; // 単位表記が読み取れない場合のみ、従来通り千円を仮定
 }
 
-// "1,456,789千円" のような文字列から数値(千円単位)を取り出す。
+// "1,456,789千円"・"22,124百万円" のような文字列から、単位表記に応じて億円換算した数値を取り出す。
 // "目論見書に記載なし"や空文字など数値化できないものはnullを返す。
-function parseThousandYen(raw: unknown): number | null {
+// allowNegativeがfalseの場合、0以下は「未記載」とみなしnullを返す(売上高用)。
+// allowNegativeがtrueの場合、△・▲・-付きの負数(赤字)も有効な値として扱う(利益用)。
+function parseYenToOku(raw: unknown, allowNegative: boolean = false): number | null {
   if (typeof raw !== "string") return null;
-  const digits = raw.replace(/[^0-9.]/g, "");
-  if (!digits) return null;
-  const n = Number(digits);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return n;
-}
-
-// "△195,336千円"(赤字)・"98,765千円"(黒字)のような文字列を符号付きの数値(千円単位)にする。
-// 売上高用のparseThousandYenと異なり、0以下(赤字)も有効な値として扱う。
-function parseSignedThousandYen(raw: unknown): number | null {
-  if (typeof raw !== "string") return null;
-  const isNegative = /[△▲-]/.test(raw);
+  const isNegative = allowNegative && /[△▲-]/.test(raw);
   const digits = raw.replace(/[^0-9.]/g, "");
   if (!digits) return null;
   const n = Number(digits);
   if (!Number.isFinite(n)) return null;
-  return isNegative ? -n : n;
+  if (!allowNegative && n <= 0) return null;
+  const denom = detectOkuDenominator(raw);
+  const signed = isNegative ? -n : n;
+  return Math.round((signed / denom) * 10) / 10;
 }
 
 // "2025年3月期" のような決算期表記を、グラフの横軸に収まる短い表記("25/3期")に変換する。
@@ -56,12 +74,9 @@ export function buildRevenueChartData(keyMetrics: unknown, maxPoints: number = 5
   if (!Array.isArray(keyMetrics)) return [];
   const points: RevenueChartPoint[] = [];
   for (const km of keyMetrics) {
-    const thousandYen = parseThousandYen((km as any)?.revenue);
-    if (thousandYen == null) continue;
-    // 千円 → 億円 (1億円 = 100,000千円)
-    const oku = Math.round((thousandYen / 100000) * 10) / 10;
-    const profitThousandYen = parseSignedThousandYen((km as any)?.ordinary_profit);
-    const profitOku = profitThousandYen == null ? null : Math.round((profitThousandYen / 100000) * 10) / 10;
+    const oku = parseYenToOku((km as any)?.revenue, false);
+    if (oku == null) continue;
+    const profitOku = parseYenToOku((km as any)?.ordinary_profit, true);
     points.push({ label: shortenPeriodLabel((km as any)?.period), value: oku, profit: profitOku });
   }
   return points.slice(-maxPoints);
