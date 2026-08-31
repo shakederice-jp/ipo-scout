@@ -84,6 +84,33 @@ if (noAnalysisEarly && noAnalysisEarly.length > 0) {
       noStructure.map(c => `  - ${c.name}（${c.listing_date}）`).join("\n"));
   }
 
+  // ⑤ 重複登録の疑いがある銘柄
+  // 2026/8/31追記: 「かがやきホールディングス」と「かがやきホールディングス株式会社」が
+  // 別々の行として二重登録される事故が発覚したことを受けて追加。株式会社等の法人格表記や
+  // 空白の違いを無視して社名を正規化し、同じ会社とみられる行が複数あれば警告する。
+  const { data: allForDupCheck } = await supabase
+    .from("ipo_companies")
+    .select("id, name, listing_date");
+
+  if (allForDupCheck) {
+    const normalize = (s: string) => s
+      .replace(/株式会社|㈱|（株）|\(株\)|合同会社|有限会社/g, "")
+      .replace(/[\s　]/g, "")
+      .trim();
+    const groups = new Map<string, { id: string; name: string; listing_date: string | null }[]>();
+    for (const c of allForDupCheck) {
+      const key = normalize(c.name);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(c);
+    }
+    const dupGroups = Array.from(groups.values()).filter(g => g.length > 1);
+    if (dupGroups.length > 0) {
+      issues.push(`🚨 重複登録の疑いがある銘柄（${dupGroups.length}件）:\n` +
+        dupGroups.map(g => `  - ${g.map(c => `「${c.name}」（${c.listing_date ?? "日付未定"}）`).join(" と ")}`).join("\n") +
+        `\n  → admin画面の「🛠 手動実行ツール」内「🗑 銘柄を削除」で、不要な方を削除してください。`);
+    }
+  }
+
   // 問題があれば管理者通知
   if (issues.length > 0) {
     await notifyAdmin(

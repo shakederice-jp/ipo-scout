@@ -58,6 +58,9 @@ export default function AdminPage() {
   const [manualAddSummary, setManualAddSummary] = useState("");
   const [manualAddLoading, setManualAddLoading] = useState(false);
   const [manualAddResult, setManualAddResult] = useState<string | null>(null);
+  const [deleteCompanyId, setDeleteCompanyId] = useState("");
+  const [deleteCompanyLoading, setDeleteCompanyLoading] = useState(false);
+  const [deleteCompanyResult, setDeleteCompanyResult] = useState<string | null>(null);
   const [econResult, setEconResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -402,7 +405,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/add-company", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-password": "otemachi9" },
         body: JSON.stringify({
           name: manualAddName.trim(),
           ticker: manualAddTicker.trim() || null,
@@ -428,6 +431,38 @@ export default function AdminPage() {
       setManualAddResult("❌ 通信エラー");
     }
     setManualAddLoading(false);
+  };
+
+  // 2026/8/31追記: 「かがやきホールディングス」の重複登録事故の後始末用に新設。
+  // 誤って登録された銘柄(空の重複行等)を安全に削除できるようにする。
+  // 削除は取り消せないため、確認ダイアログで会社名を明示し、
+  // API側でも会社名の一致確認を行ってから削除する二重チェックにしている。
+  const handleDeleteCompany = async () => {
+    if (!deleteCompanyId) return;
+    const target = companies.find(c => c.id === deleteCompanyId);
+    if (!target) return;
+    if (!confirm(`「${target.name}」を削除します。分析データも含めて元に戻せません。本当によろしいですか？`)) return;
+    setDeleteCompanyLoading(true); setDeleteCompanyResult(null);
+    try {
+      const res = await fetch("/api/admin/delete-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": "otemachi9" },
+        body: JSON.stringify({ company_id: deleteCompanyId, confirm_name: target.name }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setDeleteCompanyResult(`❌ ${data.error}`);
+      } else {
+        setDeleteCompanyResult(`✅ 「${data.deleted_name}」を削除しました。`);
+        setDeleteCompanyId("");
+        if (selectedCompany?.id === deleteCompanyId) setSelectedCompany(null);
+        const updated = await fetch("/api/admin/companies").then(r => r.json());
+        if (Array.isArray(updated)) setCompanies(updated);
+      }
+    } catch {
+      setDeleteCompanyResult("❌ 通信エラー");
+    }
+    setDeleteCompanyLoading(false);
   };
 
   const inputStyle = { width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box" as const, fontSize:"13px" };
@@ -546,6 +581,22 @@ export default function AdminPage() {
                       {manualAddLoading?"登録中...":"➕ 登録する"}
                     </button>
                     {manualAddResult && <p style={{ marginTop:8, fontSize:11, color:manualAddResult.startsWith("❌")?"#dc2626":"#166534" }}>{manualAddResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🗑 銘柄を削除 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（誤登録・重複登録した銘柄の削除用。元に戻せません）</span></div>
+                    <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                      <select value={deleteCompanyId} onChange={e=>setDeleteCompanyId(e.target.value)} style={{ ...inputStyle, flex:1 }}>
+                        <option value="">-- 削除する銘柄を選択 --</option>
+                        {companies.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}（{c.listing_date ?? "日付未定"}）</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button onClick={handleDeleteCompany} disabled={deleteCompanyLoading||!deleteCompanyId} style={btnStyle("#b91c1c", deleteCompanyLoading||!deleteCompanyId)}>
+                      {deleteCompanyLoading?"削除中...":"🗑 削除する"}
+                    </button>
+                    {deleteCompanyResult && <p style={{ marginTop:8, fontSize:11, color:deleteCompanyResult.startsWith("❌")?"#dc2626":"#166534" }}>{deleteCompanyResult}</p>}
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>

@@ -8,14 +8,36 @@ import { createClient } from "@supabase/supabase-js";
 // 新規行を追加できる救済手段をあわせて用意した。
 // 会社名以外は全て任意項目とし、未入力の項目はnullのまま登録する
 // (STEP1〜STEP4の各実行で後から埋まっていく想定のため)。
+//
+// 2026/8/31追記(重複登録バグを受けての強化): 別の古い(かつパスワード確認も無い)
+// 手動登録用エンドポイント(add-ipo/route.ts、現在は無効化済み)経由で、社名の
+// 重複チェックを一切しないまま「かがやきホールディングス」が「かがやきホールディングス
+// 株式会社」とは別行として登録されてしまう事故が発生した。この教訓を踏まえ、
+// このエンドポイントの重複チェックを「完全一致」から、EDINET連携側(isNameMatch)と
+// 同じ「株式会社等の法人格表記や空白を除いて比較する」方式に強化し、
+// 「Skyfall」と「株式会社Skyfall」のような表記ゆれでも重複と判定できるようにした。
+// あわせて、admin画面のログインパスワードのチェックも追加した
+// (他の管理者操作(ヘルスチェック等)と同様、x-admin-passwordヘッダを要求する)。
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function normalizeCompanyName(s: string): string {
+  return s
+    .replace(/株式会社|㈱|（株）|\(株\)|合同会社|有限会社/g, "")
+    .replace(/[\s　]/g, "")
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const adminPw = req.headers.get("x-admin-password");
+    if (adminPw !== process.env.ADMIN_PASSWORD && adminPw !== "otemachi9") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) {
@@ -24,14 +46,16 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 重複登録防止: 同名の銘柄が既に存在する場合は登録せずエラーにする
-    const { data: existing } = await supabase
+    // 重複登録防止: 法人格表記や空白の違いを無視して、同一と思われる銘柄が
+    // 既に存在する場合は登録せずエラーにする
+    const { data: allCompanies } = await supabase
       .from("ipo_companies")
-      .select("id, name")
-      .ilike("name", name);
-    if (existing && existing.length > 0) {
+      .select("id, name");
+    const nameKey = normalizeCompanyName(name);
+    const dup = (allCompanies ?? []).find(c => normalizeCompanyName(c.name) === nameKey);
+    if (dup) {
       return NextResponse.json(
-        { error: `「${existing[0].name}」は既に登録されています（重複登録を防ぐため中止しました）` },
+        { error: `「${dup.name}」は既に登録されています（重複登録を防ぐため中止しました）` },
         { status: 409 }
       );
     }

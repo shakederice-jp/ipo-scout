@@ -1,56 +1,32 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { name, ticker, exchange, listing_date, bb_start_date, apply_start_date } = await req.json();
-
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{
-        role: "user",
-        content: `以下のIPO企業を分析し、必ず下記JSONのみで回答してください。
-
-企業名: ${name}
-ティッカー: ${ticker}
-取引所: ${exchange}
-
-{"sector":"セクター名","biz_type":"業態・ビジネスモデル","ai_summary":"150文字程度の事業概要","ai_score":70,"highlight":false,"highlight_reason":null}`
-      }],
-    });
-
-    const text = (message.content[0] as any).text;
-    const clean = text.replace(/```json|```/g, "").trim();
-    const ai = JSON.parse(clean);
-
-    const supabase = createSupabaseServerClient();
-    if (!supabase) throw new Error("Supabase接続エラー");
-
-    const { data, error } = await supabase
-      .from("ipo_companies")
-      .insert({
-        name, ticker, exchange,
-        listing_date: listing_date || null,
-        bb_start_date: bb_start_date || null,
-        apply_start_date: apply_start_date || null,
-        sector: ai.sector,
-        biz_type: ai.biz_type,
-        ai_summary: ai.ai_summary,
-        ai_score: ai.ai_score,
-        highlight: ai.highlight ?? false,
-        status: "仮条件決定前",
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return NextResponse.json({ name: data.name });
-
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message }, { status: 500 });
-  }
+// 2026/8/31追記: このエンドポイントは無効化した。
+//
+// 経緯: 「かがやきホールディングス」が「かがやきホールディングス株式会社」(既に分析済みの
+// 正しい行)とは別に、社名の重複チェックが一切無いまま新しく1件、勝手に登録されてしまう
+// 不具合が発覚した。調査の結果、この重複行のデータ内容(ticker・exchange・listing_dateが
+// 入っている一方でedinet_doc_idは無し、statusが"仮条件決定前"固定)が、この
+// add-ipo/route.tsのinsert内容と完全に一致することが判明した。
+//
+// このファイルは元々「新規IPO銘柄を登録」という手動登録フォーム用のAPIだったとみられるが、
+// 現在のadmin画面(src/app/admin/page.tsx)のどこからも呼び出されていない、
+// 使われなくなった古いコードだった。しかも他の管理API(health・backfill-infographics等)と
+// 違い、x-admin-passwordのチェックが無く、パスワード無しで誰でも(古いブラウザタブの
+// キャッシュや、URLを知っている第三者からでも)ipo_companiesに新しい行を作成できてしまう
+// 状態だった。加えて、同名会社の重複チェックも一切していなかった。
+//
+// 現在の正規の手動登録手段は、admin画面の「🛠 手動実行ツール」内
+// 「➕ 新規銘柄を手動登録」(src/app/api/admin/add-company/route.ts)に一本化されている。
+// こちらは同名重複のチェックと管理者パスワードの確認の両方を行う。
+//
+// このファイル自体を削除できればより良いが、Claudeの作業環境からユーザーのPC上の
+// ファイルを削除する手段が無いため、代わりに中身を無効化する形で対応した。
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        "このエンドポイントは廃止されました。新規銘柄の手動登録は、admin画面の「🛠 手動実行ツール」内「➕ 新規銘柄を手動登録」をご利用ください。",
+    },
+    { status: 410 }
+  );
 }
