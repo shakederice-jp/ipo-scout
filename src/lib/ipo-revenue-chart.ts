@@ -66,3 +66,32 @@ export function buildRevenueChartData(keyMetrics: unknown, maxPoints: number = 5
   }
   return points.slice(-maxPoints);
 }
+
+// 2026/8/30追記: 「トレンド記事本文の売上高」と「インフォグラフィック画像内のグラフ」で
+// 数字が食い違う不具合(オリバー社で発覚)への対処。
+// 原因は、STEP3(構造化)が「売上推移」を、①目論見書の表をそのまま数値抽出したkey_metrics(構造化配列)と、
+// ②AIが自由記述で書くfinancials.revenue_trend(文章、千円→億円換算もAI任せ)という
+// 2つの独立した項目として生成しており、両者の間で整合性を取る仕組みが無かったこと。
+// インフォグラフィックのグラフは①(key_metrics)由来、トレンド記事本文(appeal_narrative)を
+// 書くAIに渡す実データノートは②(revenue_trend)由来になっていたため、②側でAIが
+// 単位換算や期の対応を誤ると、画像と本文の数字がずれて見える状態になっていた。
+// 恒久対策として、記事本文生成に渡す「売上推移」「利益推移」の文章も、
+// このbuildRevenueChartData()と同じ①(key_metrics)から機械的に組み立てる(=情報源を一本化する)。
+// これにより、画像と本文は常に同じ数字(key_metrics)を参照するようになり、
+// AIの自由記述による食い違いは構造的に起こらなくなる。
+export function formatKeyMetricsTrend(keyMetrics: unknown): { revenueTrend: string | null; profitTrend: string | null } {
+  const points = buildRevenueChartData(keyMetrics, 5);
+  if (points.length === 0) return { revenueTrend: null, profitTrend: null };
+
+  const revenueTrend = points
+    .filter(p => p.label)
+    .map(p => `${p.label}${p.value}億円`)
+    .join("→");
+
+  const profitPoints = points.filter(p => p.label && p.profit != null);
+  const profitTrend = profitPoints.length > 0
+    ? profitPoints.map(p => `${p.label}${p.profit}億円`).join("→")
+    : null;
+
+  return { revenueTrend: revenueTrend || null, profitTrend };
+}

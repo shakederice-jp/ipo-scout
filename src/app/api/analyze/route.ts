@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
-import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
+import { buildRevenueChartData, formatKeyMetricsTrend } from "@/lib/ipo-revenue-chart";
 import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -71,10 +71,15 @@ function repairJson(text: string): any {
 function buildDataContext(structured: any, raw: any): { ctx: string; source: string } {
   if (structured && Object.keys(structured).length > 0) {
     const d = structured;
+    // 2026/8/30、トレンド記事本文とインフォグラフィック画像で売上高の数字が食い違う不具合の
+    // 恒久対策として、AIの自由記述(financials.revenue_trend/profit_trend)ではなく、
+    // インフォグラフィックのグラフと同じ情報源(key_metrics)から売上・利益推移の文章を組み立てる。
+    // key_metricsが無い(古いデータ等の)場合のみ、従来通りAIの自由記述にフォールバックする。
+    const { revenueTrend, profitTrend } = formatKeyMetricsTrend(d.key_metrics);
     const ctx = [
       `事業:${(d.business_summary??"").slice(0,200)}`,
-      `売上推移:${d.financials?.revenue_trend??"不明"}`,
-      `利益推移:${d.financials?.profit_trend??"不明"}`,
+      `売上推移:${revenueTrend ?? d.financials?.revenue_trend ?? "不明"}`,
+      `利益推移(経常利益):${profitTrend ?? d.financials?.profit_trend ?? "不明"}`,
       `利益率:${d.financials?.profit_margin??"不明"}`,
       `CF:${d.financials?.cash_flow??"不明"}`,
       `発行済株式:${d.ipo_details?.total_shares??"不明"}`,

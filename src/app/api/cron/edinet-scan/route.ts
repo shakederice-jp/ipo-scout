@@ -19,6 +19,16 @@ async function fetchEdinetDocuments(date: string) {
   return data?.results ?? [];
 }
 
+// 2026/8/31追記: 以前はここで「doc.secCodeが既に入っている＝既存上場企業の書類」とみなして
+// 除外していたが、Skyfall(625A)社が見落とされる不具合の調査で、この前提が誤りだと判明した。
+// 東証の上場承認・証券コード付番は、目論見書(有価証券届出書)の提出より先に完了しているケースがあり、
+// その場合は「新規IPOなのに、提出時点で既に証券コードが入っている」書類になる。この関数の
+// !doc.secCodeという条件だけで判定すると、そうした本物の新規IPOまで「既上場企業の書類」と
+// 誤判定して恒久的に見落としてしまう(証券コードが付いた時点の書類はスキャン対象の5日間を
+// 過ぎればもう二度と拾われないため)。
+// 「本当に既上場企業の書類かどうか」は、この関数の外(呼び出し側のfor文)で、
+// edinet_companies(既上場企業マスタ)をEDINETコード・会社名の両方で照合して判定しており、
+// そちらの方が正確なので、ここでは証券コードの有無では判定しないことにした。
 function isProspectus(doc: any): boolean {
   const desc = doc.docDescription || "";
   return (
@@ -27,8 +37,7 @@ function isProspectus(doc: any): boolean {
     desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投資信託") &&
-    !doc.secCode  // 証券コードが既にある会社（既存上場企業）は新規IPOではないので除外
+    !desc.includes("投資信託")
   );
 }
 
