@@ -133,7 +133,7 @@ async function fetchProspectusText(docId: string): Promise<{ sections: Record<st
       }
 
       console.log(`type=${docType}: got ${text.length} chars, content="${text.slice(0, 300)}"`);
-      debug.push(`type=${docType}: HTTP${res.status}, content-type=${contentType || "不明"}, ダウンロード${buffer.byteLength}バイト, 抽出テキスト${text.length}文字`);
+      debug.push(`type=${docType}: HTTP${res.status}, content-type=${contentType || "不明"}, ダウンロード${buffer.byteLength}バイト, 抽出テキスト${text.length}文字, 冒頭=「${cleanText(text).slice(0, 150)}」`);
       if (text.length < 100) { debug.push(`type=${docType}: テキストが短すぎるためスキップ`); continue; }
       if (!coverCompanyName) {
         coverCompanyName = extractCoverCompanyName(text);
