@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
   // EDINET APIチェック
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const res = await fetch(`https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${today}&type=2`);
+    // 2026/8/31追記: "disclosure.edinet-fsa.go.jp"は旧式ホストで、EDINET側の
+    // エラーページを返すことがあると判明したため、他の正常に動いているEDINET連携箇所と
+    // 同じ現行APIホスト"api.edinet-fsa.go.jp"に統一した(詳細はsrc/app/api/edinet/route.ts参照)。
+    const res = await fetch(`https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${today}&type=2`);
     results.edinet = { ok: res.ok, detail: res.ok ? "接続OK" : `HTTP ${res.status}` };
   } catch (e: any) {
     results.edinet = { ok: false, detail: e?.message };

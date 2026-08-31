@@ -18,7 +18,7 @@ async function searchEdinetDoc(companyName: string): Promise<string | null> {
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split("T")[0];
     try {
-      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
+      const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) continue;
       const json = await res.json();
@@ -113,9 +113,22 @@ async function fetchProspectusText(docId: string): Promise<{ sections: Record<st
   // 各docType試行ごとの状況を文章化してdebugに積み、失敗時のメッセージに含めるようにした。
   const debug: string[] = [];
 
+  // 2026/8/31追記(根本原因・修正): 上記debugを使ってSkyfall(625A)の取得失敗を調査した結果、
+  // 本来ならZIP(またはCSV)が返るはずのこの書類ダウンロード処理が、
+  // 「EDINET■メッセージ！規定外操作が行われました。ブラウザを閉じて再度操作を行ってください。」
+  // というEDINET側のHTMLエラーページを受け取っていたことが判明した。
+  // 原因は、この関数(および下のsearchEdinetDoc())だけが書類取得先のホスト名として
+  // 旧式の"disclosure.edinet-fsa.go.jp"を使っていたこと。同じEDINETからの情報取得でも、
+  // 正常に動いている他のファイル(src/app/api/cron/edinet-scan/route.ts、
+  // src/app/api/admin/find-edinet-doc/route.ts)は一貫して現行のAPI v2ホストである
+  // "api.edinet-fsa.go.jp"を使っており、こちらが正しいホスト。"disclosure."始まりのホストは
+  // 人間向けブラウザ閲覧サイトの系統とみられ、プログラムからのアクセスだと
+  // セッション不正とみなされてこのエラーページを返していたと考えられる。
+  // 両方の関数のURLを"api.edinet-fsa.go.jp"に統一して修正した。
+
   for (const docType of [1, 5]) {
     try {
-      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=${docType}&Subscription-Key=${EDINET_KEY}`;
+      const url = `https://api.edinet-fsa.go.jp/api/v2/documents/${docId}?type=${docType}&Subscription-Key=${EDINET_KEY}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
       if (!res.ok) {
         debug.push(`type=${docType}: HTTP${res.status}のため取得失敗`);
