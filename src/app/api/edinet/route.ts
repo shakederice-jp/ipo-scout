@@ -104,15 +104,23 @@ async function extractTextFromZip(buffer: ArrayBuffer): Promise<string> {
   }
 }
 
-async function fetchProspectusText(docId: string): Promise<{ sections: Record<string, string>; coverCompanyName: string }> {
+async function fetchProspectusText(docId: string): Promise<{ sections: Record<string, string>; coverCompanyName: string; debug: string[] }> {
   const sections: Record<string, string> = {};
   let coverCompanyName = "";
+  // 2026/8/31追記: 「書類IDは確認できたが本文抽出に失敗」というエラーだけでは、
+  // EDINET側の何が原因なのか(取得自体に失敗したのか、ZIPの中身が空だったのか等)が
+  // 分からず、ユーザー(非エンジニア)がサーバーログを見ることもできないため、
+  // 各docType試行ごとの状況を文章化してdebugに積み、失敗時のメッセージに含めるようにした。
+  const debug: string[] = [];
 
   for (const docType of [1, 5]) {
     try {
       const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${docId}?type=${docType}&Subscription-Key=${EDINET_KEY}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        debug.push(`type=${docType}: HTTP${res.status}のため取得失敗`);
+        continue;
+      }
 
       const contentType = res.headers.get("content-type") || "";
       const buffer = await res.arrayBuffer();
@@ -125,7 +133,8 @@ async function fetchProspectusText(docId: string): Promise<{ sections: Record<st
       }
 
       console.log(`type=${docType}: got ${text.length} chars, content="${text.slice(0, 300)}"`);
-      if (text.length < 100) continue;
+      debug.push(`type=${docType}: HTTP${res.status}, content-type=${contentType || "不明"}, ダウンロード${buffer.byteLength}バイト, 抽出テキスト${text.length}文字`);
+      if (text.length < 100) { debug.push(`type=${docType}: テキストが短すぎるためスキップ`); continue; }
       if (!coverCompanyName) {
         coverCompanyName = extractCoverCompanyName(text);
       }
@@ -209,12 +218,13 @@ async function fetchProspectusText(docId: string): Promise<{ sections: Record<st
 
       if (Object.keys(sections).length > 0) break;
     } catch (e) {
+      debug.push(`type=${docType}: 通信エラー(${String(e)})`);
       console.error(`type=${docType} error:`, e);
       continue;
     }
   }
 
-  return { sections, coverCompanyName };
+  return { sections, coverCompanyName, debug };
 }
 
 export async function POST(req: NextRequest) {
@@ -232,7 +242,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { sections, coverCompanyName } = await fetchProspectusText(docId);
+    const { sections, coverCompanyName, debug } = await fetchProspectusText(docId);
     const sectionCount = Object.keys(sections).length;
     console.log(`EDINET ${docId}: ${sectionCount}sections, cover="${coverCompanyName}"`, Object.keys(sections));
 
@@ -269,7 +279,7 @@ export async function POST(req: NextRequest) {
         success: false,
         doc_id: docId,
         sections_found: [],
-        message: `書類ID（${docId}）は確認できましたが、本文テキストの抽出に失敗しました。`
+        message: `書類ID（${docId}）は確認できましたが、本文テキストの抽出に失敗しました。\n詳細: ${debug.join(" / ") || "(詳細情報なし)"}`
       });
     }
 
