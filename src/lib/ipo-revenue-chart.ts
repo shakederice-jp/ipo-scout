@@ -52,7 +52,7 @@ function detectOkuDenominator(raw: string): number {
 // "目論見書に記載なし"や空文字など数値化できないものはnullを返す。
 // allowNegativeがfalseの場合、0以下は「未記載」とみなしnullを返す(売上高用)。
 // allowNegativeがtrueの場合、△・▲・-付きの負数(赤字)も有効な値として扱う(利益用)。
-function parseYenToOku(raw: unknown, allowNegative: boolean = false): number | null {
+export function parseYenToOku(raw: unknown, allowNegative: boolean = false): number | null {
   if (typeof raw !== "string") return null;
   const isNegative = allowNegative && /[△▲-]/.test(raw);
   const digits = raw.replace(/[^0-9.]/g, "");

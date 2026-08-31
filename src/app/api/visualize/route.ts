@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { parseYenToOku } from "@/lib/ipo-revenue-chart";
 
 const anthropic = new Anthropic();
 export const maxDuration = 60;
@@ -298,6 +299,13 @@ export async function POST(req: NextRequest) {
     }
   }
 // revenue_chart: 5期分確実に揃っているkey_metrics（経常利益）を使い、TS側で確定的に計算する
+// 2026/8/31、以前はここで「key_metricsの金額は必ず千円単位」と決め打ちして
+// ÷1000で百万円に変換していたが、目論見書によっては金額が百万円単位で記載されている
+// 企業もあり(規模の大きい企業ほどこの傾向がある)、その場合に実際の1/1000の値で
+// 表示されてしまう不具合があった(オリバー社で発覚)。インフォグラフィック側
+// (src/lib/ipo-revenue-chart.ts)で同じ不具合を先に修正した際、金額文字列中の
+// 単位表記(千円/百万円/万円/億円)を見て正しく換算するparseYenToOku()を作ったため、
+// 分析ページ側もそれをそのまま再利用する形に統一した(二重実装によるズレの再発防止)。
 if (chart_type === "revenue_chart") {
   const keyMetrics: any[] = Array.isArray(sd?.key_metrics) ? sd.key_metrics : [];
 
@@ -310,12 +318,12 @@ if (chart_type === "revenue_chart") {
   }
 
   const chartData = keyMetrics.map((m: any) => {
-    const revenueThousand = parseJpNumber(m.revenue); // 千円
-    const profitThousand = parseJpNumber(m.ordinary_profit); // 千円
+    const revenueOku = parseYenToOku(m.revenue, false);
+    const profitOku = parseYenToOku(m.ordinary_profit, true);
     return {
       year: m.period,
-      revenue: revenueThousand !== null ? Math.round(revenueThousand / 1000) : null, // 百万円に変換
-      profit: profitThousand !== null ? Math.round(profitThousand / 1000) : null, // 百万円に変換
+      revenue: revenueOku !== null ? Math.round(revenueOku * 100) : null, // 百万円換算(億円*100)
+      profit: profitOku !== null ? Math.round(profitOku * 100) : null, // 百万円換算(億円*100)
     };
   });
 

@@ -113,12 +113,24 @@ export async function GET(req: NextRequest) {
   const nameFontSize = companyName.length > 9 ? 44 : companyName.length > 6 ? 52 : 62;
 
   // 売上高の棒グラフの寸法(px)。value(億円)をこの最大高さに正規化する。
-  const MAX_BAR_HEIGHT = 166;
+  // 2026/8/31、分析ページ(VizCharts.tsx)のグラフと見た目を揃えるため、それまでの
+  // 「売上高バーの下に経常利益の上下ミニチャート」という縦積みレイアウトから、
+  // 「年度ごとに売上高バーと経常利益バーを左右に並べる」レイアウトに変更した
+  // (経常利益の赤字は、ゼロラインより下に伸びるバーとして直感的に表現される)。
+  const MAX_BAR_HEIGHT = 150;
   const maxValue = chartData.length > 0 ? Math.max(...chartData.map((p) => p.value)) : 0;
   const growthLabel = buildGrowthLabel(chartData);
 
-  // 経常利益ミニチャートの寸法。ゼロラインを挟んで上(黒字)・下(赤字)それぞれこの高さまで伸びる。
-  const PROFIT_HALF = 50;
+  // 経常利益バーの寸法。黒字はゼロラインから上にPROFIT_SCALE_HEIGHTを上限に伸び、
+  // 赤字は同じ上限で下(PROFIT_DOWN_HEIGHTの枠内)に伸びる。売上高バーとは別スケールで
+  // 正規化する(売上高と経常利益は桁が大きく異なるため、同じスケールだと経常利益が
+  // 潰れて見えなくなるのを防ぐ)。
+  const PROFIT_SCALE_HEIGHT = 60;
+  const PROFIT_DOWN_HEIGHT = 60;
+  const BAR_LABEL_H = 30;
+  const BAR_W = 44;
+  const PROFIT_BAR_W = 36;
+  const BAR_SLOT_GAP = 12;
   const profitValues = chartData.map((p) => p.profit).filter((v): v is number => v != null);
   const maxAbsProfit = profitValues.length > 0 ? Math.max(...profitValues.map((v) => Math.abs(v))) || 1 : 1;
 
@@ -260,76 +272,101 @@ export async function GET(req: NextRequest) {
                 type: "div",
                 props: {
                   style: { display: "flex", fontSize: 16, color: "rgba(255,255,255,0.55)", marginBottom: 16 },
-                  children: "上段のバー：売上高（億円）　下段のバー：経常利益（水色=黒字／赤=赤字、億円）",
+                  children: "左のバー：売上高（億円）　右のバー：経常利益（水色=黒字／赤=赤字、億円）",
                 },
               },
               {
                 type: "div",
                 props: {
-                  style: { display: "flex", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 28 },
+                  style: { display: "flex", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 26 },
                   children: chartData.map((p, idx) => {
                     const isLast = idx === chartData.length - 1;
-                    const barHeight = Math.max(14, Math.round((p.value / maxValue) * MAX_BAR_HEIGHT));
+                    const revenueBarHeight = maxValue > 0 ? Math.max(10, Math.round((p.value / maxValue) * MAX_BAR_HEIGHT)) : 10;
                     const hasProfit = p.profit != null;
                     const profitPositive = hasProfit && (p.profit as number) >= 0;
-                    const profitBarHeight = hasProfit ? Math.max(6, Math.round((Math.abs(p.profit as number) / maxAbsProfit) * PROFIT_HALF)) : 0;
-                    const profitColor = profitPositive ? "#4fd1c5" : "#ef6461";
+                    const profitBarHeight = hasProfit ? Math.max(6, Math.round((Math.abs(p.profit as number) / maxAbsProfit) * PROFIT_SCALE_HEIGHT)) : 0;
+                    const emptySlot = { type: "div", props: { style: { display: "flex", width: PROFIT_BAR_W } } };
+                    const revenueBar = {
+                      type: "div",
+                      props: {
+                        style: {
+                          display: "flex",
+                          width: BAR_W,
+                          height: revenueBarHeight,
+                          borderRadius: "8px 8px 0 0",
+                          backgroundImage: isLast
+                            ? "linear-gradient(180deg, #ffd166 0%, #d98324 100%)"
+                            : "linear-gradient(180deg, #66c3c6 0%, #2a7a7e 100%)",
+                        },
+                      },
+                    };
+                    const profitBarUp = {
+                      type: "div",
+                      props: { style: { display: "flex", width: PROFIT_BAR_W, height: profitBarHeight, backgroundColor: "#4fd1c5", borderRadius: "6px 6px 0 0" } },
+                    };
+                    const profitBarDown = {
+                      type: "div",
+                      props: { style: { display: "flex", width: PROFIT_BAR_W, height: profitBarHeight, backgroundColor: "#ef6461", borderRadius: "0 0 6px 6px" } },
+                    };
                     return {
                       type: "div",
                       props: {
-                        style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", width: 112, height: MAX_BAR_HEIGHT + 200 },
+                        style: { display: "flex", flexDirection: "column", alignItems: "center" },
                         children: [
-                          // 売上高の数値ラベル
-                          { type: "div", props: { style: { display: "flex", fontSize: isLast ? 27 : 24, fontWeight: 700, color: isLast ? "#ffd166" : "#ffffff", marginBottom: 8 }, children: `${p.value}` } },
-                          // 売上高の棒
+                          // 上段ラベル(売上高の数値は常に表示。経常利益は黒字の場合のみここに表示)
                           {
                             type: "div",
                             props: {
-                              style: {
-                                display: "flex",
-                                width: 80,
-                                height: barHeight,
-                                borderRadius: "10px 10px 0 0",
-                                backgroundImage: isLast
-                                  ? "linear-gradient(180deg, #ffd166 0%, #d98324 100%)"
-                                  : "linear-gradient(180deg, #66c3c6 0%, #2a7a7e 100%)",
-                              },
-                            },
-                          },
-                          // 経常利益のミニチャート(ゼロラインを挟んで黒字は上、赤字は下に伸びる)
-                          {
-                            type: "div",
-                            props: {
-                              style: { display: "flex", flexDirection: "column", width: 80, marginTop: 8 },
+                              style: { display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "flex-end", gap: BAR_SLOT_GAP, height: BAR_LABEL_H },
                               children: [
+                                { type: "div", props: { style: { display: "flex", width: BAR_W, justifyContent: "center", fontSize: isLast ? 26 : 23, fontWeight: 700, color: isLast ? "#ffd166" : "#ffffff" }, children: `${p.value}` } },
                                 {
                                   type: "div",
                                   props: {
-                                    style: { display: "flex", height: PROFIT_HALF, width: 80, alignItems: "flex-end", justifyContent: "center" },
-                                    children:
-                                      hasProfit && profitPositive
-                                        ? [{ type: "div", props: { style: { display: "flex", width: 36, height: profitBarHeight, backgroundColor: "#4fd1c5", borderRadius: "4px 4px 0 0" } } }]
-                                        : [],
-                                  },
-                                },
-                                { type: "div", props: { style: { display: "flex", width: 80, height: 2, backgroundColor: "rgba(255,255,255,0.35)" } } },
-                                {
-                                  type: "div",
-                                  props: {
-                                    style: { display: "flex", height: PROFIT_HALF, width: 80, alignItems: "flex-start", justifyContent: "center" },
-                                    children:
-                                      hasProfit && !profitPositive
-                                        ? [{ type: "div", props: { style: { display: "flex", width: 36, height: profitBarHeight, backgroundColor: "#ef6461", borderRadius: "0 0 4px 4px" } } }]
-                                        : [],
+                                    style: { display: "flex", width: PROFIT_BAR_W, justifyContent: "center", fontSize: 16, fontWeight: 700, color: "#4fd1c5" },
+                                    children: hasProfit && profitPositive ? `+${p.profit}` : "",
                                   },
                                 },
                               ],
                             },
                           },
-                          // 経常利益の数値ラベル
-                          { type: "div", props: { style: { display: "flex", fontSize: 17, fontWeight: 700, color: hasProfit ? profitColor : "rgba(255,255,255,0.4)", marginTop: 6 }, children: hasProfit ? `${(p.profit as number) > 0 ? "+" : ""}${p.profit}` : "―" } },
+                          // 上段のバー(売上高＋黒字の経常利益。ゼロラインから上に伸びる)
+                          {
+                            type: "div",
+                            props: {
+                              style: { display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "flex-end", gap: BAR_SLOT_GAP, height: MAX_BAR_HEIGHT },
+                              children: [revenueBar, hasProfit && profitPositive ? profitBarUp : emptySlot],
+                            },
+                          },
+                          // ゼロライン
+                          { type: "div", props: { style: { display: "flex", width: BAR_W + PROFIT_BAR_W + BAR_SLOT_GAP, height: 2, backgroundColor: "rgba(255,255,255,0.35)" } } },
+                          // 下段のバー(赤字の経常利益のみ。ゼロラインから下に伸びる)
+                          {
+                            type: "div",
+                            props: {
+                              style: { display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "flex-start", gap: BAR_SLOT_GAP, height: PROFIT_DOWN_HEIGHT },
+                              children: [emptySlot, hasProfit && !profitPositive ? profitBarDown : emptySlot],
+                            },
+                          },
+                          // 下段ラベル(赤字の経常利益の数値。データが全く無い場合は「―」)
+                          {
+                            type: "div",
+                            props: {
+                              style: { display: "flex", flexDirection: "row", justifyContent: "center", gap: BAR_SLOT_GAP, height: BAR_LABEL_H, alignItems: "flex-start" },
+                              children: [
+                                emptySlot,
+                                {
+                                  type: "div",
+                                  props: {
+                                    style: { display: "flex", width: PROFIT_BAR_W, justifyContent: "center", fontSize: 16, fontWeight: 700, color: hasProfit ? "#ef6461" : "rgba(255,255,255,0.4)" },
+                                    children: hasProfit ? (!profitPositive ? `${p.profit}` : "") : "―",
+                                  },
+                                },
+                              ],
+                            },
+                          },
                           // 決算期ラベル
-                          { type: "div", props: { style: { display: "flex", fontSize: 18, fontWeight: isLast ? 700 : 400, color: isLast ? "#ffd166" : "#a0d4d6", marginTop: 8 }, children: p.label } },
+                          { type: "div", props: { style: { display: "flex", fontSize: 18, fontWeight: isLast ? 700 : 400, color: isLast ? "#ffd166" : "#a0d4d6", marginTop: 6 }, children: p.label } },
                         ],
                       },
                     };
