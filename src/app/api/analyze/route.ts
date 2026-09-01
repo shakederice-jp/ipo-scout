@@ -8,6 +8,7 @@ import { createInfographic } from "@/lib/infographic";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 import { buildRevenueChartData, formatKeyMetricsTrend } from "@/lib/ipo-revenue-chart";
 import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
+import { fetchMarketSnapshotContext } from "@/lib/market-snapshot";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -120,14 +121,20 @@ function buildDataNote(co: any) {
   return { dataNote, dataSource };
 }
 
-function scorePrompt(co: any, dataNote: string) {
+function scorePrompt(co: any, dataNote: string, marketNote: string = "") {
   const n = co.name ?? "unknown", sc = co.sector ?? "tech", ld = co.listing_date ?? "2026", ex = co.exchange ?? "グロース";
+  // 2026/9/1追加: 週次で調査している市場テーマ・地合い情報(src/lib/market-snapshot.ts)。
+  // 個別銘柄の実データとは別枠の一般的な参考情報のため、影響範囲を超短期の評価に限定する
+  // 指示を明記し、data_citations等の実データ引用ルールには使わせないようにしている。
+  const marketNoteBlock = marketNote
+    ? `\n${marketNote}\n【上記・市場テーマ地合い情報の扱い方】この情報は個別銘柄の実データではなく、市場全体の週次調査に基づく一般的な参考情報です。断定的な根拠として使わず、需給・地合いの観点から、超短期（ultra_short_grade・axes_scores.float/lockup/timing・grade_reason.ultra_short）の評価にのみ補助的に反映してください。total_score・grade・short_grade・long_grade・data_citations・missing_data_pointsには使わないでください。\n`
+    : "";
   return `あなたは日本のIPO投資アナリストです。
 ${n}（${sc}、${ex}市場、上場予定${ld}）のIPOを総合評価してください。
 JSONのみで返答してください。マークダウン・コードブロック・余分なテキスト一切不要。文章はすべて「ですます調」で記述すること。
 
 ${dataNote}
-
+${marketNoteBlock}
 【絶対ルール】
 1. 数値・事実は必ず上記【実データ】から引用すること。データにない数値は絶対に作らない
 2. データに記載のない情報は「不明」または「目論見書参照」と記載する
@@ -163,14 +170,19 @@ ${dataNote}
 グレードはA〜Eの5段階（A=強気(上位20%) 〜 E=弱気(下位20%)）`;
 }
 
-function insightsPrompt(co: any, dataNote: string) {
+function insightsPrompt(co: any, dataNote: string, marketNote: string = "") {
   const n = co.name ?? "unknown";
+  // 2026/9/1追加: appeal_narrative(マーケットトレンドページ「新規IPO紹介」記事の本文)に
+  // 直近の注目テーマとの関連を軽く盛り込めるようにするための参考情報。
+  const marketNoteBlock = marketNote
+    ? `\n${marketNote}\n【上記・市場テーマ地合い情報の扱い方】これは市場全体の週次調査に基づく一般的な参考情報です。この銘柄の事業・セクターが上記の注目テーマと関連する場合は、appeal_narrative（客寄せ文）の中で「直近こういうテーマに関心が集まっている」といった形で軽く触れてもよいですが、断定的な株価予測や投資助言にはしないでください。関連が薄い場合は無理に触れなくて構いません。insightsやtweet_summaryには使わないでください。\n`
+    : "";
   return `あなたは日本のIPO投資アナリストです。
 ${n}のIPOについて、「まずここに注目！」というコーナー用のインサイトを3つ作成してください。
 JSONのみで返答してください。マークダウン・コードブロック・余分なテキスト一切不要。文章はすべて「ですます調」で記述すること。
 
 ${dataNote}
-
+${marketNoteBlock}
 【絶対ルール】
 1. 数値・事実は必ず上記【実データ】から引用すること。データにない数値は絶対に作らない
 2. 3つは「強み」「懸念点」「注目すべき構造・戦略」など、視点が重ならないよう選ぶこと
@@ -466,10 +478,15 @@ export async function POST(req: NextRequest) {
     }
 
     const { dataNote, dataSource } = buildDataNote(co);
+    // 2026/9/1追加: 週次マーケット地合い・大化けテーマ調査(src/lib/market-snapshot.ts)。
+    // scenariosには使わず、超短期の評価(score)とマーケットトレンド紹介文(insights)にのみ渡す。
+    const marketNote = (part === "insights" || part === "score")
+      ? (await fetchMarketSnapshotContext(supabase)).text
+      : "";
     const prompt =
-      part === "insights"  ? insightsPrompt(co, dataNote) :
+      part === "insights"  ? insightsPrompt(co, dataNote, marketNote) :
       part === "scenarios" ? scenariosPrompt(co, dataNote) :
-      scorePrompt(co, dataNote);
+      scorePrompt(co, dataNote, marketNote);
 
     const msg = await callClaudeWithRetry(prompt);
     const raw2 = (msg.content[0] as any).text ?? "";

@@ -18,6 +18,8 @@ export default function AdminPage() {
   const [healthResult, setHealthResult] = useState<any | null>(null);
   const [dbCheckLoading, setDbCheckLoading] = useState(false);
   const [dbCheckResult, setDbCheckResult] = useState<any | null>(null);
+  const [marketSnapshotLoading, setMarketSnapshotLoading] = useState(false);
+  const [marketSnapshotResult, setMarketSnapshotResult] = useState<any | null>(null);
   const [infoBackfillLoading, setInfoBackfillLoading] = useState(false);
   const [infoBackfillResult, setInfoBackfillResult] = useState<any | null>(null);
   const [infoForceLoading, setInfoForceLoading] = useState(false);
@@ -365,6 +367,15 @@ export default function AdminPage() {
     setDbCheckLoading(false);
   };
 
+  const handleMarketSnapshot = async () => {
+    setMarketSnapshotLoading(true); setMarketSnapshotResult(null);
+    try {
+      const res = await fetch("/api/cron/market-snapshot", { headers:{"x-admin-password":"otemachi9"} });
+      setMarketSnapshotResult(await res.json());
+    } catch(e) { setMarketSnapshotResult({ error:String(e) }); }
+    setMarketSnapshotLoading(false);
+  };
+
   const handleEdinetCodes = () => {
     window.open("https://disclosure2.edinet-fsa.go.jp/weee0010.aspx", "_blank");
     setEdinetResult("📋 新しいタブでEDINETのダウンロードページを開きました。");
@@ -597,6 +608,34 @@ export default function AdminPage() {
                       {deleteCompanyLoading?"削除中...":"🗑 削除する"}
                     </button>
                     {deleteCompanyResult && <p style={{ marginTop:8, fontSize:11, color:deleteCompanyResult.startsWith("❌")?"#dc2626":"#166534" }}>{deleteCompanyResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>📈 マーケット地合い・大化けテーマを更新 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（毎週月曜に自動更新されます。今すぐ最新情報に更新したい場合はこちら）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>AIがネット情報を検索し、直近の「大化けしやすいIPOテーマ」と、新興・グロース市場/日経平均/世界株式市場の地合いを調べます。結果は超短期軸のスコア・コメントと、マーケットトレンドページの「新規IPO紹介」記事に、次回以降の分析から自動的に反映されます。</p>
+                    <button onClick={handleMarketSnapshot} disabled={marketSnapshotLoading} style={btnStyle("#0d4f52", marketSnapshotLoading)}>
+                      {marketSnapshotLoading?"調査中...":"今すぐ更新する"}
+                    </button>
+                    {marketSnapshotResult && (
+                      <div style={{ marginTop:8, fontSize:11 }}>
+                        {marketSnapshotResult.error && <div style={{ color:"#b91c1c" }}>❌ {marketSnapshotResult.error}</div>}
+                        {marketSnapshotResult.success && (
+                          <div style={{ color:"#166534" }}>
+                            ✅ 更新しました（{marketSnapshotResult.week_start}週）
+                            {Array.isArray(marketSnapshotResult.data?.hot_themes) && marketSnapshotResult.data.hot_themes.length > 0 && (
+                              <ul style={{ margin:"6px 0 0", paddingLeft:16 }}>
+                                {marketSnapshotResult.data.hot_themes.map((t:any, i:number) => (
+                                  <li key={i}>{t.theme}：{t.reason}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {marketSnapshotResult.data?.sentiment?.overall_label && (
+                              <div style={{ marginTop:4 }}>総合地合い判断：{marketSnapshotResult.data.sentiment.overall_label}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>

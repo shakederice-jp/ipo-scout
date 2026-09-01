@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchMarketSnapshotContext } from "@/lib/market-snapshot";
 
 export const maxDuration = 60;
 
@@ -225,7 +226,17 @@ export async function POST(req: NextRequest) {
     const marketInfo = co.analysis_market
       ? `\n【市場・競合情報】主幹事:${co.analysis_market.lead_underwriter ?? ""}・競合:${(co.analysis_market.competitors ?? []).map((c: any) => c.name).join("、")}・業界PER:${co.analysis_market.industry_per ?? ""}・市場動向:${co.analysis_market.market_trend ?? ""}`
       : "";
-    const dataContext = buildDataContext(co.structured_data, co.raw_prospectus) + marketInfo;
+    // 2026/9/1追加: 超短期(ultra_short)軸のレポートにのみ、週次で調査している
+    // 市場テーマ・地合い情報(src/lib/market-snapshot.ts)を補助的な参考情報として加える。
+    // 短期(short)・長期(long)には影響させない。
+    let marketSnapshotNote = "";
+    if (period === "ultra_short") {
+      const snapshot = await fetchMarketSnapshotContext(supabase);
+      if (snapshot.text) {
+        marketSnapshotNote = `\n\n${snapshot.text}\n※上記は市場全体の週次調査に基づく一般的な参考情報であり、この銘柄固有のデータではありません。断定的な根拠にはせず、需給・地合いの観点から補助的に触れる程度に留めてください。`;
+      }
+    }
+    const dataContext = buildDataContext(co.structured_data, co.raw_prospectus) + marketInfo + marketSnapshotNote;
     const axisId = single_axis ?? config.axes[0];
     const partNum = part === 2 ? 2 : 1;
     const score = axesScores[axisId] ?? 60;
