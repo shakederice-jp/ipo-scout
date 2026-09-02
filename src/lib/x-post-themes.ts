@@ -1,5 +1,15 @@
 import { generateWithGemini } from "./gemini";
 import { createClient } from "@supabase/supabase-js";
+import Anthropic from "@anthropic-ai/sdk";
+import { parseYenToOku } from "./ipo-revenue-chart";
+import { fetchCompetitorFinancials } from "./competitor-financials";
+
+// 2026/9/2追加: 「②経済指標・イベント速報」テーマで、economic_eventsテーブルに
+// 実績値が保存されていない(日付・種類・ラベルのみ)ため、Claude Haiku + web検索で
+// 実際の発表結果を調べる。src/app/api/cron/market-snapshot/route.ts や
+// src/app/api/market/route.ts のSTEP2と同じ「Haiku+web_search」パターンを再利用している
+// (新たな課金要素ではない)。
+const anthropicForThemes = new Anthropic();
 
 const STYLE_GUIDE = `
 # 文体ルール(厳守)
@@ -486,4 +496,260 @@ ${STYLE_GUIDE}
     content,
     sourceLinks: [{ title: "IPO投資の基礎知識ガイド", url: "https://ipo.finance-tower.com/ipo-guide", source: "自社ガイド" }],
   };
+}
+
+// ===== ここから2026/9/2追加: 3テーマ追加(ロックアップ解除カウントダウン・
+// 経済指標イベント速報・IPO企業vs競合の決算比較) =====
+// ユーザーからの提案(①②③)を受け、データの実態を確認した上で以下の方針で実装:
+// ①ロックアップ解除カウントダウンは既存のlockup_90_date/180_dateをそのまま使える。
+// ②economic_eventsには実績値のフィールドが無いため、Haiku+web検索で調べる方式にした。
+// ③競合財務データ取得ツール(src/app/api/competitor/route.ts)は手動ボタン専用かつ
+//   EDINETの誤ったホスト名バグで壊れていたため、共通関数化(src/lib/competitor-financials.ts)
+//   ＋バグ修正＋その場での自動取得、という形にした。
+
+// テーマ: ロックアップ解除カウントダウン解説(自社DB由来)
+// 既存の「ロックアップ解除カレンダー」(30日以内の該当銘柄を一覧化するダイジェスト)とは別に、
+// こちらは1銘柄にスポットを当てて「あと〇日で解除」という切り口で需給インパクトを解説する。
+// 同じイベントを何度も取り上げないよう、銘柄×90日/180日の組み合わせごとに一度だけ生成する
+// (external_idで永続的に重複防止。日付キーではない)。
+export async function generateLockupCountdownPost(): Promise<{ externalId: string; companyName: string; sector: string; result: ThemedPostResult } | null> {
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const windowEnd = new Date();
+  windowEnd.setDate(windowEnd.getDate() + 45);
+  const windowEndStr = windowEnd.toISOString().slice(0, 10);
+
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, sector, lockup_90_date, lockup_180_date, structured_data");
+
+  if (error || !rows) {
+    console.error("ロックアップ解除カウントダウン: 取得失敗", error);
+    return null;
+  }
+
+  type Candidate = { co: any; type: "90" | "180"; date: string };
+  const candidates: Candidate[] = [];
+  for (const co of rows) {
+    if (co.lockup_90_date && co.lockup_90_date >= todayStr && co.lockup_90_date <= windowEndStr) {
+      candidates.push({ co, type: "90", date: co.lockup_90_date });
+    }
+    if (co.lockup_180_date && co.lockup_180_date >= todayStr && co.lockup_180_date <= windowEndStr) {
+      candidates.push({ co, type: "180", date: co.lockup_180_date });
+    }
+  }
+  if (candidates.length === 0) return null;
+
+  const candidateIds = candidates.map(c => `lockup-countdown-${c.co.id}-${c.type}`);
+  const { data: existing } = await supabaseForThemes.from("market_trends").select("external_id").in("external_id", candidateIds);
+  const existingSet = new Set((existing ?? []).map((r: any) => r.external_id));
+  const fresh = candidates.filter(c => !existingSet.has(`lockup-countdown-${c.co.id}-${c.type}`));
+  if (fresh.length === 0) return null;
+
+  fresh.sort((a, b) => a.date.localeCompare(b.date));
+  const chosen = fresh[0];
+  const daysLeft = Math.round(
+    (new Date(`${chosen.date}T00:00:00+09:00`).getTime() - new Date(`${todayStr}T00:00:00+09:00`).getTime()) / 86400000
+  );
+
+  const targets = chosen.co.structured_data?.ipo_details?.lockup_targets || "不明";
+  const floatRatio = chosen.co.structured_data?.ipo_details?.float_ratio || "不明";
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下のIPO銘柄について、間近に迫ったロックアップ解除(上場前からの株主が株式を売却できるようになる日)をテーマに、X(旧Twitter)投稿を1本作成してください。
+
+# 対象銘柄
+${chosen.co.name}(${chosen.co.sector || "業種不明"})
+- ロックアップ解除まで: あと${daysLeft}日(${chosen.date}、${chosen.type}日ロックアップ)
+- 対象株主: ${targets}
+- 流通比率: ${floatRatio}
+
+# 記載のポイント
+- ロックアップ解除が個人投資家にとってなぜ重要か(需給悪化=売り圧力増加の可能性)を、この銘柄の具体的な数値(対象株主・流通比率)を交えて解説すること
+- 一覧にない情報を憶測で追加しないこと
+- 断定的な投資助言は書かないこと
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+  const content = await generateWithGemini(prompt);
+  return {
+    externalId: `lockup-countdown-${chosen.co.id}-${chosen.type}`,
+    companyName: chosen.co.name,
+    sector: chosen.co.sector || "IPO需給",
+    result: {
+      content,
+      sourceLinks: [{ title: `${chosen.co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${chosen.co.id}`, source: "自社分析" }],
+    },
+  };
+}
+
+// テーマ: 経済指標・イベント速報(自社DB + AI Web検索)
+// economic_eventsテーブルは日付・種類・ラベルのみで実績値を保存していないため、
+// Claude Haiku + web_search で実際の発表結果と株式市場への影響を調べてから記事化する。
+async function fetchEconEventResult(event: { event_type: string; label: string | null; event_date: string }): Promise<string> {
+  const query = `${event.event_type}${event.label ? `「${event.label}」` : ""}(${event.event_date}頃)の実際の発表結果を検索してください。具体的な数値(実績値)、市場予想(コンセンサス)との比較、発表後の株式市場・特に日本の新興市場やグロース株への影響を教えてください。`;
+  const res = await anthropicForThemes.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 1500,
+    tools: [{ type: "web_search_20250305", name: "web_search" } as any],
+    messages: [{ role: "user", content: query }],
+  });
+  return (res.content as any[])
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("\n");
+}
+
+export async function generateEconEventResultPost(): Promise<{ externalId: string; label: string; sector: string; result: ThemedPostResult } | null> {
+  const todayJst = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const fiveDaysAgo = new Date();
+  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+  const windowStart = fiveDaysAgo.toISOString().slice(0, 10);
+
+  const { data: events, error } = await supabaseForThemes
+    .from("economic_events")
+    .select("id, event_date, event_type, label")
+    .gte("event_date", windowStart)
+    .lt("event_date", todayJst) // 今日はまだ結果が出ていない可能性が高いため対象外(前日まで)
+    .order("event_date", { ascending: true });
+
+  if (error || !events || events.length === 0) {
+    if (error) console.error("経済指標・イベント速報: 取得失敗", error);
+    return null;
+  }
+
+  const candidateIds = events.map((e: any) => `econ-result-${e.id}`);
+  const { data: existing } = await supabaseForThemes.from("market_trends").select("external_id").in("external_id", candidateIds);
+  const existingSet = new Set((existing ?? []).map((r: any) => r.external_id));
+  const fresh = events.filter((e: any) => !existingSet.has(`econ-result-${e.id}`));
+  if (fresh.length === 0) return null;
+
+  const event = fresh[0]; // 日付が古い順の先頭 = 最も早く報じるべきもの(取りこぼし防止で順序を飛ばさない)
+
+  let researchText = "";
+  try {
+    researchText = await fetchEconEventResult(event);
+  } catch (e) {
+    console.error("経済指標・イベント速報: web検索失敗", e);
+    return null;
+  }
+  if (!researchText) return null;
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は${event.event_date}頃に発表された経済指標・イベントについての調査結果です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+
+# イベント
+${event.event_type}${event.label ? `「${event.label}」` : ""}(${event.event_date})
+
+# 調査結果
+${researchText}
+
+# 記載のポイント
+- 実績値・市場予想との比較を、分かっている範囲で具体的に書くこと。分からない場合は無理に数値を作らないこと
+- 発表後の株式市場、特に新興市場・グロース株への影響について、一般的な知識をもとに触れること
+- 断定的な投資助言は書かないこと
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+  const content = await generateWithGemini(prompt);
+  return {
+    externalId: `econ-result-${event.id}`,
+    label: `${event.event_type}${event.label ? `(${event.label})` : ""}`,
+    sector: "マクロ経済",
+    result: { content, sourceLinks: [] },
+  };
+}
+
+// テーマ: IPO企業 vs 競合の決算比較(自社DB + EDINET競合財務データ)
+// 分析済み銘柄のうち、STEP⑦(市場・競合情報収集)で競合他社が判明している銘柄を対象に、
+// 競合の財務データ(EDINET有価証券報告書ベース)と自社の売上・利益(structured_data.key_metrics)を
+// 比較する記事を生成する。競合財務データがまだ無い銘柄は、記事生成のタイミングで
+// その場で自動取得する(従来の管理画面の手動ボタンに依存しない)。
+// 銘柄ごとに一度だけ生成する(external_idで永続的に重複防止)。
+export async function generateCompetitorComparisonPost(): Promise<{ externalId: string; companyName: string; sector: string; result: ThemedPostResult } | null> {
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, sector, listing_date, analysis_summary, analysis_market, structured_data")
+    .not("analysis_summary", "is", null);
+
+  if (error || !rows) {
+    console.error("競合決算比較: 取得失敗", error);
+    return null;
+  }
+
+  const withCompetitors = rows.filter((c: any) => (c.analysis_market?.competitors?.length ?? 0) > 0);
+  if (withCompetitors.length === 0) return null;
+
+  const candidateIds = withCompetitors.map((c: any) => `competitor-comparison-${c.id}`);
+  const { data: existing } = await supabaseForThemes.from("market_trends").select("external_id").in("external_id", candidateIds);
+  const existingSet = new Set((existing ?? []).map((r: any) => r.external_id));
+  const fresh = withCompetitors.filter((c: any) => !existingSet.has(`competitor-comparison-${c.id}`));
+  if (fresh.length === 0) return null;
+
+  // 直近に分析した銘柄(=ユーザーの関心が高いはず)を優先する
+  fresh.sort((a: any, b: any) => (b.listing_date ?? "").localeCompare(a.listing_date ?? ""));
+
+  // 財務データが1件も取れない銘柄はスキップし、次の候補を試す(EDINET上に情報が無い競合ばかりの場合等)
+  for (const co of fresh) {
+    let competitorFinancials: any[] = co.analysis_market?.competitor_financials ?? [];
+    if (competitorFinancials.length === 0) {
+      try {
+        competitorFinancials = await fetchCompetitorFinancials(co.id, supabaseForThemes);
+      } catch (e) {
+        console.error(`競合決算比較: 財務データ取得失敗(${co.name}):`, e);
+        continue;
+      }
+    }
+    const validFinancials = (competitorFinancials ?? []).filter((f: any) => !f.error && f.revenue != null);
+    if (validFinancials.length === 0) continue;
+
+    const keyMetrics = co.structured_data?.key_metrics;
+    const latest = Array.isArray(keyMetrics) && keyMetrics.length > 0 ? keyMetrics[keyMetrics.length - 1] : null;
+    const ownRevenueOku = latest ? parseYenToOku(latest.revenue, false) : null;
+    const ownProfitOku = latest ? parseYenToOku(latest.ordinary_profit, true) : null;
+
+    const competitorBlock = validFinancials
+      .map((f: any) => `- ${f.name}: 売上高${f.revenue}億円・営業利益${f.operating_profit ?? "不明"}億円(${f.fiscal_year || "決算期不明"})`)
+      .join("\n");
+
+    const prompt = `
+あなたは日本のIPO投資アナリストです。以下の新規上場企業と、その競合他社の財務データを比較し、個人投資家向けのX(旧Twitter)投稿を1本作成してください。
+
+# 対象企業(新規上場)
+${co.name}(${co.sector || "業種不明"})
+- 直近期売上高: ${ownRevenueOku != null ? `${ownRevenueOku}億円` : "不明"}
+- 直近期利益: ${ownProfitOku != null ? `${ownProfitOku}億円` : "不明"}
+
+# 競合他社の財務データ(EDINET・有価証券報告書ベース)
+${competitorBlock}
+
+# 記載のポイント
+- 売上規模・利益率などの観点で、対象企業が競合他社と比べてどのような位置づけかを事実ベースで書くこと(例:規模では見劣りするが黒字化している、等)
+- 数値に無い推測(将来の成長性の断定等)は書かないこと
+- 断定的な投資助言は書かないこと
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+    try {
+      const content = await generateWithGemini(prompt);
+      return {
+        externalId: `competitor-comparison-${co.id}`,
+        companyName: co.name,
+        sector: co.sector || "競合比較",
+        result: {
+          content,
+          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+        },
+      };
+    } catch (e) {
+      console.error(`競合決算比較: 記事生成失敗(${co.name}):`, e);
+      continue;
+    }
+  }
+  return null;
 }

@@ -7,6 +7,9 @@ import {
   generateLockupCalendarPost,
   generatePriceCheckpointPost,
   generateInvestingTipPost,
+  generateLockupCountdownPost,
+  generateEconEventResultPost,
+  generateCompetitorComparisonPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
@@ -211,6 +214,67 @@ export async function GET(request: Request) {
     } catch (err) {
       console.error("初値チェックポイント/IPO投資ワンポイント講座の生成に失敗:", err);
       results.push({ theme: 1, status: "failed" });
+    }
+
+    // テーマ⑪⑫⑬: 2026/9/2追加。①③(初値・その後の値動き)と同様、候補の有無や
+    // どの銘柄・イベントを取り上げるかが日によって変わるため、runTheme()の
+    // 固定external_id方式ではなく、各生成関数が内部で候補ごとの重複チェックを行う
+    // 方式にしている(該当なしの日はスキップするだけで、③のようなフォールバックはない)。
+    try {
+      const lockupResult = await generateLockupCountdownPost();
+      if (lockupResult) {
+        const outcome = await saveThemeArticle(
+          `ロックアップ解除カウントダウン(${lockupResult.companyName})`,
+          lockupResult.sector,
+          lockupResult.result,
+          lockupResult.externalId
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({ theme: 11, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
+      } else {
+        results.push({ theme: 11, status: "skipped(該当銘柄なし)" });
+      }
+    } catch (err) {
+      console.error("ロックアップ解除カウントダウンの生成に失敗:", err);
+      results.push({ theme: 11, status: "failed" });
+    }
+
+    try {
+      const econResult = await generateEconEventResultPost();
+      if (econResult) {
+        const outcome = await saveThemeArticle(
+          `経済指標・イベント速報(${econResult.label})`,
+          econResult.sector,
+          econResult.result,
+          econResult.externalId
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({ theme: 12, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
+      } else {
+        results.push({ theme: 12, status: "skipped(該当イベントなし)" });
+      }
+    } catch (err) {
+      console.error("経済指標・イベント速報の生成に失敗:", err);
+      results.push({ theme: 12, status: "failed" });
+    }
+
+    try {
+      const competitorResult = await generateCompetitorComparisonPost();
+      if (competitorResult) {
+        const outcome = await saveThemeArticle(
+          `IPO企業 vs 競合の決算比較(${competitorResult.companyName})`,
+          competitorResult.sector,
+          competitorResult.result,
+          competitorResult.externalId
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({ theme: 13, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
+      } else {
+        results.push({ theme: 13, status: "skipped(該当銘柄なし)" });
+      }
+    } catch (err) {
+      console.error("IPO企業 vs 競合の決算比較の生成に失敗:", err);
+      results.push({ theme: 13, status: "failed" });
     }
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
