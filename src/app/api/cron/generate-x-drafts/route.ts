@@ -5,7 +5,8 @@ import {
   generateEconomicCalendarPost,
   generateScoreTrendPost,
   generateLockupCalendarPost,
-  generateShareholderMovementPosts,
+  generatePriceCheckpointPost,
+  generateInvestingTipPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
@@ -175,29 +176,40 @@ export async function GET(request: Request) {
       if (r.status === "success") trendsUpdated = true;
     }
 
-    // テーマ①: 大株主・VC/PEの異動ウォッチ(EDINET由来)
-    // 1回の提出書類ごとに1本の記事になるため、複数件生成されることがある。
-    // docID単位で重複防止しているため、1日に何度cronが走っても同じ提出を2回記事化しない。
+    // テーマ①/③: 「初値・その後の値動き」答え合わせ、該当が無い日は「IPO投資ワンポイント講座」で埋める
+    // (2026/9/2、「大株主・VC/PEの異動ウォッチ」の廃止と入れ替えで新設)
     try {
-      const shareholderPosts = await generateShareholderMovementPosts();
-      if (shareholderPosts.length === 0) {
-        results.push({ theme: 1, status: "skipped(該当書類なし)" });
-      }
-      for (const post of shareholderPosts) {
+      const checkpointResult = await generatePriceCheckpointPost();
+      if (checkpointResult) {
         const outcome = await saveThemeArticle(
-          `大株主・VC/PEの異動ウォッチ(${post.companyName})`,
-          post.sector,
-          post.result,
-          post.externalId
+          `初値・その後の値動き(${checkpointResult.companyName}・${checkpointResult.checkpointLabel})`,
+          checkpointResult.sector,
+          checkpointResult.result,
+          checkpointResult.externalId
         );
         if (outcome === "saved") trendsUpdated = true;
         results.push({
           theme: 1,
           status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
         });
+      } else {
+        // ①に該当銘柄が無い日は③(IPO投資ワンポイント講座)で埋める。
+        // こちらは自社DBに依存しないため、jstDayキーで1日1回に限定するだけで必ず生成できる。
+        const tipResult = await generateInvestingTipPost();
+        const outcome = await saveThemeArticle(
+          "IPO投資ワンポイント講座",
+          "投資の基礎知識",
+          tipResult,
+          `investing-tip-${jstDay}`
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({
+          theme: 1,
+          status: outcome === "saved" ? "success(③で穴埋め)" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
+        });
       }
     } catch (err) {
-      console.error("大株主・VC/PEの異動ウォッチの生成に失敗:", err);
+      console.error("初値チェックポイント/IPO投資ワンポイント講座の生成に失敗:", err);
       results.push({ theme: 1, status: "failed" });
     }
 

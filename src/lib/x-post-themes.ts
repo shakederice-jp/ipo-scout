@@ -265,128 +265,225 @@ ${STYLE_GUIDE}
   return { content, sourceLinks };
 }
 
-const EDINET_KEY_FOR_THEMES = process.env.EDINET_API_KEY!;
+// 2026/9/2追記: 「大株主・VC/PEの異動ウォッチ」(EDINET大量保有報告書ベース)テーマは、
+// ユーザーの意向により廃止した(記事・カテゴリーとも今後は生成しない)。
+// 旧実装(fetchEdinetDocumentsForThemes・generateShareholderMovementPosts)は削除済み。
+// 既存の記事はSupabase側でSQL削除する運用とし、コード側では二度と生成しない。
 
-async function fetchEdinetDocumentsForThemes(date: string) {
-  const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY_FOR_THEMES}`;
+// ===== ここから2026/9/2追加: 「初値・その後の値動き」答え合わせテーマ =====
+// ユーザー要望: 上場2日目(初日は寄らない日があるため)・10日目・1ヶ月後の3チェックポイントで、
+// 事前のAI分析(超短期軸・短期軸)と実際の値動きを突き合わせる記事を1日1回生成する。
+// 該当する銘柄・チェックポイントが無い日は、下記の generateInvestingTipPost()(IPO投資
+// ワンポイント講座)で埋める設計(呼び出し元 src/app/api/cron/generate-x-drafts/route.ts 側で
+// ①が無ければ③、というフォールバック制御を行う)。
+//
+// 株価取得は、既存の初値取得cron(src/app/api/cron/detect-ipo-price/route.ts)と同じく
+// Yahoo FinanceのチャートAPI(無料・無認証)を使う。ただしこちらは「対象日以降で最初に
+// ついた終値」を取りたいため、直近5日固定ではなく直近3ヶ月分を取得し、対象日以降の
+// 最初の取引日を探す専用の関数として実装している(既存のfetchStockPrice()とは別物)。
+async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string): Promise<{ price: number; date: string } | null> {
+  const symbol = `${ticker}.T`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=3mo`;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-    if (!res.ok) {
-      console.error(`EDINET取得失敗(status ${res.status}): date=${date}`);
-      return [];
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const timestamps: number[] = result.timestamp ?? [];
+    const closes: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? [];
+    const targetMs = new Date(`${targetDateStr}T00:00:00+09:00`).getTime();
+    for (let i = 0; i < timestamps.length; i++) {
+      if (closes[i] == null) continue;
+      const tradingMs = timestamps[i] * 1000;
+      if (tradingMs >= targetMs) {
+        return { price: Math.round(closes[i]!), date: new Date(tradingMs).toISOString().slice(0, 10) };
+      }
     }
-    // EDINET側が一時的にメンテナンス画面などのHTMLを200で返すことがあり、
-    // その場合 res.json() がSyntaxErrorを投げて呼び出し元のテーマ全体が
-    // 失敗扱いになっていた。JSONとして解釈できない場合はエラーにせず、
-    // 「今回は取得できなかった」として空配列を返す。
-    const text = await res.text();
-    try {
-      const data = JSON.parse(text);
-      return data?.results ?? [];
-    } catch {
-      console.error(`EDINET応答がJSONではありません: date=${date}, 先頭200文字: ${text.slice(0, 200)}`);
-      return [];
-    }
-  } catch (err) {
-    console.error(`EDINET取得中にエラー: date=${date}`, err);
-    return [];
+    return null; // 対象日以降の取引データがまだ無い(対象日をまだ迎えていない可能性が高い)
+  } catch {
+    return null;
   }
 }
 
-export interface ShareholderMovementResult {
-  externalId: string;
-  companyName: string;
-  sector: string;
-  result: ThemedPostResult;
-}
+type CheckpointKey = "day2" | "day10" | "month1";
 
-// テーマ: 大株主・VC/PEの異動ウォッチ(EDINET・大量保有報告書ベース、docTypeCode=350)
-// 以前は対象銘柄コードが「不明」のまま記事化されることがあったため、
-// 証券コード(secCode)が特定できる提出だけを対象にする。
-// また、同じ提出書類(docID)を重複して記事化しないよう、事前にDBへ問い合わせて除外する。
-// 1件の提出につき1本の記事を作り(複数まとめて1本にしない)、最大3件/回まで生成する。
-export async function generateShareholderMovementPosts(): Promise<ShareholderMovementResult[]> {
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const dates = [today.toISOString().slice(0, 10), yesterday.toISOString().slice(0, 10)];
+const CHECKPOINT_META: Record<CheckpointKey, { label: string; axisLabel: string; isFinal: boolean }> = {
+  day2: { label: "上場2日目", axisLabel: "超短期(初値〜当日)", isFinal: true },
+  day10: { label: "上場10日目", axisLabel: "短期(1〜3ヶ月)の経過観察", isFinal: false },
+  month1: { label: "上場1ヶ月後", axisLabel: "短期(1〜3ヶ月)", isFinal: true },
+};
+const CHECKPOINT_ORDER: CheckpointKey[] = ["day2", "day10", "month1"];
 
-  const docsByDate = await Promise.all(dates.map((date) => fetchEdinetDocumentsForThemes(date)));
-  const allReports: any[] = docsByDate.flatMap((docs) =>
-    docs.filter((d: any) => d.docTypeCode === "350" && d.secCode)
-  );
+async function buildPriceCheckpointPost(co: any, key: CheckpointKey, price: number, rate: number | null): Promise<ThemedPostResult> {
+  const meta = CHECKPOINT_META[key];
+  const summary = co.analysis_summary ?? {};
+  const grade = key === "day2" ? summary.ultra_short_grade : summary.short_grade;
+  const reason = key === "day2" ? summary.grade_reason?.ultra_short : summary.grade_reason?.short;
+  const rateText = rate != null ? `${rate >= 0 ? "+" : ""}${rate}%` : "不明";
 
-  if (allReports.length === 0) return [];
+  const prompt = `
+あなたは日本のIPO投資アナリストです。以下の銘柄について、上場後の実際の値動きと、上場前に自社が出したAI分析を突き合わせた「答え合わせ」記事をX(旧Twitter)投稿として1本作成してください。
 
-  const candidateIds = allReports.map((d) => `edinet-${d.docID}`).filter(Boolean);
-  const { data: existing } = await supabaseForThemes
-    .from("market_trends")
-    .select("external_id")
-    .in("external_id", candidateIds);
-  const existingIds = new Set((existing ?? []).map((r: any) => r.external_id));
+# 実績データ
+- 銘柄: ${co.name}(${co.ticker ?? ""})
+- チェックポイント: ${meta.label}
+- 公募価格: ${co.ipo_price ? `${co.ipo_price}円` : "不明"}
+- ${meta.label}時点の株価: ${price}円
+- 公募価格比: ${rateText}
 
-  const fresh = allReports.filter((d) => !existingIds.has(`edinet-${d.docID}`));
-  if (fresh.length === 0) return [];
+# 事前のAI分析(上場前に生成したもの)
+- ${meta.axisLabel}軸の判定: ${grade ? `${grade}グレード` : "不明"}
+- 判定理由: ${reason || "記録なし"}
 
-  // 自社で追っているIPO銘柄と証券コードで照合(EDINETのsecCodeは5桁、うち先頭4桁が証券コード)
-  const { data: tracked } = await supabaseForThemes
-    .from("ipo_companies")
-    .select("name, ticker, sector");
-  const trackedByTicker = new Map(
-    (tracked ?? [])
-      .filter((c: any) => c.ticker)
-      .map((c: any) => [String(c.ticker).slice(0, 4), c])
-  );
-
-  const enriched = fresh.map((d) => {
-    const secCode4 = String(d.secCode).slice(0, 4);
-    return { ...d, matchedCompany: trackedByTicker.get(secCode4) ?? null };
-  });
-
-  // 自社追跡銘柄との一致を優先し、最大3件まで
-  enriched.sort((a, b) => (b.matchedCompany ? 1 : 0) - (a.matchedCompany ? 1 : 0));
-  const sample = enriched.slice(0, 3);
-
-  const results: ShareholderMovementResult[] = [];
-  await Promise.all(
-    sample.map(async (d: any) => {
-      const companyName = d.matchedCompany?.name || d.filerName || `証券コード${d.secCode}`;
-      const isTracked = !!d.matchedCompany;
-
-      const prompt = `
-あなたは日本の個人投資家向けメディアの編集者です。以下は本日〜前日にEDINETへ提出された「大量保有報告書」の情報です。この1件についてX(旧Twitter)投稿を1本作成してください。
-
-# 提出情報
-- 提出者:${d.filerName || "不明"}
-- 対象銘柄コード:${d.secCode}
-- 提出日:${d.submitDateTime || ""}
-- 概要:${d.docDescription || ""}
-${isTracked ? `- 補足:この銘柄(${companyName})は当メディアがIPO時から分析している銘柄です。` : ""}
-
-# 注意事項
-- 記載のない保有割合や取得目的を憶測で書かないでください
-- 個人投資家として何に注意すべきか(需給への影響など)を最後に一言添えてください
+# 記載のポイント
+- 実績(公募価格比${rateText})と、事前のAI判定・理由を両方とも事実として提示すること
+- 実績が事前の判定とおおむね一致していそうか、乖離していそうかについて、断定はせず「〜という見方もできそうです」程度の柔らかい言い方で触れること
+${meta.isFinal ? "" : "- このチェックポイントは短期軸の判定期間(1〜3ヶ月)の途中経過である旨も一言添えること\n"}- 個別銘柄への売買助言(「買うべき」「今が売り時」等)は一切書かないこと
+- 最後に、「この結果は1銘柄の実績であり、AI分析の的中を保証するものではありません」という趣旨の一文を、押し付けがましくない自然な言い回しで必ず入れること
 
 ${STYLE_GUIDE}
 
 投稿文のみを出力してください。前置きや説明は不要です。
 `;
-      try {
-        const content = await generateWithGemini(prompt);
-        results.push({
-          externalId: `edinet-${d.docID}`,
-          companyName,
-          sector: d.matchedCompany?.sector || "大量保有報告",
-          result: {
-            content,
-            sourceLinks: [{ title: companyName, url: "https://disclosure2.edinet-fsa.go.jp/", source: "EDINET" }],
-          },
-        });
-      } catch (err) {
-        console.error(`大量保有報告書の記事生成失敗(${companyName}):`, err);
-      }
-    })
-  );
+  const content = await generateWithGemini(prompt);
+  return {
+    content,
+    sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+  };
+}
 
-  return results;
+export interface PriceCheckpointResult {
+  externalId: string;
+  companyName: string;
+  checkpointLabel: string;
+  sector: string;
+  result: ThemedPostResult;
+}
+
+// テーマ①: 「初値・その後の値動き」答え合わせ(自社DB+Yahoo Financeの株価)
+// 上場2日目・10日目・1ヶ月後のいずれか、期日を迎えていてまだ記録していないチェックポイントの
+// うち、最も期日の早いものから順に株価取得を試みる。記事生成まで成功した時点でDBの
+// チェックポイント欄を確定させる(記事生成に失敗した場合は欄を埋めずに残し、翌日以降の
+// cronで同じチェックポイントの記事生成を再試行できるようにするため)。
+// 該当・取得できるチェックポイントが無ければnullを返し、呼び出し元で③にフォールバックする。
+export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResult | null> {
+  const todayJst = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, ticker, sector, listing_date, ipo_price, analysis_summary, price_day2, price_day10, price_month1")
+    .not("ticker", "is", null)
+    .not("analysis_summary", "is", null)
+    .lte("listing_date", todayJst);
+
+  if (error || !rows) {
+    console.error("価格チェックポイント: 取得失敗", error);
+    return null;
+  }
+
+  const candidates: { co: any; key: CheckpointKey; targetStr: string }[] = [];
+  for (const co of rows) {
+    if (!co.listing_date) continue;
+    const listing = new Date(`${co.listing_date}T00:00:00+09:00`);
+    for (const key of CHECKPOINT_ORDER) {
+      if (co[`price_${key}`] != null) continue; // 記録済み。次のチェックポイントへ
+      const target = new Date(listing);
+      if (key === "day2") target.setDate(target.getDate() + 1);
+      if (key === "day10") target.setDate(target.getDate() + 9);
+      if (key === "month1") target.setMonth(target.getMonth() + 1);
+      const targetStr = target.toISOString().slice(0, 10);
+      if (targetStr <= todayJst) candidates.push({ co, key, targetStr });
+      break; // この銘柄は最も早い未記録チェックポイントだけを候補にする(順序を飛ばさない)
+    }
+  }
+  candidates.sort((a, b) => a.targetStr.localeCompare(b.targetStr));
+
+  for (const c of candidates) {
+    const priceData = await fetchPriceOnOrAfter(c.co.ticker, c.targetStr);
+    if (!priceData) continue; // 株価データがまだ無い等。次の候補へ
+
+    const rate = c.co.ipo_price
+      ? Math.round(((priceData.price - c.co.ipo_price) / c.co.ipo_price) * 1000) / 10
+      : null;
+
+    try {
+      const result = await buildPriceCheckpointPost(c.co, c.key, priceData.price, rate);
+      const { error: updateError } = await supabaseForThemes
+        .from("ipo_companies")
+        .update({ [`price_${c.key}`]: priceData.price, [`price_${c.key}_rate`]: rate })
+        .eq("id", c.co.id);
+      if (updateError) console.error(`価格チェックポイント保存失敗(${c.co.name}/${c.key}):`, updateError.message);
+
+      return {
+        externalId: `price-checkpoint-${c.co.id}-${c.key}`,
+        companyName: c.co.name,
+        checkpointLabel: CHECKPOINT_META[c.key].label,
+        sector: c.co.sector || "IPO値動き",
+        result,
+      };
+    } catch (e) {
+      console.error(`価格チェックポイント記事生成失敗(${c.co.name}/${c.key}):`, e);
+      continue; // 次の候補があれば試す
+    }
+  }
+  return null;
+}
+
+// ===== ここから2026/9/2追加: 「IPO投資ワンポイント講座」(①の穴埋め用、毎日必ずネタがある) =====
+const INVESTING_TIPS_TOPICS = [
+  "ロックアップとは何か、なぜIPO投資で重要なのか",
+  "流通株式比率(浮動株比率)の見方",
+  "オーバーアロットメント(OA)の仕組み",
+  "主幹事証券会社の役割と見るべきポイント",
+  "公募価格と初値の違い、なぜズレるのか",
+  "目論見書の「事業等のリスク」欄の読み方",
+  "グロース市場・スタンダード市場・プライム市場の違い",
+  "VC(ベンチャーキャピタル)保有株の売却タイミングと株価への影響",
+  "IPOの「仮条件」とはどう決まるのか",
+  "赤字IPOの評価ポイント(成長投資か、収益化の遅れか)",
+  "PER・PBRなど、IPO銘柄のバリュエーション指標の基礎",
+  "IPOにおける「公募」と「売出」の違い",
+  "上場承認から上場日までのスケジュールの流れ",
+  "IPOにおける「需給」とは何か(株数・流通量が株価に与える影響)",
+  "経常利益・営業利益・純利益の違いと、決算で見るべき数字",
+];
+
+// 日付(通算日)を使った決定的なローテーションで、DBに問い合わせなくても
+// 「最近使ったテーマと被らない」順序で一巡させる(一巡したら最初に戻る)。
+function pickTodaysInvestingTip(): string {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
+  return INVESTING_TIPS_TOPICS[dayOfYear % INVESTING_TIPS_TOPICS.length];
+}
+
+// テーマ③: IPO投資ワンポイント講座(自社DB不要、毎日必ず生成できる)
+// テーマ①(初値・その後の値動き)が該当なしの日の穴埋め用。
+export async function generateInvestingTipPost(): Promise<ThemedPostResult> {
+  const topic = pickTodaysInvestingTip();
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下のテーマについて、IPO投資を始めたばかりの個人投資家向けに、分かりやすい解説記事をX(旧Twitter)投稿として1本作成してください。
+
+# 今日のテーマ
+${topic}
+
+# 記載のポイント
+- 専門用語は初心者にも分かるように噛み砕いて説明すること
+- 抽象的な説明だけでなく、実際のIPO投資でこの視点を持つと何が見抜けるか、具体的に書くこと
+- 断定的な投資助言(「買うべき」等)や、特定の銘柄名を名指しすることはしないこと(一般的な知識の解説に徹する)
+- 最後に、「当メディアの個別銘柄の分析レポートでは、この観点も含めて銘柄ごとに詳しく解説しています」といった趣旨の一文を添えること
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+  const content = await generateWithGemini(prompt);
+  return {
+    content,
+    sourceLinks: [{ title: "IPO投資の基礎知識ガイド", url: "https://ipo.finance-tower.com/ipo-guide", source: "自社ガイド" }],
+  };
 }
