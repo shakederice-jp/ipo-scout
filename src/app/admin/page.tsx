@@ -157,6 +157,30 @@ export default function AdminPage() {
     } catch { setStep("3", false, "❌ 保存通信エラー"); return; }
   };
 
+  // 2026/9/4追加: STEP 8｜深掘り3要素(ビジネスモデル・ストーリー・競合との違い)。
+  // タイムアウト対策として2つの独立したpartに分け、片方が失敗してももう片方は
+  // 保存済みのまま残る(/api/deep-dive側で各partごとに個別保存しているため)。
+  const handleDeepDive = async () => {
+    if (!selectedCompany) return;
+    setStep("8", true);
+    const parts = [
+      { key: "business_story", label: "①ビジネスモデル・ストーリー" },
+      { key: "competitor_diff", label: "②競合との違い" },
+    ];
+    const messages: string[] = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      setStepResult(prev => ({...prev, "8": [...messages, `⏳ ${p.label} 生成中 (${i+1}/${parts.length})...`].join("\n")}));
+      try {
+        const res = await fetch("/api/deep-dive", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, part:p.key }) });
+        const data = await res.json();
+        if (data.error) { messages.push(`❌ ${p.label}: ${data.error}`); continue; }
+        messages.push(`✅ ${p.label} 完了`);
+      } catch { messages.push(`❌ ${p.label}: 通信エラー`); }
+    }
+    setStep("8", false, messages.join("\n"));
+  };
+
   const runAxes = async (period: string, label: string, stepNum: string) => {
     const axisMap: Record<string, string[]> = { ultra_short:["float","lockup","timing"], short:["valuation","vc_sell","growth"], long:["management","unit_econ","competitor"] };
     const axes = axisMap[period];
@@ -978,6 +1002,18 @@ export default function AdminPage() {
                         {stepResult[n]}
                       </div>
                     ))}
+                  </div>
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${stepResult["8"]?.includes("❌")?"#fecaca":stepResult["8"]?.includes("✅")?"#bbf7d0":"#e2e8f0"}`, background:stepResult["8"]?.includes("❌")?"#fef2f2":stepResult["8"]?.includes("✅")?"#f0fdf4":"#f8fafc" }}>
+                    <div style={{ fontWeight:900, color:"#0891b2", fontSize:13, marginBottom:3 }}>STEP 8｜深掘り3要素（無料公開・分析ページ上部＋トレンド用）</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>ビジネスモデル・上場までのストーリー・競合との違いを生成します（約30〜60秒・要②③⑦完了後）</p>
+                    <button onClick={handleDeepDive} disabled={stepLoading["8"]} style={btnStyle("#0891b2", stepLoading["8"])}>
+                      {stepLoading["8"]?"⏳ 生成中...":"⑧ 深掘り3要素を生成する"}
+                    </button>
+                    {stepResult["8"] && (
+                      <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult["8"].includes("❌")?"#fef2f2":"#f0fdf4", color:stepResult["8"].includes("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
+                        {stepResult["8"]}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

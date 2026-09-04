@@ -753,3 +753,82 @@ ${STYLE_GUIDE}
   }
   return null;
 }
+
+// 2026/9/4追加: テーマ「ビジネスモデル・ストーリー・競合との違い」
+// (analysis_deep_dive、src/app/api/deep-dive/route.tsで生成済みのデータを使う)。
+// 分析ページ上ではこの3要素を折りたたみ・無料公開の形で載せているが、
+// マーケットトレンド用にはさらに短く、X投稿として読み切れる分量(500〜700字程度)に
+// 凝縮した版を別途生成する(2026/9/3の相談で決定した方針)。新たなWeb検索・
+// EDINET取得は行わず、既に生成済みのanalysis_deep_diveのテキストを要約するのみ
+// のため、タイムアウトリスクは低い。
+// 3要素すべてが揃っている銘柄のみを対象にする(銘柄ごとに一度だけ・external_idで重複防止)。
+const DEEP_DIVE_TREND_STYLE = `
+# 文体ルール(厳守)
+- ですます調の読み物として書く(IR速報風の体言止めにはしない)
+- 「💼儲けの仕組み」「📖上場までのストーリー」「⚖️競合との違い」の3つの見出しを立て、それぞれ2〜3文程度の短い段落でまとめる
+- 全体で500〜700文字程度に収めること(元の文章を要約・凝縮すること)
+- 「買うべき」「投資すべき」等の断定的な投資助言・煽り文句は書かないこと
+- 最後に一行、「くわしくは分析ページで無料公開中です」という趣旨の一文を添えること(URLは含めない)
+- URLは含めない
+`;
+
+export async function generateDeepDiveTrendPost(): Promise<{ externalId: string; companyName: string; sector: string; result: ThemedPostResult } | null> {
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, sector, listing_date, analysis_deep_dive")
+    .not("analysis_deep_dive", "is", null);
+
+  if (error || !rows) {
+    console.error("深掘り3要素トレンド: 取得失敗", error);
+    return null;
+  }
+
+  const complete = rows.filter((c: any) =>
+    c.analysis_deep_dive?.business_model && c.analysis_deep_dive?.story && c.analysis_deep_dive?.competitor_diff
+  );
+  if (complete.length === 0) return null;
+
+  const candidateIds = complete.map((c: any) => `deep-dive-${c.id}`);
+  const { data: existing } = await supabaseForThemes.from("market_trends").select("external_id").in("external_id", candidateIds);
+  const existingSet = new Set((existing ?? []).map((r: any) => r.external_id));
+  const fresh = complete.filter((c: any) => !existingSet.has(`deep-dive-${c.id}`));
+  if (fresh.length === 0) return null;
+
+  // 直近に分析した銘柄を優先する
+  fresh.sort((a: any, b: any) => (b.listing_date ?? "").localeCompare(a.listing_date ?? ""));
+  const co = fresh[0];
+  const dd = co.analysis_deep_dive;
+
+  const prompt = `
+以下は、新規上場企業「${co.name}」(${co.sector || "業種不明"})について、①ビジネスモデル、②上場までのストーリー、③競合との違い、をそれぞれ解説した文章です。
+これを個人投資家向けのX(旧Twitter)投稿1本に要約・凝縮してください。
+
+# ①ビジネスモデル(儲けの仕組み)
+${dd.business_model}
+
+# ②上場までのストーリー
+${dd.story}
+
+# ③競合との違い
+${dd.competitor_diff}
+
+${DEEP_DIVE_TREND_STYLE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+  try {
+    const content = await generateWithGemini(prompt);
+    return {
+      externalId: `deep-dive-${co.id}`,
+      companyName: co.name,
+      sector: co.sector || "深掘り解説",
+      result: {
+        content,
+        sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+      },
+    };
+  } catch (e) {
+    console.error(`深掘り3要素トレンド: 記事生成失敗(${co.name}):`, e);
+    return null;
+  }
+}

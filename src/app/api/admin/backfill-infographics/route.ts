@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createInfographic } from "@/lib/infographic";
 import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
-import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
+import { computeAxisGroupScores, computeIndividualAxisScores } from "@/lib/ipo-axis-scores";
 
 export const maxDuration = 90;
 
@@ -80,6 +80,11 @@ export async function POST(req: NextRequest) {
         (co as any).analysis_axes_mid,
         (co as any).analysis_axes_long
       );
+      const radarScores = computeIndividualAxisScores(
+        (co as any).analysis_axes_short,
+        (co as any).analysis_axes_mid,
+        (co as any).analysis_axes_long
+      );
 
       const imageUrl = await createInfographic({
         companyId: co.id,
@@ -90,6 +95,7 @@ export async function POST(req: NextRequest) {
         chartData,
         hook: hookText,
         axisScores,
+        radarScores,
       });
 
       if (!imageUrl) {

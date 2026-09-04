@@ -7,7 +7,7 @@ import { notifyAdmin } from "@/lib/notify-admin";
 import { createInfographic } from "@/lib/infographic";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 import { buildRevenueChartData, formatKeyMetricsTrend } from "@/lib/ipo-revenue-chart";
-import { computeAxisGroupScores } from "@/lib/ipo-axis-scores";
+import { computeAxisGroupScores, computeIndividualAxisScores } from "@/lib/ipo-axis-scores";
 import { fetchMarketSnapshotContext } from "@/lib/market-snapshot";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -146,8 +146,8 @@ ${marketNoteBlock}
 
 【出力形式】必ず以下の構造のみで完結させること:
 {
-  "summary": "300字以内。必ず実データの具体的数値を2つ以上引用して記述。1文目で結論を端的に述べ、改行(\\n\\n)を1つ挟んでから詳細説明を続ける2段落構成にすること。ですます調",
-  "summary_beginner": "同じ内容を、投資初心者にも分かるように書き直したもの。300〜400字程度。専門用語（経常利益率、営業CF、流通比率など）が出てきたら都度かんたんな説明を一言添えること。1文目で結論、改行(\\n\\n)を挟んで詳細、という2段落構成。ですます調",
+  "summary": "300字以内。必ず実データの具体的数値を2つ以上引用して記述。1文目で結論を端的に述べ、改行(\\n\\n)を1つ挟んでから詳細説明を続ける2段落構成にすること。最も伝えたい数値・語句を1箇所だけ「**」で囲んで部分太字にすること。ですます調",
+  "summary_beginner": "同じ内容を、投資初心者にも分かるように書き直したもの。300〜400字程度。専門用語（経常利益率、営業CF、流通比率など）が出てきたら都度かんたんな説明を一言添えること。1文目で結論、改行(\\n\\n)を挟んで詳細、という2段落構成。最も伝えたい数値・語句を1箇所だけ「**」で囲んで部分太字にすること。ですます調",
   "data_citations": ["引用根拠1", "引用根拠2", "引用根拠3"],
   "data_confidence": "high（実データあり）/ medium（一部推定）/ low（データ不足）のいずれか",
   "missing_data_points": ["記載がなかった項目1（15字以内、体言止め）", "記載がなかった項目2（15字以内、体言止め）"],
@@ -205,7 +205,7 @@ ${marketNoteBlock}
 【出力形式】必ず以下の構造のみで完結させること:
 {
   "insights": [
-    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短いフック文（100字以内）。上記ルール4の書き方で。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。1文目で結論・要点を端的に述べ、そのあと改行(\\n\\n)を1つ挟んでから、実データの数値を交えた背景・理由の説明、さらに改行(\\n\\n)を挟んで投資判断への影響、という2〜3段落構成にすること。ですます調"},
+    {"title": "インサイトタイトル1（20字以内）", "body": "カード折りたたみ時に見える短いフック文（100字以内）。上記ルール4の書き方で。ですます調", "detail": "カードを開いた時に表示する詳しい解説。200〜350字程度。1文目で結論・要点を端的に述べ、そのあと改行(\\n\\n)を1つ挟んでから、実データの数値を交えた背景・理由の説明、さらに改行(\\n\\n)を挟んで投資判断への影響、という2〜3段落構成にすること。最も伝えたい語句・数値を1〜2箇所だけ「**」で囲んで部分太字にすること(多用しないこと)。ですます調"},
     {"title": "インサイトタイトル2（20字以内）", "body": "同上（100字以内、ルール4のフック調）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"},
     {"title": "インサイトタイトル3（20字以内）", "body": "同上（100字以内、ルール4のフック調）。ですます調", "detail": "同上の形式で200〜350字程度。ですます調"}
   ],
@@ -352,6 +352,14 @@ export async function POST(req: NextRequest) {
             (co as any).analysis_axes_mid,
             (co as any).analysis_axes_long
           );
+          // 2026/9/4追加: インフォグラフィックの9軸レーダーチャート用。
+          // STEP5未実行の場合はscoreがすべてnullになり、og-infographic側で
+          // レーダーチャート自体が非表示になる(既存の3グループスコアと同じ考え方)。
+          const radarScores = computeIndividualAxisScores(
+            (co as any).analysis_axes_short,
+            (co as any).analysis_axes_mid,
+            (co as any).analysis_axes_long
+          );
           let imageUrl: string | null = null;
           try {
             imageUrl = await createInfographic({
@@ -363,6 +371,7 @@ export async function POST(req: NextRequest) {
               chartData,
               hook: hookText,
               axisScores,
+              radarScores,
             });
           } catch (e: any) {
             console.error("インフォグラフィック生成失敗:", e?.message);

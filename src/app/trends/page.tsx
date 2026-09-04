@@ -26,6 +26,8 @@ const SECTOR_EMOJI: Record<string, string> = {
 // 2026/9/2: 「大株主・VC/PEの異動ウォッチ」は廃止し、「初値・その後の値動き」
 // 「IPO投資ワンポイント講座」に入れ替えた。同日、さらに3テーマ
 // (ロックアップ解除カウントダウン・経済指標イベント速報・IPO企業vs競合の決算比較)を追加。
+// 2026/9/4: 「ビジネスモデル・ストーリー・競合との違い」を追加
+// (分析ページの無料公開3要素の凝縮版、STEP8「深掘り3要素」で生成)。
 const CATEGORIES: { label: string; emoji: string; prefix?: boolean }[] = [
   { label: "新規IPO紹介", emoji: "🆕", prefix: true },
   { label: "直近承認銘柄のスコア傾向", emoji: "📊" },
@@ -37,6 +39,7 @@ const CATEGORIES: { label: string; emoji: string; prefix?: boolean }[] = [
   { label: "ロックアップ解除カウントダウン", emoji: "⏳", prefix: true },
   { label: "経済指標・イベント速報", emoji: "📰", prefix: true },
   { label: "IPO企業 vs 競合の決算比較", emoji: "⚖️", prefix: true },
+  { label: "ビジネスモデル・ストーリー・競合との違い", emoji: "💼", prefix: true },
 ];
 
 // テーマ記事のtitleから、対応するカテゴリー(右カラムのカテゴリーと同じ定義)を判定する。

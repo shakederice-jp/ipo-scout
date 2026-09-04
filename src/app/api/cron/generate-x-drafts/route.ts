@@ -10,6 +10,7 @@ import {
   generateLockupCountdownPost,
   generateEconEventResultPost,
   generateCompetitorComparisonPost,
+  generateDeepDiveTrendPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
@@ -275,6 +276,25 @@ export async function GET(request: Request) {
     } catch (err) {
       console.error("IPO企業 vs 競合の決算比較の生成に失敗:", err);
       results.push({ theme: 13, status: "failed" });
+    }
+
+    try {
+      const deepDiveResult = await generateDeepDiveTrendPost();
+      if (deepDiveResult) {
+        const outcome = await saveThemeArticle(
+          `ビジネスモデル・ストーリー・競合との違い(${deepDiveResult.companyName})`,
+          deepDiveResult.sector,
+          deepDiveResult.result,
+          deepDiveResult.externalId
+        );
+        if (outcome === "saved") trendsUpdated = true;
+        results.push({ theme: 14, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
+      } else {
+        results.push({ theme: 14, status: "skipped(該当銘柄なし)" });
+      }
+    } catch (err) {
+      console.error("ビジネスモデル・ストーリー・競合との違いの生成に失敗:", err);
+      results.push({ theme: 14, status: "failed" });
     }
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)

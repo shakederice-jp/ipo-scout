@@ -74,6 +74,27 @@ function parseAxisScore(raw: string | null): number | null {
   return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : null;
 }
 
+// 2026/9/4追加: 9軸レーダーチャート用。radarScoresはJSON文字列
+// ({id,label,score}[]、src/lib/ipo-axis-scores.tsのcomputeIndividualAxisScores()由来)
+// としてクエリに渡される想定。壊れている場合は空配列(=レーダー非表示)。
+interface RadarPoint { id: string; label: string; score: number | null }
+function parseRadarScores(raw: string | null): RadarPoint[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((p) => p && typeof p.id === "string" && typeof p.label === "string")
+      .map((p) => ({
+        id: p.id,
+        label: String(p.label).slice(0, 8),
+        score: typeof p.score === "number" && Number.isFinite(p.score) ? Math.max(0, Math.min(100, Math.round(p.score))) : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 // 初期値→最新値の伸び率から、グラフの見出しになる「成長ヘッドライン」を作る。
 // 例: "📈 4期で9.6倍成長"。ほぼ横ばい(±5%以内)の場合は表示しない(誇張を避けるため)。
 function buildGrowthLabel(chartData: ChartPoint[]): string | null {
@@ -108,6 +129,9 @@ export async function GET(req: NextRequest) {
   const axisShort = parseAxisScore(searchParams.get("axisShort"));
   const axisLong = parseAxisScore(searchParams.get("axisLong"));
   const hasAxisScores = axisUltraShort != null || axisShort != null || axisLong != null;
+  const radarScoresRaw = parseRadarScores(searchParams.get("radarScores"));
+  const radarPoints = radarScoresRaw.filter((p) => p.score != null) as { id: string; label: string; score: number }[];
+  const hasRadar = radarPoints.length >= 3;
 
   // 会社名の長さに応じてフォントサイズを落とし、幅からはみ出さないようにする
   const nameFontSize = companyName.length > 9 ? 44 : companyName.length > 6 ? 52 : 62;
@@ -223,6 +247,83 @@ export async function GET(req: NextRequest) {
       }
     : null;
 
+  // 2026/9/4追加: 9軸レーダーチャート。分析ページ(AnalysisClient.tsx)のRadarSVGと
+  // 同じ考え方の多角形を、satori(edge runtime)でも描画できる基本的なsvg要素
+  // (svg/polygon/line/circle)のみで組む。文字ラベルはsvg内のtext要素に頼らず、
+  // チャートの下に別途div/textでレーダー用の凡例グリッドとして表示する
+  // (satoriのsvg text位置調整の不確実性を避けるため)。
+  let radarBlock: any = null;
+  if (hasRadar) {
+    const n = radarPoints.length;
+    const cx = 100, cy = 100, maxR = 78;
+    const pt = (i: number, v: number) => {
+      const a = (i * (360 / n) - 90) * (Math.PI / 180);
+      const rv = (v / 100) * maxR;
+      return { x: cx + rv * Math.cos(a), y: cy + rv * Math.sin(a) };
+    };
+    const ptOuter = (i: number) => pt(i, 100);
+    const gridPolygons = [30, 55, 80, 100].map((v) => ({
+      type: "polygon",
+      props: {
+        points: radarPoints.map((_, i) => { const p = pt(i, v); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" "),
+        fill: "none",
+        stroke: "rgba(255,255,255,0.18)",
+        strokeWidth: 1,
+      },
+    }));
+    const spokeLines = radarPoints.map((_, i) => {
+      const p = ptOuter(i);
+      return { type: "line", props: { x1: cx, y1: cy, x2: p.x, y2: p.y, stroke: "rgba(255,255,255,0.18)", strokeWidth: 1 } };
+    });
+    const dataPolygon = {
+      type: "polygon",
+      props: {
+        points: radarPoints.map((r, i) => { const p = pt(i, r.score); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" "),
+        fill: "#f5c451",
+        fillOpacity: 0.35,
+        stroke: "#f5c451",
+        strokeWidth: 2.5,
+      },
+    };
+    const dataDots = radarPoints.map((r, i) => {
+      const p = pt(i, r.score);
+      return { type: "circle", props: { cx: p.x, cy: p.y, r: 3.2, fill: "#ffd166" } };
+    });
+
+    radarBlock = {
+      type: "div",
+      props: {
+        style: { display: "flex", flexDirection: "column", alignItems: "center", width: 340, flexShrink: 0 },
+        children: [
+          { type: "div", props: { style: { display: "flex", fontSize: 22, fontWeight: 700, color: "#a0d4d6", marginBottom: 6 }, children: "🎯 9軸レーダー分析" } },
+          {
+            type: "svg",
+            props: {
+              width: 260, height: 260, viewBox: "0 0 200 200", style: { display: "flex" },
+              children: [...gridPolygons, ...spokeLines, dataPolygon, ...dataDots],
+            },
+          },
+          {
+            type: "div",
+            props: {
+              style: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "4px 10px", marginTop: 10, width: 320 },
+              children: radarPoints.map((r) => ({
+                type: "div",
+                props: {
+                  style: { display: "flex", flexDirection: "row", alignItems: "center", gap: 4, width: 95 },
+                  children: [
+                    { type: "div", props: { style: { display: "flex", fontSize: 13, color: "rgba(255,255,255,0.7)" }, children: r.label } },
+                    { type: "div", props: { style: { display: "flex", fontSize: 13, fontWeight: 700, color: "#ffd166" }, children: `${r.score}` } },
+                  ],
+                },
+              })),
+            },
+          },
+        ],
+      },
+    };
+  }
+
   // AIスコアの大きな円バッジ。以前のデザインで好評だった「赤い円の中に数字」の見せ方に戻し、
   // このアプリの一番の売りであるスコア・グレードを一目で目立たせる。
   const scoreCircle = {
@@ -254,7 +355,7 @@ export async function GET(req: NextRequest) {
           // 売上高推移の棒グラフ + 経常利益ミニチャート + 成長ヘッドライン
           type: "div",
           props: {
-            style: { display: "flex", flexDirection: "column", flex: 1, padding: "0 64px", justifyContent: "center" },
+            style: { display: "flex", flexDirection: "column", flex: hasRadar ? 1.35 : 1, padding: hasRadar ? "0 0 0 64px" : "0 64px", justifyContent: "center" },
             children: [
               {
                 type: "div",
@@ -380,12 +481,24 @@ export async function GET(req: NextRequest) {
           // 財務データが無い場合のフォールバック(棒グラフを描けないケース向けの最低限の表示)
           type: "div",
           props: {
-            style: { display: "flex", flex: 1, alignItems: "center", justifyContent: "center", padding: "0 64px" },
+            style: { display: "flex", flex: hasRadar ? 1.35 : 1, alignItems: "center", justifyContent: "center", padding: hasRadar ? "0 0 0 64px" : "0 64px" },
             children: [
               { type: "div", props: { style: { display: "flex", fontSize: 26, color: "#a0d4d6", textAlign: "center" as const }, children: "詳しい財務データはサイトで公開中です" } },
             ],
           },
         };
+
+  // レーダーチャートがある場合は、上記chartSectionの右側に並べて表示する
+  // (chartSection自身は左パディングのみに調整済み。全体の右パディングはmainVisualRowで持つ)。
+  const mainVisualSection = hasRadar
+    ? {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "row", flex: 1, alignItems: "center", padding: "0 44px 0 0", gap: 8 },
+          children: [chartSection, radarBlock],
+        },
+      }
+    : chartSection;
 
   return new ImageResponse(
     (
@@ -421,8 +534,8 @@ export async function GET(req: NextRequest) {
             ...(axisScoreSection ? [axisScoreSection] : []),
             // ひとことインサイト(hookが渡された場合のみ)
             ...(hookSection ? [hookSection] : []),
-            // メイン: 売上高・経常利益推移グラフ(またはフォールバック)
-            chartSection,
+            // メイン: 売上高・経常利益推移グラフ(またはフォールバック) + 9軸レーダーチャート(あれば)
+            mainVisualSection,
             // フッター: CTA
             { type: "div", props: { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", backgroundColor: "rgba(0,0,0,0.22)", padding: "30px 64px" },
               children: [

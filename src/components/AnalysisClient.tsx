@@ -109,6 +109,19 @@ function ReferenceGroup({icon,order,title,subtitle,accent,level,children}:{
   );
 }
 
+// 2026/9/4追加: "**太字**" のマークダウン記法を、単に記号を取り除くのではなく
+// 実際に部分太字として表示するためのヘルパー。読み手が長文の中から要点だけを
+// 拾い読みしやすくするための「読みやすさ」改善の一環。
+function renderInline(text:string):React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part,idx) => {
+    if(part.startsWith('**') && part.endsWith('**') && part.length > 4){
+      return <strong key={idx} style={{fontWeight:800,color:"#0d4f52"}}>{part.slice(2,-2)}</strong>;
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
 function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
   // AIが生成時に実際の改行ではなく "\n" という文字列のまま出力してしまうケースへの保険
   const normalizedText = text.replace(/\\n/g, "\n").replace(/\n{3,}/g, "\n\n");
@@ -156,11 +169,11 @@ function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
           if(b.type==="bullet") return (
             <div key={i} style={{display:"flex",gap:8,marginBottom:10,padding:"8px 10px",backgroundColor:LIGHT,borderRadius:8}}>
               <span style={{color:PRIMARY,flexShrink:0}}>✓</span>
-              <span>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</span>
+              <span>{renderInline(b.text)}</span>
             </div>
           );
-          if(b.type==="headingline") return <p key={i} style={{marginBottom:4,fontWeight:700,fontSize:15,color:"#0d4f52"}}>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
-          return <p key={i} style={{marginBottom:18}}>{b.text.replace(/\*\*([^*]+)\*\*/g,'$1')}</p>;
+          if(b.type==="headingline") return <p key={i} style={{marginBottom:4,fontWeight:700,fontSize:15,color:"#0d4f52"}}>{renderInline(b.text)}</p>;
+          return <p key={i} style={{marginBottom:18,lineHeight:2.1}}>{renderInline(b.text)}</p>;
         })}
       </div>
     );
@@ -172,9 +185,9 @@ function MarkdownReport({text,beginner=false}:{text:string;beginner?:boolean}) {
         if(line.startsWith('#### ')) return <div key={i} style={{fontWeight:900,fontSize:13,color:"#0d4f52",margin:"16px 0 6px"}}>{line.replace(/^#### /,'')}</div>;
         if(line.startsWith('### ')) return <div key={i} style={{fontWeight:900,fontSize:14,color:"#082b2e",margin:"18px 0 8px"}}>{line.replace(/^### /,'')}</div>;
         if(line.startsWith('## ')) return <div key={i} style={{fontWeight:900,fontSize:15,color:"#082b2e",margin:"20px 0 10px"}}>{line.replace(/^## /,'')}</div>;
-        if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:6}}>{'• '}{line.replace(/^- /,'').replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+        if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:12,marginBottom:6}}>{'• '}{renderInline(line.replace(/^- /,''))}</div>;
         if(line.trim()==='') return <div key={i} style={{height:12}}/>;
-        return <div key={i} style={{marginBottom:10}}>{line.replace(/\*\*([^*]+)\*\*/g,'$1')}</div>;
+        return <div key={i} style={{marginBottom:10}}>{renderInline(line)}</div>;
       })}
     </div>
   );
@@ -449,7 +462,7 @@ function InsightCard({ins,idx,level="expert"}:{ins:Insight;idx:number;level?:"ex
             <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け解説は準備中のため、通常の解説を表示しています。</p>
           )}
           {detailText.split(/\n\n+/).map((para:string,i:number)=>(
-            <p key={i} style={{fontSize:isBeginner?13:11,color:"#475569",lineHeight:isBeginner?2:1.8,whiteSpace:"pre-wrap",margin:i===0?`0 0 ${isBeginner?14:10}px`:`${isBeginner?14:10}px 0`}}>{para}</p>
+            <p key={i} style={{fontSize:isBeginner?13:11,color:"#475569",lineHeight:isBeginner?2:1.8,whiteSpace:"pre-wrap",margin:i===0?`0 0 ${isBeginner?14:10}px`:`${isBeginner?14:10}px 0`}}>{renderInline(para)}</p>
           ))}
         </div>
       )}
@@ -639,6 +652,61 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
 
 /* 参考資料セクションの見出し（超短期・短期・長期の3分類、実践的法則ページと世界観を統一） */
 /* 「詳細分析 深掘りレポート」ヘッダーと同じPRIMARYグリーンで統一し、アイコン背景だけをアクセントカラーで差し替える */
+// 2026/9/4追加: 「ビジネスモデル(儲けの手法・からくり)」「上場までのストーリー」
+// 「競合との違い」の3要素。無料公開・折りたたみ式。有料のスコア分析(AI分析要約以降)
+// より上に配置し、読んだ人がさらに続き(有料部分)も読みたくなる導線として機能させる。
+// データはipo_companies.analysis_deep_dive(jsonb)に保存され、管理画面の新STEPで
+// 生成する(EDINETデータのみ・ビジネスモデル/ストーリーと、既存の市場・競合情報を
+// 使う競合との違い、の2つの独立したAI呼び出しに分けて生成されるため、
+// 3つのうち一部だけ生成済み、ということもありうる)。
+function DeepDiveAccordionItem({icon,title,text,accent,defaultOpen=false}:{icon:string;title:string;text:string;accent:string;defaultOpen?:boolean}) {
+  const [open,setOpen]=useState(defaultOpen);
+  return (
+    <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${BORDER}`,marginBottom:8}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,
+        padding:"12px 14px",backgroundColor:open?accent:LIGHT,textAlign:"left",cursor:"pointer",border:"none"}}>
+        <span style={{fontSize:16,flexShrink:0}}>{icon}</span>
+        <span style={{flex:1,fontWeight:900,fontSize:13,color:open?"#ffffff":DARK}}>{title}</span>
+        <span style={{fontSize:11,flexShrink:0,color:open?"#ffffff":TTEXT,transition:"transform 0.2s",
+          display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
+      </button>
+      {open&&(
+        <div style={{backgroundColor:"white",padding:"14px 16px"}}>
+          {text.split(/\n\n+/).map((para,i)=>(
+            <p key={i} style={{fontSize:13,color:"#334155",lineHeight:2,margin:i===0?"0 0 12px":"12px 0"}}>{renderInline(para.trim())}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeepDiveSection({deepDive}:{deepDive:any}) {
+  if(!deepDive) return null;
+  const items:{icon:string;title:string;text:string;accent:string}[]=[];
+  if(deepDive.business_model) items.push({icon:"💼",title:"ビジネスモデル（儲けの仕組み）",text:deepDive.business_model,accent:"#0d4f52"});
+  if(deepDive.story) items.push({icon:"📖",title:"上場までのストーリー",text:deepDive.story,accent:"#7c3aed"});
+  if(deepDive.competitor_diff) items.push({icon:"⚖️",title:"競合企業との違い",text:deepDive.competitor_diff,accent:"#db2777"});
+  if(items.length===0) return null;
+  return (
+    <Card>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Info size={14} color={PRIMARY}/>
+          <span style={{fontWeight:900,fontSize:14,color:DARK}}>この銘柄をもっと知る</span>
+        </div>
+        <span style={{fontSize:10,fontWeight:900,padding:"3px 10px",borderRadius:20,backgroundColor:"#dcfce7",color:"#15803d"}}>🆓 無料公開</span>
+      </div>
+      <p style={{fontSize:11,color:"#64748b",lineHeight:1.7,margin:"0 0 12px"}}>
+        タップして開くと、この会社が「どう儲けているか」「なぜ今上場するのか」「競合とどう違うのか」を読めます。
+      </p>
+      {items.map((it,i)=>(
+        <DeepDiveAccordionItem key={it.title} icon={it.icon} title={it.title} text={it.text} accent={it.accent} defaultOpen={false}/>
+      ))}
+    </Card>
+  );
+}
+
 function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;order:string;title:string;subtitle:string;accent:string}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:12,margin:"28px 0 4px",padding:"14px 16px",
@@ -926,6 +994,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </p>
         </div>
 
+        {/* ビジネスモデル・ストーリー・競合との違い(無料・折りたたみ、有料のスコア分析より上に配置) */}
+        <DeepDiveSection deepDive={(company as any).analysis_deep_dive}/>
+
         {/* ① AI分析要約 */}
         <Card>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:8}}>
@@ -958,7 +1029,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   <p style={{fontSize:11,color:"#92400e",backgroundColor:"#fffbeb",padding:"8px 10px",borderRadius:8,marginBottom:10}}>📖 初心者向け要約は準備中のため、通常の要約を表示しています。</p>
                 )}
                 {summaryText.split(/\n\n+/).map((para:string,i:number)=>(
-                  <p key={i} style={{fontSize:isBeginner?15:13,color:"#475569",lineHeight:isBeginner?2:1.8,margin:i===0?`0 0 ${isBeginner?12:10}px`:`${isBeginner?12:10}px 0`}}>{para}</p>
+                  <p key={i} style={{fontSize:isBeginner?15:13,color:"#475569",lineHeight:isBeginner?2:1.8,margin:i===0?`0 0 ${isBeginner?12:10}px`:`${isBeginner?12:10}px 0`}}>{renderInline(para)}</p>
                 ))}
               </>
             );
