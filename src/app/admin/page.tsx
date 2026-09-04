@@ -226,22 +226,31 @@ export default function AdminPage() {
     const allResults: any[] = [];
     for (let i = 0; i < axes.length; i++) {
       const axisId = axes[i];
-      // タイムアウト等の一時的な失敗で軸1つぶんの作業がまるごと消えないよう、1回だけ自動で再試行する
-      let lastError: string | null = null;
-      let succeeded = false;
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const attemptLabel = attempt === 1 ? "" : "（再試行中）";
-        setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}を初心者向けに書き直し中...${attemptLabel}`}));
-        try {
-          const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId }) });
-          const data = await res.json();
-          if (data.error) { lastError = data.error; continue; }
-          allResults.push({ id:axisId, report_beginner:data.report_beginner });
-          succeeded = true;
-          break;
-        } catch { lastError = "通信エラー"; }
+      // 1軸ぶんを前半・後半の2回に分けてリライトする(タイムアウト対策。1回でまるごとリライトすると
+      // 出力が長くなりVercel Hobbyプランの関数タイムアウトに達することがあったため)。
+      // それぞれ、タイムアウト等の一時的な失敗で作業が消えないよう、1回だけ自動で再試行する。
+      const parts: string[] = ["", ""];
+      let axisError: string | null = null;
+      for (let subPart = 1; subPart <= 2; subPart++) {
+        let lastError: string | null = null;
+        let succeeded = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const attemptLabel = attempt === 1 ? "" : "（再試行中）";
+          const partLabel = subPart === 1 ? "前半" : "後半";
+          setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}(${partLabel})を初心者向けに書き直し中...${attemptLabel}`}));
+          try {
+            const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, sub_part:subPart }) });
+            const data = await res.json();
+            if (data.error) { lastError = data.error; continue; }
+            parts[subPart-1] = data.report_beginner ?? "";
+            succeeded = true;
+            break;
+          } catch { lastError = "通信エラー"; }
+        }
+        if (!succeeded) { axisError = lastError; break; }
       }
-      if (!succeeded) { setStep(stepNum, false, `❌ ${axisId}: ${lastError}`); return false; }
+      if (axisError) { setStep(stepNum, false, `❌ ${axisId}: ${axisError}`); return false; }
+      allResults.push({ id:axisId, report_beginner: [parts[0], parts[1]].filter(Boolean).join("\n\n") });
     }
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
