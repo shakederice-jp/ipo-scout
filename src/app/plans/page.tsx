@@ -22,6 +22,7 @@ const plans = [
     badge: null,
     target: "まずIPO投資を始めてみたい方・月2銘柄で十分な方",
     features: [
+      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
       { label: "AI分析レポート", value: "月2銘柄", ok: true },
       { label: "週次メール通知", value: "なし", ok: false },
       { label: "BB・申込・上場日通知", value: "なし", ok: false },
@@ -41,6 +42,7 @@ const plans = [
     badge: null,
     target: "BB開始を絶対に見逃したくない方・通知重視の方",
     features: [
+      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
       { label: "AI分析レポート", value: "月2銘柄", ok: true },
       { label: "週次メール通知", value: "あり", ok: true },
       { label: "BB・申込・上場日通知", value: "あり", ok: true },
@@ -60,6 +62,7 @@ const plans = [
     badge: null,
     target: "毎月すべての銘柄を研究したい方・情報量重視の方",
     features: [
+      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
       { label: "AI分析レポート", value: "無制限", ok: true },
       { label: "週次メール通知", value: "なし", ok: false },
       { label: "BB・申込・上場日通知", value: "なし", ok: false },
@@ -79,6 +82,7 @@ const plans = [
     badge: null,
     target: "通知も情報も両方欲しい方・IPO投資に本気で取り組む方",
     features: [
+      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
       { label: "AI分析レポート", value: "無制限", ok: true },
       { label: "週次メール通知", value: "あり", ok: true },
       { label: "BB・申込・上場日通知", value: "あり", ok: true },
@@ -116,8 +120,17 @@ export default function PlansPage() {
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 80px" }}>
 
+        {/* 2026/9/5追加: サイト全体で打ち出している「投資スタイル別IPO分析」という差別化ポイントを
+            料金プランページでも明示する帯(第3弾)。プラン構成自体(通知有無・レポート数)は
+            変更せず、どのプランでも共通で得られる強みとして訴求する。 */}
+        <div style={{ marginTop: -32, marginBottom: 24, backgroundColor: "white", borderRadius: 14, border: `1.5px solid ${C.teal}`, padding: "14px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+          <p style={{ fontSize: 13, color: C.nav, fontWeight: 700, lineHeight: 1.8, margin: 0 }}>
+            ✅ 超短期・短期・長期といった、IPO当選・デイトレード狙いだけじゃない、今までにない画期的な分析が、どのプランでもお読みいただけます。
+          </p>
+        </div>
+
         {/* プランカード */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginTop: "-32px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
           {plans.map(plan => (
             <div key={plan.id} style={{ backgroundColor: "white", borderRadius: 20, border: `2px solid ${plan.border}`, overflow: "hidden", boxShadow: plan.badge ? "0 4px 24px rgba(102,195,198,0.2)" : "0 2px 8px rgba(0,0,0,0.06)", position: "relative" }}>
               {plan.badge && (
@@ -168,6 +181,7 @@ export default function PlansPage() {
                 </thead>
                 <tbody>
                   {[
+                    { label: "投資スタイル別9軸AI分析", values: ["✅", "✅", "✅", "✅"] },
                     { label: "AI分析レポート",      values: ["月2銘柄", "月2銘柄", "無制限", "無制限"] },
                     { label: "週次メール通知",       values: ["❌", "✅", "❌", "✅"] },
                     { label: "BB・申込・上場日通知", values: ["❌", "✅", "❌", "✅"] },
