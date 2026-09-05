@@ -252,9 +252,15 @@ export default function TrendsPage() {
                 大手町発マーケットトレンド
               </h1>
             </div>
-            <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+            <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 6px" }}>
               IPO・スタートアップ・資金調達の最新動向を毎日3回情報をチェックし、動きがあった時だけ更新
               {updatedAt && <span style={{ marginLeft: 8, color: "#66c3c6" }}>最終更新: {updatedAt}</span>}
+            </p>
+            {/* 2026/9/5追加: サイト全体の「投資スタイル別IPO分析」訴求(第4弾)。
+                トップページ・料金プランページと同じ強めのトーンで、トレンドページにも
+                投資スタイル別の視点を打ち出す一文を追加。 */}
+            <p style={{ fontSize: 12, color: "#2a7a7e", fontWeight: 700, margin: 0, lineHeight: 1.7 }}>
+              超短期・短期・長期といった投資スタイル別の視点も交えてお届けする、今までにない画期的なマーケットトレンド情報です。
             </p>
           </div>
 
