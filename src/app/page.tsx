@@ -79,7 +79,7 @@ export default async function Home({
               IPO当選・初日の値動きだけじゃない。
             </div>
             <p style={{ fontSize:11, color:"#a0d4d6", margin:0, lineHeight:1.6 }}>
-              超短期・短期・長期、投資スタイル別に判断できる、数少ないIPO分析サイトです。
+              超短期・短期・長期といった投資スタイル別に、AIが多角的に分析を加えた、今までにない画期的なIPO分析サイトです。
             </p>
           </div>
           <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
