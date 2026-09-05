@@ -78,11 +78,8 @@ export default async function Home({
         <div style={{ fontSize:15, fontWeight:900, color:"#082b2e", lineHeight:1.4, marginBottom:4 }}>
           IPO当選・初日の値動きだけじゃない。
         </div>
-        <p style={{ fontSize:12, color:"#2a7a7e", margin:"0 0 4px", lineHeight:1.7 }}>
-          超短期・短期・長期といった投資スタイル別にAIが多角的に分析を加えた、今までにない画期的なIPO分析サイトです。
-        </p>
         <p style={{ fontSize:12, color:"#2a7a7e", margin:0, lineHeight:1.7 }}>
-          各銘柄のIPO分析ページにおいては、IPO中・上級者向け分析だけでなく、初心者向けの分析でもご覧いただけるようになっています。
+          超短期・短期・長期といった投資スタイル別にAIが多角的に分析を加えた、今までにない画期的なIPO分析サイトです。各銘柄のIPO分析ページにおいては、IPO中・上級者向け分析だけでなく、初心者向けの分析でもご覧いただけるようになっています。
         </p>
       </div>
 
