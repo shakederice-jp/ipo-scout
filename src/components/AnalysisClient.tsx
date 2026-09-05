@@ -1340,15 +1340,32 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               })}
            </div>
           </div>
-          <div style={{display:"flex",justifyContent:"center",padding:"8px 0 4px"}}>
-            <a href="/ipo-guide" style={{fontSize:12,color:"#66c3c6",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:6,padding:"8px 20px",borderRadius:20,border:"1px solid #66c3c6",background:"#f0fdf4"}}>
-              <span style={{fontSize:16}}>💡</span>
-              <span style={{display:"flex",flexDirection:"column",lineHeight:1.5}}>
-                <span>IPO投資で資産を増やす</span>
-                <span>実践的法則（超短期・短期・長期別）</span>
-              </span>
-              <span>→</span>
-            </a>
+          {/* 2026/9/5: 「投資スタイル別」訴求の第1弾。従来は/ipo-guideへの小さなピル型リンクのみ
+              だったが、無料ユーザーに対して「この下の9軸分析を読む価値」を先に伝える目的で、
+              リード文(見出し+補足)を追加し、視覚的にも目立つカードに変更した。
+              あなたの投資スタイル(超短期/短期/長期)に合った判断軸がこの下にある、という
+              パーソナライズ訴求。既存の/ipo-guideへのリンクはCTAボタンとして残す。 */}
+          <div style={{padding:"18px 20px",background:"linear-gradient(135deg, #fff9ec 0%, #fef3c7 100%)",borderTop:`1px solid ${BORDER}`,borderBottom:`1px solid ${BORDER}`}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:14}}>
+              <span style={{fontSize:22,lineHeight:1,flexShrink:0}}>💡</span>
+              <div>
+                <div style={{fontWeight:900,fontSize:15,color:"#78350f",marginBottom:4,lineHeight:1.4}}>
+                  あなたの投資スタイル、どのタイプですか？
+                </div>
+                <p style={{fontSize:12,color:"#92400e",lineHeight:1.7,margin:0}}>
+                  「初値で売り抜けたい」「数週間〜数ヶ月で利益を取りたい」「数年単位でじっくり育てたい」——どのタイプでも、この下の9つの視点があなたの判断材料になります。
+                </p>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"center"}}>
+              <a href="/ipo-guide" style={{fontSize:13,color:"white",textDecoration:"none",fontWeight:900,display:"flex",alignItems:"center",gap:8,padding:"12px 22px",borderRadius:22,backgroundColor:"#f59e0b",boxShadow:"0 3px 8px rgba(245,158,11,0.4)",textAlign:"center"}}>
+                <span style={{display:"flex",flexDirection:"column",lineHeight:1.5}}>
+                  <span>IPO投資で資産を増やす</span>
+                  <span>実践的法則（超短期・短期・長期別）</span>
+                </span>
+                <span style={{fontSize:16}}>→</span>
+              </a>
+            </div>
           </div>
           <div style={{backgroundColor:"white"}}>
             {GROUPS.map(g=>{
