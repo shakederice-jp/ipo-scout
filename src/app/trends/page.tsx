@@ -340,6 +340,14 @@ export default function TrendsPage() {
                       {renderTrendContent(t.content)}
                     </p>
                     <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" as const, gap: 8, marginBottom: Array.isArray(t.source_links) && t.source_links.length > 0 ? 12 : 0 }}>
+                      {/* 2026/9/5追加: 記事ごとの個別ページへのリンク。SEO(Googleニュース向け
+                          サイトマップ)のために新設した/trends/[id]への導線を兼ねる */}
+                      <Link
+                        href={`/trends/${t.id}`}
+                        style={{ fontSize: 11, padding: "6px 12px", borderRadius: 20, border: "1px solid #66c3c6",
+                          backgroundColor: "white", color: "#0d4f52", fontWeight: 700, textDecoration: "none" }}>
+                        🔗 記事ページを開く
+                      </Link>
                       {t.image_url && (
                         <>
                           <button

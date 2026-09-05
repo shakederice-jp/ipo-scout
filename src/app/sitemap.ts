@@ -11,6 +11,15 @@ export default async function sitemap() {
     .select("id, ticker, listing_date")
     .order("listing_date", { ascending: false });
 
+  // 2026/9/5追加: トレンド記事の個別ページ(/trends/[id])を新設したことに伴い、
+  // 通常のサイトマップにも掲載する(直近2日以内だけを載せるnews-sitemap.xmlとは別に、
+  // こちらは全期間の記事を対象にする。生成後に中身が変わることは無いためmonthly扱い)。
+  const { data: trendArticles } = await supabase
+    .from("market_trends")
+    .select("id, fetched_at")
+    .eq("is_theme_article", true)
+    .order("fetched_at", { ascending: false });
+
   const baseUrl = "https://ipo.finance-tower.com";
 
   // 2026/9/5追加: /trends・/plans・/ipo-guideがサイトマップに一件も含まれていなかった
@@ -34,5 +43,12 @@ export default async function sitemap() {
     priority: 0.9,
   }));
 
-  return [...staticPages, ...companyPages];
+  const trendArticlePages = (trendArticles ?? []).map(a => ({
+    url: `${baseUrl}/trends/${a.id}`,
+    lastModified: new Date(a.fetched_at ?? new Date()),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...companyPages, ...trendArticlePages];
 }

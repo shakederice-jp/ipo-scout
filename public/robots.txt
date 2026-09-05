@@ -20,3 +20,4 @@ User-agent: Google-Extended
 Disallow: /
 
 Sitemap: https://ipo.finance-tower.com/sitemap.xml
+Sitemap: https://ipo.finance-tower.com/news-sitemap.xml
