@@ -68,6 +68,28 @@ export default async function Home({
       )}
 
 
+      {/* 2026/9/5追加: 「投資スタイル別IPO分析」という差別化ポイントをトップページ最上部で
+          打ち出すコンパクトな帯。IPO当選・デイトレ狙いだけでなく、長期保有を考える層にも
+          「自分に合った判断軸がある」と伝える狙い(サイト全体の投資スタイル別訴求、第2弾)。
+          カレンダー一覧を大きく圧迫しないよう、あえて小さめの帯タイプにしている。 */}
+      <div style={{ maxWidth:1200, margin:"12px auto 0", padding:"0 16px" }}>
+        <div style={{ background:"linear-gradient(135deg, #0d4f52 0%, #082b2e 100%)", borderRadius:14, padding:"14px 18px", display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+          <div style={{ flex:"1 1 320px" }}>
+            <div style={{ fontSize:14, fontWeight:900, color:"white", lineHeight:1.4, marginBottom:3 }}>
+              IPO当選・初日の値動きだけじゃない。
+            </div>
+            <p style={{ fontSize:11, color:"#a0d4d6", margin:0, lineHeight:1.6 }}>
+              超短期・短期・長期、投資スタイル別に判断できる、数少ないIPO分析サイトです。
+            </p>
+          </div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            <span style={{ fontSize:11, fontWeight:900, color:"white", backgroundColor:"rgba(239,68,68,0.25)", border:"1px solid rgba(239,68,68,0.5)", borderRadius:20, padding:"5px 12px" }}>⚡ 超短期</span>
+            <span style={{ fontSize:11, fontWeight:900, color:"white", backgroundColor:"rgba(217,119,6,0.25)", border:"1px solid rgba(217,119,6,0.5)", borderRadius:20, padding:"5px 12px" }}>📈 短期</span>
+            <span style={{ fontSize:11, fontWeight:900, color:"white", backgroundColor:"rgba(124,58,237,0.25)", border:"1px solid rgba(124,58,237,0.5)", borderRadius:20, padding:"5px 12px" }}>🌱 長期</span>
+          </div>
+        </div>
+      </div>
+
       {/* メインレイアウト */}
       <div style={{ maxWidth:1200, margin:"0 auto", padding:"16px 16px 40px", display:"flex", flexWrap:"wrap", gap:16, alignItems:"flex-start" }}>
 
