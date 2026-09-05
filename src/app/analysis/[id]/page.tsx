@@ -142,6 +142,24 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
 
+  // 2026/9/5追加: dateModifiedが常に「今」(new Date())になっており、実際には
+  // 中身が変わっていないアクセスのたびにGoogleへ「更新した」という偽の鮮度シグナルを
+  // 送ってしまっていた不具合を修正。STEP4(スコア・シナリオ生成)保存時刻
+  // (analysis_summary.generated_at)と、STEP8(深掘り3要素)保存時刻
+  // (analysis_deep_dive.updated_at)のうち、実際に記録されている一番新しい時刻を使う。
+  // どちらも無ければ上場日、それも無ければ現在時刻にフォールバックする。
+  const contentTimestamps = [
+    analysisSummary?.generated_at,
+    co.analysis_deep_dive?.updated_at,
+  ]
+    .filter(Boolean)
+    .map((d: string) => new Date(d).getTime())
+    .filter((t: number) => !Number.isNaN(t));
+  const dateModified = contentTimestamps.length
+    ? new Date(Math.max(...contentTimestamps)).toISOString()
+    : new Date().toISOString();
+  const datePublished = analysisSummary?.generated_at ?? company.listing_date ?? dateModified;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -152,8 +170,8 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       "name": "大手町調査室九課",
       "url": "https://ipo.finance-tower.com",
     },
-    "datePublished": company.listing_date ?? new Date().toISOString(),
-    "dateModified": new Date().toISOString(),
+    "datePublished": datePublished,
+    "dateModified": dateModified,
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": `https://ipo.finance-tower.com/analysis/${canonicalId}`,

@@ -13,8 +13,14 @@ export default async function sitemap() {
 
   const baseUrl = "https://ipo.finance-tower.com";
 
+  // 2026/9/5追加: /trends・/plans・/ipo-guideがサイトマップに一件も含まれていなかった
+  // 不具合を修正。特に/trendsは1日3回更新される主要ページのため、changeFrequencyを
+  // hourlyにしてクロール頻度を上げるよう促す。
   const staticPages = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: "daily" as const, priority: 1.0 },
+    { url: `${baseUrl}/trends`, lastModified: new Date(), changeFrequency: "hourly" as const, priority: 0.9 },
+    { url: `${baseUrl}/plans`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 },
+    { url: `${baseUrl}/ipo-guide`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 },
     { url: `${baseUrl}/guide`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.8 },
     { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.5 },
     { url: `${baseUrl}/tokushoho`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },

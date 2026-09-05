@@ -9,6 +9,7 @@ import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 import { buildRevenueChartData, formatKeyMetricsTrend } from "@/lib/ipo-revenue-chart";
 import { computeAxisGroupScores, computeIndividualAxisScores } from "@/lib/ipo-axis-scores";
 import { fetchMarketSnapshotContext } from "@/lib/market-snapshot";
+import { pingIndexNow } from "@/lib/indexnow";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -308,6 +309,12 @@ export async function POST(req: NextRequest) {
         analysis_detail: { ...summary, axes: { ultra_short: [], short: [], long: [] } },
         ...(r.ai_summary ? { ai_summary: r.ai_summary } : {}),
       }).eq("id", co.id);
+
+      // 2026/9/5追加: 新しい分析ページが公開・更新されたタイミングで、通常のクロール待ちより
+      // 早くBing・Yandex等に認識してもらうため、IndexNowでURLを通知しておく(Googleは
+      // IndexNowに対応していないため、あくまで補助的な施策。失敗しても後続処理は続行させる
+      // fire-and-forget方式にしている)。
+      pingIndexNow([`https://ipo.finance-tower.com/analysis/${(co as any).ticker ?? co.id}`]);
 
       // X投稿ドラフトを作成 + 2営業日後・4営業日後の再掲を予約
       // ↓ なぜ動いた/動かなかったのかをadmin画面で見えるようにするための診断メモ
