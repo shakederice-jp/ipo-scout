@@ -75,21 +75,15 @@ export default async function Home({
           9/5追記: 当初は濃いグラデーション背景の枠で囲んでいたが、色が濃すぎるとの
           指摘を受け、枠を撤去してページ背景の上に直接文字を置く形に変更した。 */}
       <div style={{ maxWidth:1200, margin:"16px auto 0", padding:"0 16px" }}>
-        <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-          <div style={{ flex:"1 1 320px" }}>
-            <div style={{ fontSize:15, fontWeight:900, color:"#082b2e", lineHeight:1.4, marginBottom:4 }}>
-              IPO当選・初日の値動きだけじゃない。
-            </div>
-            <p style={{ fontSize:12, color:"#2a7a7e", margin:0, lineHeight:1.7 }}>
-              超短期・短期・長期といった投資スタイル別にAIが多角的に分析を加えた、今までにない画期的なIPO分析サイトです。
-            </p>
-          </div>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            <span style={{ fontSize:11, fontWeight:900, color:"#b91c1c", backgroundColor:"#fee2e2", borderRadius:20, padding:"5px 12px" }}>⚡ 超短期</span>
-            <span style={{ fontSize:11, fontWeight:900, color:"#92400e", backgroundColor:"#fef3c7", borderRadius:20, padding:"5px 12px" }}>📈 短期</span>
-            <span style={{ fontSize:11, fontWeight:900, color:"#5b21b6", backgroundColor:"#ede9fe", borderRadius:20, padding:"5px 12px" }}>🌱 長期</span>
-          </div>
+        <div style={{ fontSize:15, fontWeight:900, color:"#082b2e", lineHeight:1.4, marginBottom:4 }}>
+          IPO当選・初日の値動きだけじゃない。
         </div>
+        <p style={{ fontSize:12, color:"#2a7a7e", margin:"0 0 4px", lineHeight:1.7 }}>
+          超短期・短期・長期といった投資スタイル別にAIが多角的に分析を加えた、今までにない画期的なIPO分析サイトです。
+        </p>
+        <p style={{ fontSize:12, color:"#2a7a7e", margin:0, lineHeight:1.7 }}>
+          各銘柄のIPO分析ページにおいては、IPO中・上級者向け分析だけでなく、初心者向けの分析でもご覧いただけるようになっています。
+        </p>
       </div>
 
       {/* メインレイアウト */}
