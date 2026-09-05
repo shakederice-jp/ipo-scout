@@ -19,5 +19,27 @@ Disallow: /
 User-agent: Google-Extended
 Disallow: /
 
+# 2026/9/5追加(GEO対応): 上記は「AIモデルの学習」用クローラーのブロック(既存方針を維持)。
+# 以下は、ChatGPTの検索機能やPerplexity等が「ユーザーの質問に答える際にその場でページを
+# 取得・引用する」ための別のクローラーで、学習用クローラーとは別物。これらは明示的に許可し、
+# AI検索での引用機会を妨げないようにする。
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
 Sitemap: https://ipo.finance-tower.com/sitemap.xml
 Sitemap: https://ipo.finance-tower.com/news-sitemap.xml
