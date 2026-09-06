@@ -69,3 +69,43 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, alreadyExists: false });
 }
+
+// 2026/9/6新設: マイページから、追跡が不要になった銘柄をユーザー自身が削除できるように。
+// user_idも条件に含めて削除することで、他人のvirtual_investmentsを誤って(または
+// 意図的に)消せないようにしている(DB側のRLS delete policyでも同様にauth.uid()=user_idを
+// 要求しているため、実質的に二重のチェックになっている)。
+export async function DELETE(req: NextRequest) {
+  const supabase = await createSupabaseRouteClient();
+  if (!supabase) return NextResponse.json({ error: "認証エラー" }, { status: 401 });
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+
+  const userId = session.user.id;
+
+  let companyId: string | undefined;
+  try {
+    const body = await req.json();
+    companyId = body?.companyId;
+  } catch {
+    return NextResponse.json({ error: "リクエストが不正です" }, { status: 400 });
+  }
+
+  if (!companyId) {
+    return NextResponse.json({ error: "companyIdが必要です" }, { status: 400 });
+  }
+
+  const serviceSupabase = getServiceSupabase();
+
+  const { error: deleteError } = await serviceSupabase
+    .from("virtual_investments")
+    .delete()
+    .eq("user_id", userId)
+    .eq("company_id", companyId);
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

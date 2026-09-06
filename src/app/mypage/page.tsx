@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut, TrendingUp } from "lucide-react";
+import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut, TrendingUp, Trash2 } from "lucide-react";
 import { CheckoutButton } from "@/components/CheckoutButton";
 
 const PRIMARY = "#66c3c6";
@@ -47,6 +47,7 @@ export default function MyPage() {
   const [notifySaveResult, setNotifySaveResult] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  const [deletingPortfolioId, setDeletingPortfolioId] = useState<string | null>(null);
 
   useEffect(() => {
     // 管理者プレビューモード（URLに?admin=1がある場合）
@@ -95,6 +96,33 @@ export default function MyPage() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // 2026/9/6新設: マイポートフォリオ(100万円投資シミュレーション)から、
+  // ユーザー自身が不要になった銘柄を削除できるように。
+  const handleDeletePortfolio = async (companyId: string, name: string) => {
+    if (!confirm(`「${name}」をマイポートフォリオから削除しますか？（元に戻せません）`)) return;
+    setDeletingPortfolioId(companyId);
+    try {
+      const res = await fetch("/api/portfolio", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "削除に失敗しました");
+        return;
+      }
+      setData((prev: any) => ({
+        ...prev,
+        virtualInvestments: (prev?.virtualInvestments ?? []).filter((v: any) => v.company_id !== companyId),
+      }));
+    } catch {
+      alert("通信エラーが発生しました");
+    } finally {
+      setDeletingPortfolioId(null);
+    }
   };
 
   const handleSaveNotify = async () => {
@@ -252,26 +280,35 @@ export default function MyPage() {
                 const pnlPercent = invested > 0 ? Math.round((pnl / invested) * 1000) / 10 : 0;
                 const isGain = pnl >= 0;
                 return (
-                  <a key={v.id} href={`/analysis/${v.company_id}`}
-                    style={{ display: "block", padding: "12px 14px", backgroundColor: isGain ? "#f0fdf4" : "#fef2f2", borderRadius: 10, border: `1px solid ${isGain ? "#bbf7d0" : "#fecaca"}`, textDecoration: "none" }}>
+                  <div key={v.id}
+                    style={{ padding: "12px 14px", backgroundColor: isGain ? "#f0fdf4" : "#fef2f2", borderRadius: 10, border: `1px solid ${isGain ? "#bbf7d0" : "#fecaca"}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <div>
+                      <a href={`/analysis/${v.company_id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
                         <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
                           公募¥{entryPrice?.toLocaleString()} → 現在¥{currentPrice?.toLocaleString()}
                           {latest?.price_date && <>（{latest.price_date}時点）</>}
                         </div>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: isGain ? "#15803d" : "#b91c1c" }}>
-                          {isGain ? "+" : ""}{pnlPercent}%
-                        </div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
-                          評価額 ¥{currentValue.toLocaleString()}
-                        </div>
+                      </a>
+                      <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <a href={`/analysis/${v.company_id}`} style={{ textDecoration: "none" }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: isGain ? "#15803d" : "#b91c1c" }}>
+                            {isGain ? "+" : ""}{pnlPercent}%
+                          </div>
+                          <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                            評価額 ¥{currentValue.toLocaleString()}
+                          </div>
+                        </a>
+                        <button
+                          onClick={() => handleDeletePortfolio(v.company_id, c.name ?? "この銘柄")}
+                          disabled={deletingPortfolioId === v.company_id}
+                          title="マイポートフォリオから削除"
+                          style={{ background: "none", border: "none", cursor: deletingPortfolioId === v.company_id ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
-                  </a>
+                  </div>
                 );
               })}
             </div>
