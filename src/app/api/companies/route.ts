@@ -31,5 +31,33 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // 2026/9/6新設: トップページのカレンダー一覧にも「100万円投資シミュレーション」の
+  // 現在評価額を表示するため、公募価格(ipo_price)が確定している銘柄について
+  // stock_price_history から各社の最新株価を取得し、company.latest_price として付加する。
+  // (マイポートフォリオ機能の src/app/api/mypage/route.ts と同じ「最新1件だけ残す」方式)
+  const priceTargetIds = (data ?? [])
+    .filter((c: any) => c.ipo_price)
+    .map((c: any) => c.id);
+
+  let latestPrices: Record<string, number> = {};
+  if (priceTargetIds.length > 0) {
+    const { data: historyRows } = await supabase
+      .from("stock_price_history")
+      .select("company_id, price, price_date")
+      .in("company_id", priceTargetIds)
+      .order("price_date", { ascending: false });
+
+    for (const row of historyRows ?? []) {
+      if (latestPrices[row.company_id] === undefined) {
+        latestPrices[row.company_id] = row.price;
+      }
+    }
+  }
+
+  const withLatestPrice = (data ?? []).map((c: any) => ({
+    ...c,
+    latest_price: c.ipo_price ? (latestPrices[c.id] ?? c.ipo_price) : null,
+  }));
+
+  return NextResponse.json(withLatestPrice);
 }

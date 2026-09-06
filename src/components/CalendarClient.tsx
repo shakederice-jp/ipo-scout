@@ -17,6 +17,8 @@ type Company = {
   lockup_180_date?: string | null;
   initial_price?: number | null;
   price_change_rate?: number | null;
+  ipo_price?: number | null;
+  latest_price?: number | null;
 };
 
 type CalendarNote = {
@@ -501,19 +503,36 @@ export default function CalendarClient() {
                       const today2 = new Date(); today2.setHours(0,0,0,0);
                       const ld = new Date(company.listing_date); ld.setHours(0,0,0,0);
                       const diff = ld.getTime() - today2.getTime();
-                      if (diff < 0) return (
-                        <>
-                          <div style={{ display:"flex", alignItems:"center", gap:4, justifyContent:"flex-end", marginBottom:2 }}>
-                            <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px" }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
-                            {company.price_change_rate != null && (
-                              <div style={{ fontSize:10, fontWeight:900, color: company.price_change_rate >= 0 ? "#15803d" : "#b91c1c", backgroundColor: company.price_change_rate >= 0 ? "#dcfce7" : "#fef2f2", borderRadius:4, padding:"1px 6px" }}>
-                                {company.price_change_rate >= 0 ? "▲+" : "▼"}{company.price_change_rate}%
+                      if (diff < 0) {
+                        // 2026/9/6新設: 公募価格(ipo_price)が確定している銘柄は、
+                        // 「100万円投資していたら今いくらか」をカード内にも表示する
+                        // (マイポートフォリオと同じ考え方の、ユーザー未追跡・全銘柄向けの参考表示)。
+                        const hasSim = company.ipo_price && company.latest_price;
+                        const simValue = hasSim ? Math.round((1000000 / company.ipo_price!) * company.latest_price!) : null;
+                        const simPct = hasSim ? Math.round(((company.latest_price! - company.ipo_price!) / company.ipo_price!) * 1000) / 10 : null;
+                        return (
+                          <>
+                            <div style={{ display:"flex", alignItems:"center", gap:4, justifyContent:"flex-end", marginBottom:2 }}>
+                              <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px" }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
+                              {company.price_change_rate != null && (
+                                <div style={{ fontSize:10, fontWeight:900, color: company.price_change_rate >= 0 ? "#15803d" : "#b91c1c", backgroundColor: company.price_change_rate >= 0 ? "#dcfce7" : "#fef2f2", borderRadius:4, padding:"1px 6px" }}>
+                                  {company.price_change_rate >= 0 ? "▲+" : "▼"}{company.price_change_rate}%
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ fontSize:12, fontWeight:700, color:"#64748b", marginBottom: hasSim ? 4 : 0 }}>{dateStr}</div>
+                            {hasSim && (
+                              <div style={{ fontSize:10, color:C.muted }}>
+                                {lang === "ja" ? "100万円投資なら" : "$1M invested →"}{" "}
+                                <span style={{ fontWeight:900, color: simPct! >= 0 ? "#15803d" : "#b91c1c" }}>
+                                  ¥{simValue!.toLocaleString()}
+                                  {"（"}{simPct! >= 0 ? "+" : ""}{simPct}%{"）"}
+                                </span>
                               </div>
                             )}
-                          </div>
-                          <div style={{ fontSize:12, fontWeight:700, color:"#64748b" }}>{dateStr}</div>
-                        </>
-                      );
+                          </>
+                        );
+                      }
                       return (
                         <>
                           <div style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</div>
