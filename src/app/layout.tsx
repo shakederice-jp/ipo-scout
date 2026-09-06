@@ -39,6 +39,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
+        {/* 2026/9/6追加: 「ホーム画面に追加(PWA化)」対応。manifest・アイコン・テーマカラーを設定し、
+            Service Workerを登録する(オフラインキャッシュ等は行わず、インストール可能にするための最低限の対応)。 */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0d4f52" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/icon-192.png" type="image/png" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
         <Script id="ga4-init" strategy="afterInteractive">{`
@@ -46,6 +52,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', '${GA_ID}');
+        `}</Script>
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+              navigator.serviceWorker.register('/sw.js').catch(function () {});
+            });
+          }
         `}</Script>
       </head>
       <body>

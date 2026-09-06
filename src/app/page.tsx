@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CalendarClient from "@/components/CalendarClient";
+import InstallPwaButton from "@/components/InstallPwaButton";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Zap, Crown, AlertCircle, User } from "lucide-react";
@@ -66,6 +67,10 @@ export default async function Home({
           <p style={{ fontSize:13, color:"#92400e", margin:0 }}>決済はキャンセルされました。</p>
         </div>
       )}
+
+      {/* 2026/9/6追加: 「ホーム画面に追加(PWA化)」の案内バナー。ユーザーが毎日
+          トップページに戻ってきやすくするための再訪促進施策。 */}
+      <InstallPwaButton />
 
 
       {/* 2026/9/5追加: 「投資スタイル別IPO分析」という差別化ポイントをトップページ最上部で
