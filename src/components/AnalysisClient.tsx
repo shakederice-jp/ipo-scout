@@ -1174,12 +1174,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </Card>
         )}
 
-        {/* 初値実績カード：上場後、初値データが入力されている銘柄のみ表示 */}
+        {/* 上場日終値実績カード：上場後、株価データが入力されている銘柄のみ表示。
+            2026/9/6注記: この値はYahoo Financeの日足終値を自動取得したもので、
+            上場日に最初についた取引価格(いわゆる「初値」)そのものとは異なる場合がある
+            ため、ラベルは「初値」ではなく「上場日終値」で正確に表記する。 */}
         {(company as any).initial_price != null && (
           <Card style={{ border:`2px solid ${((company as any).price_change_rate ?? 0) >= 0 ? "#22c55e" : "#ef4444"}` }}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
               <span style={{fontSize:16}}>🔔</span>
-              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>初値実績</span>
+              <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>上場日終値実績</span>
               {(company as any).status && (
                 <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,backgroundColor:"#f1f5f9",color:"#475569"}}>{(company as any).status}</span>
               )}
@@ -1191,7 +1194,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </div>
               <div style={{fontSize:18,color:"#94a3b8"}}>→</div>
               <div style={{flex:1,textAlign:"center",padding:"10px 8px",backgroundColor: ((company as any).price_change_rate ?? 0) >= 0 ? "#f0fdf4" : "#fef2f2",borderRadius:10}}>
-                <div style={{fontSize:10,color:"#64748b",marginBottom:2}}>初値</div>
+                <div style={{fontSize:10,color:"#64748b",marginBottom:2}}>上場日終値</div>
                 <div style={{fontSize:16,fontWeight:900,color: ((company as any).price_change_rate ?? 0) >= 0 ? "#15803d" : "#b91c1c"}}>
                   ¥{((company as any).initial_price ?? 0).toLocaleString()}
                 </div>
@@ -1206,7 +1209,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </div>
             )}
             <p style={{fontSize:10,color:"#94a3b8",marginTop:10,lineHeight:1.6,textAlign:"center"}}>
-              上場後の実際の初値です。AIによる事前シナリオ予想と見比べてみましょう。
+              上場日の終値です（当日の寄り付き価格＝いわゆる「初値」とは異なる場合があります）。AIによる事前シナリオ予想と見比べてみましょう。
             </p>
           </Card>
         )}

@@ -42,7 +42,11 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase();
   const today = new Date().toISOString().slice(0, 10);
 
-  // 上場日を過ぎているのに初値未入力の銘柄を取得
+  // 上場日を過ぎているのに上場日終値(initial_price列)未入力の銘柄を取得。
+  // 2026/9/6注記: この列に保存する値は、Yahoo Financeの日足終値であり、
+  // 上場日に最初についた取引価格(いわゆる「初値」)そのものではない
+  // (寄り付き後の値動きにより異なることがある)。管理者向け表示・通知文言も
+  // 「上場日終値」で統一する。
   const { data: targets, error } = await supabase
     .from("ipo_companies")
     .select("id, name, ticker, listing_date, ipo_price, initial_price")
@@ -55,7 +59,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!targets || targets.length === 0) {
-    return NextResponse.json({ message: "初値未取得銘柄なし", updated: 0 });
+    return NextResponse.json({ message: "上場日終値未取得銘柄なし", updated: 0 });
   }
 
   const results: string[] = [];
@@ -96,7 +100,7 @@ export async function GET(req: NextRequest) {
   // 管理者に結果を通知
   if (updatedCount > 0) {
     await notifyAdmin(
-      "初値自動取得完了",
+      "上場日終値自動取得完了",
       results.join("\n"),
       "info"
     );
