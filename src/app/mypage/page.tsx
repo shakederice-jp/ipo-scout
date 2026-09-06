@@ -317,6 +317,14 @@ export default function MyPage() {
 
         {/* 3. 友達招待プログラム */}
         <Section icon={<Gift size={16} />} title="友達招待プログラム">
+          {/* 2026/9/6追加: X(旧Twitter)のプロフィールで「先着100名限定」特典を
+              打ち出したのにあわせ、アプリ側の招待プログラムにも同じ訴求を表示する。
+              (実際の残り人数を数える仕組みはまだ無く、あくまで訴求文言としての表示) */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: "white", backgroundColor: "#dc2626", borderRadius: 6, padding: "3px 10px" }}>
+              🎉 先着100名限定キャンペーン実施中
+            </span>
+          </div>
           <div style={{ backgroundColor: LIGHT, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: MID, marginBottom: 6, fontWeight: 700 }}>あなたの招待URL</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -332,7 +340,7 @@ export default function MyPage() {
           <InfoRow label="招待済み人数" value={`${completedReferrals}名`} />
           <InfoRow label="獲得した無料月数" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
-            💡 友達が登録すると、あなたと友達の両方に<strong>2ヶ月無料</strong>が付与されます
+            💡 友達が登録すると、あなたと友達の両方に<strong>2ヶ月無料</strong>が付与されます（<strong>先着100名限定</strong>・予告なく終了する場合があります）
           </div>
         </Section>
 

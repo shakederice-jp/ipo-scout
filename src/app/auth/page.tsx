@@ -15,8 +15,25 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // 2026/9/6修正: 紹介リンクはトップページ(/?ref=コード)に案内する作りのため、
+      // トップページ等を見てから登録画面に来た場合はURLに?refが付いていない。
+      // その場合は、ReferralCapture.tsx がlayout側で保存しておいたコードを
+      // localStorageから拾う(URL側にあれば従来通りそちらを優先)。
       const urlRef = new URLSearchParams(window.location.search).get("ref");
-      if (urlRef) setRefCode(urlRef);
+      if (urlRef) {
+        setRefCode(urlRef);
+      } else {
+        try {
+          const stored = localStorage.getItem("pendingReferralCode");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            const THIRTY_DAYS_MS = 1000 * 60 * 60 * 24 * 30;
+            if (parsed?.code && Date.now() - (parsed.savedAt ?? 0) < THIRTY_DAYS_MS) {
+              setRefCode(parsed.code);
+            }
+          }
+        } catch {}
+      }
     }
   }, []);
 
@@ -30,18 +47,38 @@ export default function AuthPage() {
 
     if (error) {
       setError(error.message);
-    } else if (refCode.trim() && data?.user?.id) {
-      try {
-        await fetch("/api/referral", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ referral_code: refCode, user_id: data.user.id }),
-        });
-      } catch (e) {
-        console.error("referral apply failed", e);
+    } else {
+      // 2026/9/6修正: 以前は紹介コードがある場合、確認メール送信自体のメッセージが
+      // 表示されない(登録できたのに何も起きていないように見える)バグがあったため修正。
+      // あわせて、紹介コードの適用が成功/失敗したかをはっきり本人に伝えるようにした
+      // (以前は成功しても失敗しても画面上は何も分からず、気づけないままだった)。
+      let referralNote = "";
+      if (refCode.trim() && data?.user?.id) {
+        try {
+          const res = await fetch("/api/referral", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ referral_code: refCode.trim(), user_id: data.user.id }),
+          });
+          const json = await res.json().catch(() => ({} as any));
+          if (res.ok && json?.success) {
+            referralNote = " 🎉紹介特典を適用しました（メール確認後、あなたと紹介者様に2ヶ月無料が付与されます）。";
+            try { localStorage.removeItem("pendingReferralCode"); } catch {}
+          } else {
+            const reason =
+              json?.error === "invalid code" ? "紹介コードが見つかりませんでした。" :
+              json?.error === "self referral" ? "ご自身の紹介コードは利用できません。" :
+              json?.error === "already referred" ? "このアカウントは既に紹介特典を利用済みです。" :
+              "紹介コードの適用に失敗しました。";
+            referralNote = ` ${reason}（登録自体は完了しています）`;
+          }
+        } catch (e) {
+          console.error("referral apply failed", e);
+          referralNote = " 紹介コードの適用中に通信エラーが発生しました（登録自体は完了しています）。";
+        }
       }
+      setMessage(`確認メールを送信しました。メールをご確認ください。${referralNote}`);
     }
-      else setMessage("確認メールを送信しました。メールをご確認ください。");
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError("メールアドレスまたはパスワードが違います");

@@ -64,6 +64,7 @@ export default function AdminPage() {
   const [deleteCompanyLoading, setDeleteCompanyLoading] = useState(false);
   const [deleteCompanyResult, setDeleteCompanyResult] = useState<string | null>(null);
   const [econResult, setEconResult] = useState<string | null>(null);
+  const [referralStats, setReferralStats] = useState<{ completed: number; cap: number; remaining: number } | null>(null);
 
   useEffect(() => {
     if (!authed) return;
@@ -71,6 +72,9 @@ export default function AdminPage() {
     fetch("/api/admin/economic-events").then(r => r.json()).then(data => {
       if (Array.isArray(data)) setEconEvents(data);
     }).catch(() => {});
+    // 2026/9/6追加: 紹介プログラムの成立件数を管理画面を開くたびに自動取得(手動ボタンは増やさない方針)
+    fetch("/api/admin/referral-stats", { headers: { "x-admin-password": "otemachi9" } })
+      .then(r => r.json()).then(data => { if (!data.error) setReferralStats(data); }).catch(() => {});
   }, [authed]);
 
   const setStep = (key: string, loading: boolean, result?: string) => {
@@ -583,6 +587,28 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* 2026/9/6追加: 紹介プログラムの実績(このページを開くたびに自動取得、手動ボタンは追加しない方針) */}
+            <div style={sectionStyle}>
+              <h2 style={{ fontSize:"13px", fontWeight:900, color:"#082b2e", margin:"0 0 12px" }}>🎁 紹介プログラムの実績</h2>
+              {referralStats ? (
+                <div style={{ display:"flex", gap:12 }}>
+                  <div style={{ flex:1, textAlign:"center", padding:"10px 8px", borderRadius:8, backgroundColor:"#f0fdf4", border:"1px solid #bbf7d0" }}>
+                    <div style={{ fontSize:20, fontWeight:900, color:"#15803d" }}>{referralStats.completed}</div>
+                    <div style={{ fontSize:10, color:"#166534" }}>特典成立数</div>
+                  </div>
+                  <div style={{ flex:1, textAlign:"center", padding:"10px 8px", borderRadius:8, backgroundColor:"#fef2f2", border:"1px solid #fecaca" }}>
+                    <div style={{ fontSize:20, fontWeight:900, color:"#b91c1c" }}>{referralStats.remaining}</div>
+                    <div style={{ fontSize:10, color:"#991b1b" }}>「先着100名」残り枠</div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize:11, color:"#94a3b8", margin:0 }}>読み込み中...</p>
+              )}
+              <p style={{ fontSize:10, color:"#94a3b8", margin:"10px 0 0" }}>
+                ※「特典成立数」は紹介コードが正しく適用され、紹介した人・された人の両方に2ヶ月無料が付与された件数です。
+              </p>
             </div>
 
             {/* 手動実行ツール */}

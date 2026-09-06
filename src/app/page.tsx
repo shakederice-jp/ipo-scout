@@ -123,6 +123,16 @@ export default async function Home({
             👤 マイページ・通知設定
           </a>
 
+          {/* 2026/9/6追加: 紹介プログラムがマイページの奥にしかなく気づかれにくかったため、
+              トップページからも露出させる導線。マイページの「友達招待プログラム」に遷移する。 */}
+          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>🎁 友達紹介で2ヶ月無料</div>
+              <div style={{ fontSize:10, color:"#b91c1c", marginTop:2, fontWeight:700 }}>🎉 先着100名限定キャンペーン実施中</div>
+            </div>
+            <span style={{ fontSize:16, color:"#dc2626" }}>→</span>
+          </a>
+
 {/* サービス説明・免責一言 */}
 <div style={{ ...cardStyle, padding:"12px 14px", backgroundColor:"#f8fefe", display:"flex", alignItems:"flex-start", gap:8 }}>
             <span style={{ fontSize:13, flexShrink:0 }}>📋</span>
