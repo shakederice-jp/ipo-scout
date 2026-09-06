@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut } from "lucide-react";
+import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut, TrendingUp } from "lucide-react";
 import { CheckoutButton } from "@/components/CheckoutButton";
 
 const PRIMARY = "#66c3c6";
@@ -79,6 +79,8 @@ export default function MyPage() {
               method_email: true,
             },
             calendarNotes: [],
+            virtualInvestments: [],
+            latestPrices: {},
           });
         } else {
           setData(d);
@@ -231,6 +233,50 @@ export default function MyPage() {
             </p>
           </div>
         </Section>
+
+        {/* 2.5 マイポートフォリオ(100万円投資シミュレーション) 2026/9/6新設 */}
+        {(data.virtualInvestments ?? []).length > 0 && (
+          <Section icon={<TrendingUp size={16} />} title="マイポートフォリオ（100万円投資シミュレーション）">
+            <p style={{ fontSize: 11, color: "#64748b", marginBottom: 14, lineHeight: 1.6 }}>
+              各銘柄に公募価格で100万円ずつ投資したと仮定した場合の、現在の評価額です（銘柄ごとに独立した試算で、実際の売買ではありません）。
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(data.virtualInvestments ?? []).map((v: any) => {
+                const c = v.ipo_companies ?? {};
+                const invested = v.invested_amount ?? 1000000;
+                const entryPrice = v.entry_price;
+                const latest = data.latestPrices?.[v.company_id];
+                const currentPrice = latest?.price ?? entryPrice;
+                const currentValue = entryPrice > 0 ? Math.round((invested / entryPrice) * currentPrice) : invested;
+                const pnl = currentValue - invested;
+                const pnlPercent = invested > 0 ? Math.round((pnl / invested) * 1000) / 10 : 0;
+                const isGain = pnl >= 0;
+                return (
+                  <a key={v.id} href={`/analysis/${v.company_id}`}
+                    style={{ display: "block", padding: "12px 14px", backgroundColor: isGain ? "#f0fdf4" : "#fef2f2", borderRadius: 10, border: `1px solid ${isGain ? "#bbf7d0" : "#fecaca"}`, textDecoration: "none" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                          公募¥{entryPrice?.toLocaleString()} → 現在¥{currentPrice?.toLocaleString()}
+                          {latest?.price_date && <>（{latest.price_date}時点）</>}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: isGain ? "#15803d" : "#b91c1c" }}>
+                          {isGain ? "+" : ""}{pnlPercent}%
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                          評価額 ¥{currentValue.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* 3. 友達招待プログラム */}
         <Section icon={<Gift size={16} />} title="友達招待プログラム">

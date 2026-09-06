@@ -1,4 +1,4 @@
-name: IPO Scout Cron Jobs
+﻿name: IPO Scout Cron Jobs
 
 on:
   schedule:
@@ -29,6 +29,13 @@ jobs:
     steps:
       - name: Run Detect IPO Price
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  track-stock-price:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Track Stock Price (100万円投資シミュレーション用)
+        run: "curl -X GET https://ipo.finance-tower.com/api/cron/track-stock-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   daily-reminder:
     runs-on: ubuntu-latest

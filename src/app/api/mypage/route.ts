@@ -43,11 +43,38 @@ export async function GET() {
     .gte("note_date", threeMonthsAgo.toISOString().slice(0, 10))
     .order("note_date", { ascending: false });
 
+  // 2026/9/6新設: 「100万円投資シミュレーション」機能。ユーザーが追跡中の
+  // 仮想投資一覧と、各銘柄の最新株価(stock_price_history)を合わせて返す。
+  const { data: virtualInvestments } = await serviceSupabase
+    .from("virtual_investments")
+    .select("*, ipo_companies(id, name, ticker, ipo_price, listing_date)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  let latestPrices: Record<string, { price: number; price_date: string }> = {};
+  if (virtualInvestments && virtualInvestments.length > 0) {
+    const companyIds = virtualInvestments.map((v) => v.company_id);
+    const { data: historyRows } = await serviceSupabase
+      .from("stock_price_history")
+      .select("company_id, price, price_date")
+      .in("company_id", companyIds)
+      .order("price_date", { ascending: false });
+
+    // company_idごとに最新(price_date降順の先頭)の1件だけを残す
+    for (const row of historyRows ?? []) {
+      if (!latestPrices[row.company_id]) {
+        latestPrices[row.company_id] = { price: row.price, price_date: row.price_date };
+      }
+    }
+  }
+
   return NextResponse.json({
     email, profile,
     referralLogs: referralLogs ?? [],
     purchases: purchases ?? [],
     notifySettings,
     calendarNotes: calendarNotes ?? [],
+    virtualInvestments: virtualInvestments ?? [],
+    latestPrices,
   });
 }

@@ -729,6 +729,79 @@ function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;or
   );
 }
 
+// 2026/9/6新設: 「100万円投資シミュレーション」機能。上のシナリオ別試算テーブルは
+// AIが目論見書から予測した"仮想"レンジだが、こちらは公募価格で実際に100万円ぶん
+// 購入したと仮定し、上場後の"本物の"株価(Yahoo Financeから毎日取得・
+// src/app/api/cron/track-stock-price/route.ts)を追跡し続ける、ユーザーごとに
+// 永続する仕組み。マイページに一覧表示することで再訪動機を作る狙い。
+function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;ipoPrice:number;userId:string|null}) {
+  const [status,setStatus]=useState<"idle"|"loading"|"added"|"already"|"error">("idle");
+  const [errorMsg,setErrorMsg]=useState<string|null>(null);
+
+  async function handleAdd() {
+    setStatus("loading");
+    setErrorMsg(null);
+    try {
+      const res=await fetch("/api/portfolio",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({companyId}),
+      });
+      const body=await res.json();
+      if(!res.ok){
+        setErrorMsg(body.error??"追加に失敗しました");
+        setStatus("error");
+        return;
+      }
+      setStatus(body.alreadyExists?"already":"added");
+    } catch {
+      setErrorMsg("通信エラーが発生しました");
+      setStatus("error");
+    }
+  }
+
+  const shares=1000000/ipoPrice;
+
+  return (
+    <div style={{marginTop:12,padding:"16px",borderRadius:12,backgroundColor:"#f0fafa",border:`1px solid ${BORDER}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:16}}>🧪</span>
+        <div style={{fontWeight:900,fontSize:14,color:DARK}}>もし実際に100万円投資していたら</div>
+      </div>
+      <p style={{fontSize:11,color:"#64748b",lineHeight:1.7,margin:"0 0 12px"}}>
+        公募価格(¥{ipoPrice.toLocaleString()})で100万円ぶん(約{shares.toFixed(0)}株相当)を購入したと仮定し、実際の株価の値動きを毎日追跡します。マイページでいつでも現在の評価額・損益（基準額100万円からの＋○○％／－○○％表示つき）を確認できます。
+      </p>
+
+      {!userId ? (
+        <a href="/auth" style={{display:"inline-block",padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,color:"white",fontWeight:900,fontSize:12,textDecoration:"none"}}>
+          ログインして追跡を始める
+        </a>
+      ) : status==="added" ? (
+        <div style={{fontSize:12,color:"#15803d",fontWeight:700}}>
+          ✅ ポートフォリオに追加しました。<a href="/mypage" style={{color:"#15803d",textDecoration:"underline"}}>マイページ</a>で値動きを確認できます。
+        </div>
+      ) : status==="already" ? (
+        <div style={{fontSize:12,color:"#0369a1",fontWeight:700}}>
+          すでに追跡中です。<a href="/mypage" style={{color:"#0369a1",textDecoration:"underline"}}>マイページ</a>で確認できます。
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={handleAdd}
+            disabled={status==="loading"}
+            style={{display:"inline-flex",alignItems:"center",gap:6,padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,border:"none",cursor:status==="loading"?"default":"pointer",boxShadow:"0 2px 8px rgba(102,195,198,0.3)"}}>
+            <span style={{fontSize:14}}>🧪</span>
+            <span style={{fontSize:12,color:"white",fontWeight:900}}>{status==="loading"?"追加中...":"100万円投資したと仮定して追跡開始"}</span>
+          </button>
+          {status==="error" && errorMsg && (
+            <div style={{marginTop:8,fontSize:11,color:"#b91c1c"}}>{errorMsg}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert"}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner"}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
@@ -1279,6 +1352,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                         ⚠️ 【重要】本シミュレーションは、IPO企業が金融庁に提出した目論見書をAIが分析した結果に基づく試算値であり、実際の株価を保証するものではありません。実際の株価は市場環境・需給・業績等により大きく影響を受け、試算値より大幅に乖離することがあります。想定外の値動きが生じた場合は、ご自身の判断で躊躇なく損切り等の対応をご検討ください。投資判断および結果に対する責任は当サービスでは負いかねます。
                       </p>
                     </div>
+
+                    <VirtualInvestmentTracker companyId={company.id} ipoPrice={ipoPrice} userId={userId}/>
                   </div>
                 )}
               </div>
