@@ -528,7 +528,7 @@ export default function CalendarClient() {
                           </div>
                           {hasSim && (
                             <div style={{ marginTop:8, marginLeft:32, padding:"8px 12px", borderRadius:10, backgroundColor: isUp ? "#f0fdf4" : "#fef2f2", border: `1px solid ${isUp ? "#bbf7d0" : "#fecaca"}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"2px 10px" }}>
-                              <span style={{ fontSize:11, fontWeight:700, color: isUp ? "#166534" : "#991b1b" }}>💰 {lang === "ja" ? "100万円投資なら" : "$1M invested →"}</span>
+                              <span style={{ fontSize:11, fontWeight:700, color: isUp ? "#166534" : "#991b1b" }}>💰 {lang === "ja" ? "100万円投資なら現在、" : "$1M invested → now:"}</span>
                               <span style={{ fontSize:18, fontWeight:900, color: isUp ? "#15803d" : "#b91c1c", whiteSpace:"nowrap" }}>
                                 ¥{simValue!.toLocaleString()}
                                 <span style={{ fontSize:12 }}>{"（"}{isUp ? "+" : ""}{simPct}%{"）"}</span>
