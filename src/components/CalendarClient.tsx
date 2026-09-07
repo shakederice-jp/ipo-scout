@@ -487,72 +487,64 @@ export default function CalendarClient() {
             return (
               <div key={company.id} ref={el => { itemRefs.current[company.id] = el; }}
                 style={{ backgroundColor:C.white, borderRadius:14, border: isHL ? `2px solid ${C.teal}` : isFree ? `1px solid ${C.teal}` : `1px solid #fde68a`, marginBottom:12, overflow:"hidden", transition:"border .3s, box-shadow .3s", boxShadow: isHL ? `0 0 0 4px ${C.tealLt}` : "none" }}>
-                <div style={{ padding:"12px 16px", display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", rowGap:6 }}>
-                  {/* 2026/9/6再修正: 右側(日付・100万円シミュレーション欄)が幅を取りすぎて
-                      左側の社名が1〜2文字ごとに折り返される問題があったため、親をflexWrapにし、
-                      左側にminWidth:0+flex:"1 1 180px"を与えて、入りきらない時は右側を
-                      下の行に折り返す(社名の横幅を優先的に確保する)ようにした。 */}
-                  <div style={{ display:"flex", alignItems:"center", gap:10, flex:"1 1 180px", minWidth:0 }}>
+                <div style={{ padding:"12px 16px" }}>
+                  {/* 2026/9/6再々修正: 従来の「左に社名・右に日付+金額」の横並び構成は、
+                      画面が狭いと右側が幅を取りすぎて社名が文字単位で折り返されたり、
+                      折り返した右側の位置がどっちつかずで美しくなかったりしたため、
+                      上から下へ積み上げる縦並びレイアウトに作り直した。社名は目立つよう
+                      フォントも拡大(16px→18px)。100万円シミュレーションは独立した
+                      色付きのボックスにして、フックとして視覚的にも明確に区別できるようにした。 */}
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <span style={{ fontSize:22, color:C.teal, lineHeight:1, flexShrink:0 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e" }}>{isFree ? (lang === "ja" ? "無料" : "Free") : (lang === "ja" ? "有料" : "Paid")}</span>
-                        <span style={{ fontSize:16, fontWeight:900, color:C.text }}>{company.name}</span>
-                      </div>
-                      <div style={{ fontSize:11, color:C.muted }}>{[company.exchange, company.sector, company.ticker].filter(Boolean).join("・")}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", minWidth:0 }}>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e", flexShrink:0 }}>{isFree ? (lang === "ja" ? "無料" : "Free") : (lang === "ja" ? "有料" : "Paid")}</span>
+                      <span style={{ fontSize:18, fontWeight:900, color:C.text, lineHeight:1.3 }}>{company.name}</span>
                     </div>
                   </div>
-                  <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
-                    {(() => {
-                      const today2 = new Date(); today2.setHours(0,0,0,0);
-                      const ld = new Date(company.listing_date); ld.setHours(0,0,0,0);
-                      const diff = ld.getTime() - today2.getTime();
-                      if (diff < 0) {
-                        // 2026/9/6新設: 公募価格(ipo_price)が確定している銘柄は、
-                        // 「100万円投資していたら今いくらか」をカード内にも表示する
-                        // (マイポートフォリオと同じ考え方の、ユーザー未追跡・全銘柄向けの参考表示)。
-                        const hasSim = company.ipo_price && company.latest_price;
-                        const simValue = hasSim ? Math.round((1000000 / company.ipo_price!) * company.latest_price!) : null;
-                        const simPct = hasSim ? Math.round(((company.latest_price! - company.ipo_price!) / company.ipo_price!) * 1000) / 10 : null;
-                        return (
-                          <>
-                            <div style={{ display:"flex", alignItems:"center", gap:4, justifyContent:"flex-end", marginBottom:2 }}>
-                              <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px" }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
-                              {company.price_change_rate != null && (
-                                <div style={{ fontSize:10, fontWeight:900, color: company.price_change_rate >= 0 ? "#15803d" : "#b91c1c", backgroundColor: company.price_change_rate >= 0 ? "#dcfce7" : "#fef2f2", borderRadius:4, padding:"1px 6px" }}>
-                                  {company.price_change_rate >= 0 ? "▲+" : "▼"}{company.price_change_rate}%
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ fontSize:12, fontWeight:700, color:"#64748b", marginBottom: hasSim ? 4 : 0 }}>{dateStr}</div>
-                            {hasSim && (
-                              // 2026/9/6再修正: 流入者へのフックとして目立たせるため、
-                              // 「100万円投資なら」と金額を上下2段に分け、フォントも大きくした
-                              // (1行に詰め込むと横幅を圧迫し、社名側の折り返しが激しくなっていたため、
-                              // 2段組みにすることで横幅の圧迫も同時に緩和する狙い)。
-                              <div style={{ marginTop:2 }}>
-                                <div style={{ fontSize:11, fontWeight:700, color:C.muted }}>
-                                  {lang === "ja" ? "100万円投資なら" : "$1M invested →"}
-                                </div>
-                                <div style={{ fontSize:19, fontWeight:900, color: simPct! >= 0 ? "#15803d" : "#b91c1c", lineHeight:1.25, whiteSpace:"nowrap" }}>
-                                  ¥{simValue!.toLocaleString()}
-                                  <span style={{ fontSize:13 }}>
-                                    {"（"}{simPct! >= 0 ? "+" : ""}{simPct}%{"）"}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        );
-                      }
+                  <div style={{ fontSize:11, color:C.muted, marginTop:3, marginLeft:32 }}>{[company.exchange, company.sector, company.ticker].filter(Boolean).join("・")}</div>
+
+                  {(() => {
+                    const today2 = new Date(); today2.setHours(0,0,0,0);
+                    const ld = new Date(company.listing_date); ld.setHours(0,0,0,0);
+                    const diff = ld.getTime() - today2.getTime();
+                    if (diff < 0) {
+                      // 2026/9/6新設: 公募価格(ipo_price)が確定している銘柄は、
+                      // 「100万円投資していたら今いくらか」をカード内にも表示する
+                      // (マイポートフォリオと同じ考え方の、ユーザー未追跡・全銘柄向けの参考表示)。
+                      const hasSim = company.ipo_price && company.latest_price;
+                      const simValue = hasSim ? Math.round((1000000 / company.ipo_price!) * company.latest_price!) : null;
+                      const simPct = hasSim ? Math.round(((company.latest_price! - company.ipo_price!) / company.ipo_price!) * 1000) / 10 : null;
+                      const isUp = (simPct ?? 0) >= 0;
                       return (
                         <>
-                          <div style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</div>
-                          <div style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</div>
+                          <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginTop:8, marginLeft:32 }}>
+                            <div style={{ fontSize:10, fontWeight:700, color:"#64748b", backgroundColor:"#f1f5f9", borderRadius:4, padding:"1px 6px" }}>{lang === "ja" ? "上場済み" : "Listed"}</div>
+                            {company.price_change_rate != null && (
+                              <div style={{ fontSize:10, fontWeight:900, color: company.price_change_rate >= 0 ? "#15803d" : "#b91c1c", backgroundColor: company.price_change_rate >= 0 ? "#dcfce7" : "#fef2f2", borderRadius:4, padding:"1px 6px" }}>
+                                {company.price_change_rate >= 0 ? "▲+" : "▼"}{company.price_change_rate}%
+                              </div>
+                            )}
+                            <div style={{ fontSize:11, fontWeight:700, color:"#64748b" }}>{dateStr}</div>
+                          </div>
+                          {hasSim && (
+                            <div style={{ marginTop:8, marginLeft:32, padding:"8px 12px", borderRadius:10, backgroundColor: isUp ? "#f0fdf4" : "#fef2f2", border: `1px solid ${isUp ? "#bbf7d0" : "#fecaca"}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"2px 10px" }}>
+                              <span style={{ fontSize:11, fontWeight:700, color: isUp ? "#166534" : "#991b1b" }}>💰 {lang === "ja" ? "100万円投資なら" : "$1M invested →"}</span>
+                              <span style={{ fontSize:18, fontWeight:900, color: isUp ? "#15803d" : "#b91c1c", whiteSpace:"nowrap" }}>
+                                ¥{simValue!.toLocaleString()}
+                                <span style={{ fontSize:12 }}>{"（"}{isUp ? "+" : ""}{simPct}%{"）"}</span>
+                              </span>
+                            </div>
+                          )}
                         </>
                       );
-                    })()}
-                  </div>
+                    }
+                    return (
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, marginLeft:32 }}>
+                        <span style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div style={{ padding:"10px 16px 14px", borderTop:`1px solid ${C.border}` }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:8 }}>
