@@ -487,11 +487,15 @@ export default function CalendarClient() {
             return (
               <div key={company.id} ref={el => { itemRefs.current[company.id] = el; }}
                 style={{ backgroundColor:C.white, borderRadius:14, border: isHL ? `2px solid ${C.teal}` : isFree ? `1px solid ${C.teal}` : `1px solid #fde68a`, marginBottom:12, overflow:"hidden", transition:"border .3s, box-shadow .3s", boxShadow: isHL ? `0 0 0 4px ${C.tealLt}` : "none" }}>
-                <div style={{ padding:"12px 16px", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <span style={{ fontSize:22, color:C.teal, lineHeight:1 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
-                    <div>
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
+                <div style={{ padding:"12px 16px", display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", rowGap:6 }}>
+                  {/* 2026/9/6再修正: 右側(日付・100万円シミュレーション欄)が幅を取りすぎて
+                      左側の社名が1〜2文字ごとに折り返される問題があったため、親をflexWrapにし、
+                      左側にminWidth:0+flex:"1 1 180px"を与えて、入りきらない時は右側を
+                      下の行に折り返す(社名の横幅を優先的に確保する)ようにした。 */}
+                  <div style={{ display:"flex", alignItems:"center", gap:10, flex:"1 1 180px", minWidth:0 }}>
+                    <span style={{ fontSize:22, color:C.teal, lineHeight:1, flexShrink:0 }}>{CIRCLE[i] ?? `(${i+1})`}</span>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                       <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:4, backgroundColor: isFree?"#dcfce7":"#fef3c7", color: isFree?"#15803d":"#92400e" }}>{isFree ? (lang === "ja" ? "無料" : "Free") : (lang === "ja" ? "有料" : "Paid")}</span>
                         <span style={{ fontSize:16, fontWeight:900, color:C.text }}>{company.name}</span>
                       </div>
@@ -522,12 +526,20 @@ export default function CalendarClient() {
                             </div>
                             <div style={{ fontSize:12, fontWeight:700, color:"#64748b", marginBottom: hasSim ? 4 : 0 }}>{dateStr}</div>
                             {hasSim && (
-                              <div style={{ fontSize:10, color:C.muted }}>
-                                {lang === "ja" ? "100万円投資なら" : "$1M invested →"}{" "}
-                                <span style={{ fontWeight:900, color: simPct! >= 0 ? "#15803d" : "#b91c1c" }}>
+                              // 2026/9/6再修正: 流入者へのフックとして目立たせるため、
+                              // 「100万円投資なら」と金額を上下2段に分け、フォントも大きくした
+                              // (1行に詰め込むと横幅を圧迫し、社名側の折り返しが激しくなっていたため、
+                              // 2段組みにすることで横幅の圧迫も同時に緩和する狙い)。
+                              <div style={{ marginTop:2 }}>
+                                <div style={{ fontSize:11, fontWeight:700, color:C.muted }}>
+                                  {lang === "ja" ? "100万円投資なら" : "$1M invested →"}
+                                </div>
+                                <div style={{ fontSize:19, fontWeight:900, color: simPct! >= 0 ? "#15803d" : "#b91c1c", lineHeight:1.25, whiteSpace:"nowrap" }}>
                                   ¥{simValue!.toLocaleString()}
-                                  {"（"}{simPct! >= 0 ? "+" : ""}{simPct}%{"）"}
-                                </span>
+                                  <span style={{ fontSize:13 }}>
+                                    {"（"}{simPct! >= 0 ? "+" : ""}{simPct}%{"）"}
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </>
