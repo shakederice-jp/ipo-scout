@@ -840,3 +840,154 @@ ${DEEP_DIVE_TREND_STYLE}
     return null;
   }
 }
+
+// ===== ここから2026/9/8追加: 「初値・その後の値動き」カテゴリーに、ロックアップ解除前の
+// 振り返り記事を追加 =====
+// ユーザー要望の経緯: 当初は「上場後の株価パフォーマンス振り返りを2週間に一度、定期的に
+// マーケットトレンド＋Xに掲載したい」という相談だったが、①既存の「初値・その後の値動き」
+// カテゴリーに位置づけたい、②固定の2週間周期はやめ、ロックアップ解除の注意喚起ができる
+// タイミング(解除直前)を振り返りのタイミングにしたい、という2段階の方針変更を経て確定した。
+// 「初値・その後の値動き」というカテゴリー分類自体は、src/app/trends/page.tsxのCATEGORIES
+// 定義がタイトルの前方一致で判定しているため、この関数が生成する記事タイトルの先頭を
+// 既存のテーマ①(generatePriceCheckpointPost)と同じ接頭辞にすることで実現している
+// (テーブル・カラムレベルで統合しているわけではない)。
+//
+// 既存のテーマ①(day2/day10/month1)はチェックポイント到達済みかどうかをipo_companiesの
+// price_day2/price_day10/price_month1列で管理しているが、この列を増やすにはSupabase側の
+// DBスキーマ変更(新規カラム追加)が必要になる。今回はコード変更のみでユーザー自身が
+// git pushするだけでデプロイできるようにするため、他の派生テーマ(ロックアップ解除
+// カウントダウン等)と同じ、market_trends.external_idベースの重複防止方式を採用し、
+// 新規カラムを増やさずに実装している。
+//
+// 株価データは、2026/9/6実装の「100万円投資シミュレーション」機能と同じ
+// stock_price_history(track-stock-priceの日次バッチで蓄積)から最新値を読む
+// (Yahoo Financeへの新規リクエストは行わない)。
+const LOCKUP_PRE_RECAP_LEAD_DAYS = 7; // ロックアップ解除の何日前から対象にするか(このウィンドウ内で最初に迎えた日のcron実行時に生成される)
+
+type LockupPreType = "90" | "180";
+const LOCKUP_PRE_META: Record<LockupPreType, { label: string; axisKey: "short" | "long"; axisLabel: string }> = {
+  "90": { label: "90日ロックアップ解除前の振り返り", axisKey: "short", axisLabel: "短期軸(1〜3ヶ月)" },
+  "180": { label: "180日ロックアップ解除前の振り返り", axisKey: "long", axisLabel: "長期軸" },
+};
+
+export interface LockupPreRecapResult {
+  externalId: string;
+  companyName: string;
+  checkpointLabel: string;
+  sector: string;
+  result: ThemedPostResult;
+}
+
+export async function generateLockupPreRecapPost(): Promise<LockupPreRecapResult | null> {
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const windowEnd = new Date();
+  windowEnd.setDate(windowEnd.getDate() + LOCKUP_PRE_RECAP_LEAD_DAYS);
+  const windowEndStr = windowEnd.toISOString().slice(0, 10);
+
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, ticker, sector, listing_date, ipo_price, analysis_summary, lockup_90_date, lockup_180_date, structured_data")
+    .not("ticker", "is", null)
+    .not("ipo_price", "is", null);
+
+  if (error || !rows) {
+    console.error("ロックアップ解除前振り返り: 取得失敗", error);
+    return null;
+  }
+
+  type Candidate = { co: any; type: LockupPreType; date: string };
+  const candidates: Candidate[] = [];
+  for (const co of rows) {
+    if (co.lockup_90_date && co.lockup_90_date >= todayStr && co.lockup_90_date <= windowEndStr) {
+      candidates.push({ co, type: "90", date: co.lockup_90_date });
+    }
+    if (co.lockup_180_date && co.lockup_180_date >= todayStr && co.lockup_180_date <= windowEndStr) {
+      candidates.push({ co, type: "180", date: co.lockup_180_date });
+    }
+  }
+  if (candidates.length === 0) return null;
+
+  // 銘柄×90日/180日の組み合わせごとに一度だけ生成する(external_idで永続的に重複防止)
+  const candidateIds = candidates.map(c => `lockup-pre-recap-${c.co.id}-${c.type}`);
+  const { data: existing } = await supabaseForThemes.from("market_trends").select("external_id").in("external_id", candidateIds);
+  const existingSet = new Set((existing ?? []).map((r: any) => r.external_id));
+  const fresh = candidates.filter(c => !existingSet.has(`lockup-pre-recap-${c.co.id}-${c.type}`));
+  if (fresh.length === 0) return null;
+
+  // 解除日が近い候補から順に処理する(取りこぼし防止で順序を飛ばさない)
+  fresh.sort((a, b) => a.date.localeCompare(b.date));
+
+  for (const c of fresh) {
+    // まだそのIPO銘柄の株価データが1件も無い場合はスキップし、次の候補を試す
+    const { data: priceRow } = await supabaseForThemes
+      .from("stock_price_history")
+      .select("price, price_date")
+      .eq("company_id", c.co.id)
+      .order("price_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!priceRow) continue;
+
+    const price = priceRow.price as number;
+    const rate = Math.round(((price - c.co.ipo_price) / c.co.ipo_price) * 1000) / 10;
+    const rateText = `${rate >= 0 ? "+" : ""}${rate}%`;
+    const investedValue = Math.round(1_000_000 * (price / c.co.ipo_price));
+    const daysLeft = Math.round(
+      (new Date(`${c.date}T00:00:00+09:00`).getTime() - new Date(`${todayStr}T00:00:00+09:00`).getTime()) / 86400000
+    );
+
+    const meta = LOCKUP_PRE_META[c.type];
+    const summary = c.co.analysis_summary ?? {};
+    const grade = (summary as any)[`${meta.axisKey}_grade`];
+    const reason = summary.grade_reason?.[meta.axisKey];
+    const targets = c.co.structured_data?.ipo_details?.lockup_targets || "不明";
+    const floatRatio = c.co.structured_data?.ipo_details?.float_ratio || "不明";
+
+    const prompt = `
+あなたは日本のIPO投資アナリストです。以下の銘柄について、上場後の株価の振り返りと、間近に迫ったロックアップ解除(上場前からの株主が株式を売却できるようになる日)への注意喚起をあわせた、X(旧Twitter)投稿を1本作成してください。
+
+# 実績データ
+- 銘柄: ${c.co.name}(${c.co.ticker ?? ""}・${c.co.sector || "業種不明"})
+- 公募価格: ${c.co.ipo_price}円
+- 現在の株価: ${price}円(公募価格比 ${rateText})
+- 公募価格で100万円分投資していたと仮定した場合の現在の評価額: 約${investedValue.toLocaleString()}円
+
+# 事前のAI分析(上場前に生成したもの)
+- ${meta.axisLabel}の判定: ${grade ? `${grade}グレード` : "不明"}
+- 判定理由: ${reason || "記録なし"}
+
+# ロックアップ解除情報
+- 解除まで: あと${daysLeft}日(${c.date}、${c.type}日ロックアップ)
+- 対象株主: ${targets}
+- 流通比率: ${floatRatio}
+
+# 記載のポイント
+- 前半は上場からここまでの株価の振り返りとして、実績(公募価格比${rateText}、100万円投資していたら現在約${investedValue.toLocaleString()}円)と、事前のAI判定・理由を両方とも事実として提示すること
+- 実績が事前の判定とおおむね一致していそうか、乖離していそうかについて、断定はせず「〜という見方もできそうです」程度の柔らかい言い方で触れること
+- 後半で話題を切り替え、間近に迫ったロックアップ解除について、なぜ重要か(需給悪化=売り圧力増加の可能性)を、対象株主・流通比率の具体的な情報を交えて解説すること
+- 個別銘柄への売買助言(「買うべき」「今が売り時」等)は一切書かないこと
+- 最後に、「この結果は1銘柄の実績であり、AI分析の的中を保証するものではありません」という趣旨の一文を、押し付けがましくない自然な言い回しで必ず入れること
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+    try {
+      const content = await generateWithGemini(prompt);
+      return {
+        externalId: `lockup-pre-recap-${c.co.id}-${c.type}`,
+        companyName: c.co.name,
+        checkpointLabel: meta.label,
+        sector: c.co.sector || "IPO値動き",
+        result: {
+          content,
+          sourceLinks: [{ title: `${c.co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${c.co.id}`, source: "自社分析" }],
+        },
+      };
+    } catch (e) {
+      console.error(`ロックアップ解除前振り返り: 記事生成失敗(${c.co.name}):`, e);
+      continue;
+    }
+  }
+  return null;
+}

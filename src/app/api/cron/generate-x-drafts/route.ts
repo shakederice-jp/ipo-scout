@@ -11,6 +11,7 @@ import {
   generateEconEventResultPost,
   generateCompetitorComparisonPost,
   generateDeepDiveTrendPost,
+  generateLockupPreRecapPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
@@ -297,6 +298,36 @@ export async function GET(request: Request) {
       results.push({ theme: 14, status: "failed" });
     }
 
+    // テーマ⑮: 2026/9/8追加。「初値・その後の値動き」カテゴリーに位置づける、ロックアップ
+    // 解除直前(既定7日前)の振り返り記事。銘柄ごとに100万円投資シミュレーションの現在額と
+    // 事前AI分析との答え合わせに加え、ロックアップ解除への注意喚起をまとめて1本にする。
+    // タイトルの接頭辞をテーマ①(初値・その後の値動き)と揃えることで、/trendsページの
+    // カテゴリー分類(タイトル前方一致)上も同じカテゴリーに表示される。
+    // 頻度が低く(銘柄ごとに90日後・180日後の解除タイミングでしか出ない)取りこぼされたく
+    // ないため、成功時は他のテーマと違い、通知メール本文に記事全文も埋め込む(下記参照)。
+    let lockupPreRecapText: string | null = null;
+    try {
+      const lockupPreRecapResult = await generateLockupPreRecapPost();
+      if (lockupPreRecapResult) {
+        const outcome = await saveThemeArticle(
+          `初値・その後の値動き(${lockupPreRecapResult.companyName}・${lockupPreRecapResult.checkpointLabel})`,
+          lockupPreRecapResult.sector,
+          lockupPreRecapResult.result,
+          lockupPreRecapResult.externalId
+        );
+        if (outcome === "saved") {
+          trendsUpdated = true;
+          lockupPreRecapText = lockupPreRecapResult.result.content;
+        }
+        results.push({ theme: 15, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
+      } else {
+        results.push({ theme: 15, status: "skipped(該当銘柄なし)" });
+      }
+    } catch (err) {
+      console.error("ロックアップ解除前振り返りの生成に失敗:", err);
+      results.push({ theme: 15, status: "failed" });
+    }
+
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
     let ipoRepostCount = 0;
     try {
@@ -334,6 +365,10 @@ export async function GET(request: Request) {
 
       if (failedThemes.length > 0) {
         emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
+      }
+
+      if (lockupPreRecapText) {
+        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(そのままXにコピペ可)\n${"=".repeat(30)}\n\n${lockupPreRecapText}`;
       }
 
       if (ipoRepostCount > 0) {
