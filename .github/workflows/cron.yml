@@ -13,6 +13,7 @@ on:
 jobs:
   db-check:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run DB Check
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/db-check -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
@@ -26,6 +27,7 @@ jobs:
 
   detect-ipo-price:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 10 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run Detect IPO Price
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"

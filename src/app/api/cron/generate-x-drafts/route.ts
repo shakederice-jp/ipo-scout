@@ -15,8 +15,12 @@ import {
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
-// テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる
-export const maxDuration = 90;
+// テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる。
+// 2026/9/8: テーマ数が増えるにつれ直列実行の合計時間が伸び、この上限に達して
+// 関数が強制終了し、最後の管理者通知メールまで到達できない(=メールが来ない)
+// 事象が起きていたと判明。テーマをできる限り並列実行に変更した上で、念のため
+// 上限も少し引き上げた(下記「並列実行への変更」のコメントを参照)。
+export const maxDuration = 120;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -130,6 +134,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    type ThemeOutcome = { theme: number; status: string; trendsUpdated: boolean; lockupPreRecapText?: string };
+
     async function runTheme(
       themeNumber: number,
       label: string,
@@ -137,7 +143,7 @@ export async function GET(request: Request) {
       skipReason: string,
       externalId: string,
       generate: () => Promise<{ content: string; sourceLinks: { title: string; url: string; source: string }[] } | null>
-    ): Promise<{ theme: number; status: string }> {
+    ): Promise<ThemeOutcome> {
       try {
         // 本日分が既に保存済みなら、Gemini呼び出し(generate)自体を行わずにスキップする。
         // 以前はここで毎回generate()を呼んでおり、既に成功済みの日でも2回目・3回目のcronで
@@ -149,17 +155,17 @@ export async function GET(request: Request) {
           .eq("external_id", externalId)
           .maybeSingle();
         if (existing) {
-          return { theme: themeNumber, status: "skipped(本日分は生成済み)" };
+          return { theme: themeNumber, status: "skipped(本日分は生成済み)", trendsUpdated: false };
         }
 
         const result = await generate();
         const outcome = await saveThemeArticle(label, sector, result, externalId);
-        if (outcome === "saved") return { theme: themeNumber, status: "success" };
-        if (outcome === "skipped_duplicate") return { theme: themeNumber, status: "skipped(本日分は生成済み)" };
-        return { theme: themeNumber, status: `skipped(${skipReason})` };
+        if (outcome === "saved") return { theme: themeNumber, status: "success", trendsUpdated: true };
+        if (outcome === "skipped_duplicate") return { theme: themeNumber, status: "skipped(本日分は生成済み)", trendsUpdated: false };
+        return { theme: themeNumber, status: `skipped(${skipReason})`, trendsUpdated: false };
       } catch (err) {
         console.error(`テーマ${themeNumber}の生成に失敗:`, err);
-        return { theme: themeNumber, status: "failed" };
+        return { theme: themeNumber, status: "failed", trendsUpdated: false };
       }
     }
 
@@ -167,135 +173,123 @@ export async function GET(request: Request) {
     // 以前UTC基準の日付境界でズレが起きたことがあるため、必ずAsia/Tokyoで計算する。
     const jstDay = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
 
-    // 1日1回でよいテーマは並行実行し、待機時間の合計より一番遅い1テーマ分の時間に近づける
-    const themeTasks: Promise<{ theme: number; status: string }>[] = [
-      runTheme(2, "IPOカレンダー", "IPOカレンダー", "該当銘柄なし", `ipo-calendar-${jstDay}`, generateIpoCalendarPost),
-      runTheme(3, "週内の重要経済指標カレンダー", "マクロ経済", "該当イベントなし", `econ-calendar-${jstDay}`, generateEconomicCalendarPost),
-      runTheme(9, "直近承認銘柄のスコア傾向", "IPOスコア分析", "対象銘柄なし", `score-trend-${jstDay}`, generateScoreTrendPost),
-      runTheme(10, "ロックアップ解除カレンダー", "IPO需給", "該当銘柄なし", `lockup-calendar-${jstDay}`, generateLockupCalendarPost),
-    ];
-
-    const themeResults = await Promise.all(themeTasks);
-    for (const r of themeResults) {
-      results.push(r);
-      if (r.status === "success") trendsUpdated = true;
-    }
-
     // テーマ①/③: 「初値・その後の値動き」答え合わせ、該当が無い日は「IPO投資ワンポイント講座」で埋める
     // (2026/9/2、「大株主・VC/PEの異動ウォッチ」の廃止と入れ替えで新設)
-    try {
-      const checkpointResult = await generatePriceCheckpointPost();
-      if (checkpointResult) {
-        const outcome = await saveThemeArticle(
-          `初値・その後の値動き(${checkpointResult.companyName}・${checkpointResult.checkpointLabel})`,
-          checkpointResult.sector,
-          checkpointResult.result,
-          checkpointResult.externalId
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({
-          theme: 1,
-          status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
-        });
-      } else {
-        // ①に該当銘柄が無い日は③(IPO投資ワンポイント講座)で埋める。
-        // こちらは自社DBに依存しないため、jstDayキーで1日1回に限定するだけで必ず生成できる。
-        const tipResult = await generateInvestingTipPost();
-        const outcome = await saveThemeArticle(
-          "IPO投資ワンポイント講座",
-          "投資の基礎知識",
-          tipResult,
-          `investing-tip-${jstDay}`
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({
-          theme: 1,
-          status: outcome === "saved" ? "success(③で穴埋め)" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
-        });
+    async function runTheme1(): Promise<ThemeOutcome> {
+      try {
+        const checkpointResult = await generatePriceCheckpointPost();
+        if (checkpointResult) {
+          const outcome = await saveThemeArticle(
+            `初値・その後の値動き(${checkpointResult.companyName}・${checkpointResult.checkpointLabel})`,
+            checkpointResult.sector,
+            checkpointResult.result,
+            checkpointResult.externalId
+          );
+          return {
+            theme: 1,
+            status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
+            trendsUpdated: outcome === "saved",
+          };
+        } else {
+          // ①に該当銘柄が無い日は③(IPO投資ワンポイント講座)で埋める。
+          // こちらは自社DBに依存しないため、jstDayキーで1日1回に限定するだけで必ず生成できる。
+          const tipResult = await generateInvestingTipPost();
+          const outcome = await saveThemeArticle(
+            "IPO投資ワンポイント講座",
+            "投資の基礎知識",
+            tipResult,
+            `investing-tip-${jstDay}`
+          );
+          return {
+            theme: 1,
+            status: outcome === "saved" ? "success(③で穴埋め)" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
+            trendsUpdated: outcome === "saved",
+          };
+        }
+      } catch (err) {
+        console.error("初値チェックポイント/IPO投資ワンポイント講座の生成に失敗:", err);
+        return { theme: 1, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("初値チェックポイント/IPO投資ワンポイント講座の生成に失敗:", err);
-      results.push({ theme: 1, status: "failed" });
     }
 
-    // テーマ⑪⑫⑬: 2026/9/2追加。①③(初値・その後の値動き)と同様、候補の有無や
+    // テーマ⑪⑫⑬⑭⑮: 2026/9/2〜9/8追加。①③(初値・その後の値動き)と同様、候補の有無や
     // どの銘柄・イベントを取り上げるかが日によって変わるため、runTheme()の
     // 固定external_id方式ではなく、各生成関数が内部で候補ごとの重複チェックを行う
     // 方式にしている(該当なしの日はスキップするだけで、③のようなフォールバックはない)。
-    try {
-      const lockupResult = await generateLockupCountdownPost();
-      if (lockupResult) {
-        const outcome = await saveThemeArticle(
-          `ロックアップ解除カウントダウン(${lockupResult.companyName})`,
-          lockupResult.sector,
-          lockupResult.result,
-          lockupResult.externalId
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({ theme: 11, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
-      } else {
-        results.push({ theme: 11, status: "skipped(該当銘柄なし)" });
+    async function runTheme11(): Promise<ThemeOutcome> {
+      try {
+        const lockupResult = await generateLockupCountdownPost();
+        if (lockupResult) {
+          const outcome = await saveThemeArticle(
+            `ロックアップ解除カウントダウン(${lockupResult.companyName})`,
+            lockupResult.sector,
+            lockupResult.result,
+            lockupResult.externalId
+          );
+          return { theme: 11, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped", trendsUpdated: outcome === "saved" };
+        }
+        return { theme: 11, status: "skipped(該当銘柄なし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("ロックアップ解除カウントダウンの生成に失敗:", err);
+        return { theme: 11, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("ロックアップ解除カウントダウンの生成に失敗:", err);
-      results.push({ theme: 11, status: "failed" });
     }
 
-    try {
-      const econResult = await generateEconEventResultPost();
-      if (econResult) {
-        const outcome = await saveThemeArticle(
-          `経済指標・イベント速報(${econResult.label})`,
-          econResult.sector,
-          econResult.result,
-          econResult.externalId
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({ theme: 12, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
-      } else {
-        results.push({ theme: 12, status: "skipped(該当イベントなし)" });
+    async function runTheme12(): Promise<ThemeOutcome> {
+      try {
+        const econResult = await generateEconEventResultPost();
+        if (econResult) {
+          const outcome = await saveThemeArticle(
+            `経済指標・イベント速報(${econResult.label})`,
+            econResult.sector,
+            econResult.result,
+            econResult.externalId
+          );
+          return { theme: 12, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped", trendsUpdated: outcome === "saved" };
+        }
+        return { theme: 12, status: "skipped(該当イベントなし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("経済指標・イベント速報の生成に失敗:", err);
+        return { theme: 12, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("経済指標・イベント速報の生成に失敗:", err);
-      results.push({ theme: 12, status: "failed" });
     }
 
-    try {
-      const competitorResult = await generateCompetitorComparisonPost();
-      if (competitorResult) {
-        const outcome = await saveThemeArticle(
-          `IPO企業 vs 競合の決算比較(${competitorResult.companyName})`,
-          competitorResult.sector,
-          competitorResult.result,
-          competitorResult.externalId
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({ theme: 13, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
-      } else {
-        results.push({ theme: 13, status: "skipped(該当銘柄なし)" });
+    async function runTheme13(): Promise<ThemeOutcome> {
+      try {
+        const competitorResult = await generateCompetitorComparisonPost();
+        if (competitorResult) {
+          const outcome = await saveThemeArticle(
+            `IPO企業 vs 競合の決算比較(${competitorResult.companyName})`,
+            competitorResult.sector,
+            competitorResult.result,
+            competitorResult.externalId
+          );
+          return { theme: 13, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped", trendsUpdated: outcome === "saved" };
+        }
+        return { theme: 13, status: "skipped(該当銘柄なし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("IPO企業 vs 競合の決算比較の生成に失敗:", err);
+        return { theme: 13, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("IPO企業 vs 競合の決算比較の生成に失敗:", err);
-      results.push({ theme: 13, status: "failed" });
     }
 
-    try {
-      const deepDiveResult = await generateDeepDiveTrendPost();
-      if (deepDiveResult) {
-        const outcome = await saveThemeArticle(
-          `ビジネスモデル・ストーリー・競合との違い(${deepDiveResult.companyName})`,
-          deepDiveResult.sector,
-          deepDiveResult.result,
-          deepDiveResult.externalId
-        );
-        if (outcome === "saved") trendsUpdated = true;
-        results.push({ theme: 14, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
-      } else {
-        results.push({ theme: 14, status: "skipped(該当銘柄なし)" });
+    async function runTheme14(): Promise<ThemeOutcome> {
+      try {
+        const deepDiveResult = await generateDeepDiveTrendPost();
+        if (deepDiveResult) {
+          const outcome = await saveThemeArticle(
+            `ビジネスモデル・ストーリー・競合との違い(${deepDiveResult.companyName})`,
+            deepDiveResult.sector,
+            deepDiveResult.result,
+            deepDiveResult.externalId
+          );
+          return { theme: 14, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped", trendsUpdated: outcome === "saved" };
+        }
+        return { theme: 14, status: "skipped(該当銘柄なし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("ビジネスモデル・ストーリー・競合との違いの生成に失敗:", err);
+        return { theme: 14, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("ビジネスモデル・ストーリー・競合との違いの生成に失敗:", err);
-      results.push({ theme: 14, status: "failed" });
     }
 
     // テーマ⑮: 2026/9/8追加。「初値・その後の値動き」カテゴリーに位置づける、ロックアップ
@@ -305,27 +299,55 @@ export async function GET(request: Request) {
     // カテゴリー分類(タイトル前方一致)上も同じカテゴリーに表示される。
     // 頻度が低く(銘柄ごとに90日後・180日後の解除タイミングでしか出ない)取りこぼされたく
     // ないため、成功時は他のテーマと違い、通知メール本文に記事全文も埋め込む(下記参照)。
-    let lockupPreRecapText: string | null = null;
-    try {
-      const lockupPreRecapResult = await generateLockupPreRecapPost();
-      if (lockupPreRecapResult) {
-        const outcome = await saveThemeArticle(
-          `初値・その後の値動き(${lockupPreRecapResult.companyName}・${lockupPreRecapResult.checkpointLabel})`,
-          lockupPreRecapResult.sector,
-          lockupPreRecapResult.result,
-          lockupPreRecapResult.externalId
-        );
-        if (outcome === "saved") {
-          trendsUpdated = true;
-          lockupPreRecapText = lockupPreRecapResult.result.content;
+    async function runTheme15(): Promise<ThemeOutcome> {
+      try {
+        const lockupPreRecapResult = await generateLockupPreRecapPost();
+        if (lockupPreRecapResult) {
+          const outcome = await saveThemeArticle(
+            `初値・その後の値動き(${lockupPreRecapResult.companyName}・${lockupPreRecapResult.checkpointLabel})`,
+            lockupPreRecapResult.sector,
+            lockupPreRecapResult.result,
+            lockupPreRecapResult.externalId
+          );
+          return {
+            theme: 15,
+            status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
+            trendsUpdated: outcome === "saved",
+            lockupPreRecapText: outcome === "saved" ? lockupPreRecapResult.result.content : undefined,
+          };
         }
-        results.push({ theme: 15, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped" });
-      } else {
-        results.push({ theme: 15, status: "skipped(該当銘柄なし)" });
+        return { theme: 15, status: "skipped(該当銘柄なし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("ロックアップ解除前振り返りの生成に失敗:", err);
+        return { theme: 15, status: "failed", trendsUpdated: false };
       }
-    } catch (err) {
-      console.error("ロックアップ解除前振り返りの生成に失敗:", err);
-      results.push({ theme: 15, status: "failed" });
+    }
+
+    // 2026/9/8: 以前はテーマ①⑪⑫⑬⑭⑮を1つずつ直列(await)で実行しており、テーマ数が
+    // 増えるにつれて合計の待ち時間が伸び、Vercelの関数タイムアウト(maxDuration)に達して
+    // 関数ごと強制終了し、最後の管理者通知メール送信まで到達できないことがあった
+    // (「マーケットトレンド更新メールがほとんど来なくなった」の根本原因の1つ)。
+    // 各テーマは互いに依存しないため、最初の4テーマと同様にすべて並列実行に変更し、
+    // 合計の待ち時間を「一番遅い1テーマ分」に近づけた。
+    const themeTasks: Promise<ThemeOutcome>[] = [
+      runTheme(2, "IPOカレンダー", "IPOカレンダー", "該当銘柄なし", `ipo-calendar-${jstDay}`, generateIpoCalendarPost),
+      runTheme(3, "週内の重要経済指標カレンダー", "マクロ経済", "該当イベントなし", `econ-calendar-${jstDay}`, generateEconomicCalendarPost),
+      runTheme(9, "直近承認銘柄のスコア傾向", "IPOスコア分析", "対象銘柄なし", `score-trend-${jstDay}`, generateScoreTrendPost),
+      runTheme(10, "ロックアップ解除カレンダー", "IPO需給", "該当銘柄なし", `lockup-calendar-${jstDay}`, generateLockupCalendarPost),
+      runTheme1(),
+      runTheme11(),
+      runTheme12(),
+      runTheme13(),
+      runTheme14(),
+      runTheme15(),
+    ];
+
+    const themeResults = await Promise.all(themeTasks);
+    let lockupPreRecapText: string | null = null;
+    for (const r of themeResults) {
+      results.push({ theme: r.theme, status: r.status });
+      if (r.trendsUpdated) trendsUpdated = true;
+      if (r.lockupPreRecapText) lockupPreRecapText = r.lockupPreRecapText;
     }
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
