@@ -28,11 +28,13 @@ const supabase = createClient(
 );
 
 const TRENDS_URL = "https://ipo.finance-tower.com/trends";
+// 2026/9/9追記: X投稿フッターに貼るリンクは、記事一覧(/trends)ではなくトップページに変更。
+const SITE_ROOT_URL = "https://ipo.finance-tower.com/";
 
 // 各特集記事の末尾に固定で付けるリンク。Xはマークダウン記法([text](url))を解釈せず
 // 記号がそのまま文字として表示されてしまうため、あえてマークダウンにはせず、
 // 裸のURL(https://...)をそのまま書く形にする。Xは裸のURLを自動でリンク化してくれる。
-const X_SHARE_FOOTER = `\n\n${"─".repeat(20)}\n📊 IPO Scout｜AI駆動のIPO分析・投資判断支援サービス\n${TRENDS_URL}`;
+const X_SHARE_FOOTER = `\n\n${"─".repeat(20)}\n📊 IPO企業情報AI分析レポート　担当：大手町調査室九課\n${SITE_ROOT_URL}`;
 
 // contentが二重にJSON化されてしまっている場合(AIの出力揺れ対策)に、正しい本文だけを取り出す
 function extractCleanContent(raw: string): string {
