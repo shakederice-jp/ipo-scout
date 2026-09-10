@@ -25,6 +25,9 @@ export const metadata: Metadata = {
 // 新規作成したGA4プロパティの測定IDに置き換える。
 const GA_ID = "G-XJ7BW6EJQE";
 
+// 2026/9/10追加: Microsoft Clarity(ヒートマップ・セッション録画)の計測タグ。
+const CLARITY_PROJECT_ID = "yg57k63pgd";
+
 // 2026/9/5追加: サイト全体のSEO強化(⑤の一部)。運営組織の情報をGoogleに機械的に
 // 伝えるOrganizationの構造化データ(JSON-LD)。全ページ共通でheadに埋め込む。
 // これ自体は検索順位に直接効くものではないが、Googleニュース掲載やナレッジパネル等、
@@ -57,6 +60,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', '${GA_ID}');
+        `}</Script>
+        <Script id="clarity-init" strategy="afterInteractive">{`
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
         `}</Script>
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
