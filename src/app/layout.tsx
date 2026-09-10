@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   },
 };
 
-const GA_ID = "G-27Z6CDZXB1";
+// 2026/9/10追記: 従来設定されていたG-27Z6CDZXB1は、ユーザーが運営する別サイトの
+// Googleアナリティクス測定IDが誤って設定されていたことが判明(本来このサイト専用の
+// GA4プロパティが未作成のまま、他サイト用のIDが流用されていた)。このサイト専用に
+// 新規作成したGA4プロパティの測定IDに置き換える。
+const GA_ID = "G-XJ7BW6EJQE";
 
 // 2026/9/5追加: サイト全体のSEO強化(⑤の一部)。運営組織の情報をGoogleに機械的に
 // 伝えるOrganizationの構造化データ(JSON-LD)。全ページ共通でheadに埋め込む。
