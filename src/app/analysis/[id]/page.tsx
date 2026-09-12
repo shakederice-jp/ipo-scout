@@ -60,17 +60,32 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const summary = co.analysis_summary?.summary ?? `${data.name}のIPO分析レポート。スコア・シナリオ・詳細分析を掲載。`;
   const score = co.analysis_summary?.total_score ?? "";
   const grade = co.analysis_summary?.grade ?? "";
-  const description = score
-    ? `総合スコア${score}/100（${grade}評価）。${summary.slice(0, 120)}`
-    : summary.slice(0, 150);
-  const title = `${data.name} IPO分析レポート｜大手町調査室九課`;
   const ticker = (data as any).ticker;
+
+  // 2026/9/12改修: 個別銘柄ページのSEO強化。「会社名 IPO」だけでなく「会社名 初値予想」
+  // 「会社名 上場日」という、実際に個人投資家が検索する語句にtitle/descriptionを合わせた。
+  // このページは1つの共通テンプレートのため、この変更だけで全銘柄(今後上場する銘柄も含む)
+  // に自動的に反映される。上場日は、目論見書以外の複数情報源で確認済み(listing_date_confirmed)
+  // の銘柄のみ実際の日付を出す(未確定の日付を断定表示しない、という既存のカウントダウン
+  // バッジと同じ方針を踏襲)。具体的な初値の予想数値は掲載していないため、「初値予想」という
+  // 検索語はtitleで受け止めつつ、description側では「初値シナリオ」という実態に即した言葉で
+  // 案内し、検索から来た人が期待と実態のズレで離脱しないようにしている。
+  const listingDateStr = co.listing_date_confirmed && data.listing_date
+    ? new Date(data.listing_date).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" })
+    : null;
+  const tickerPart = ticker ? `(${ticker})` : "";
+  const scheduleNote = listingDateStr ? `${listingDateStr}上場予定。` : "";
+  const description = (score
+    ? `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・総合スコア${score}/100（${grade}評価）を掲載。${summary}`
+    : `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・9軸スコアを掲載。${summary}`
+  ).slice(0, 160);
+  const title = `${data.name} IPO 上場日・初値シナリオ分析｜大手町調査室九課`;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
   return {
     title,
     description,
-    keywords: [`${data.name}`, "IPO分析", "IPOスコア", "目論見書", "初値予測", (data as any).sector ?? ""].filter(Boolean),
+    keywords: [`${data.name}`, "IPO分析", "初値予想", "上場日", "IPOスコア", "目論見書", (data as any).sector ?? ""].filter(Boolean),
     openGraph: {
       title, description, url,
       siteName: "大手町調査室九課",
