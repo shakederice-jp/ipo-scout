@@ -49,7 +49,6 @@ export default function MyPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [deletingPortfolioId, setDeletingPortfolioId] = useState<string | null>(null);
-  const [deletingFavoriteCompanyId, setDeletingFavoriteCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     // 管理者プレビューモード（URLに?admin=1がある場合）
@@ -100,52 +99,39 @@ export default function MyPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 2026/9/6新設: マイポートフォリオ(100万円投資シミュレーション)から、
-  // ユーザー自身が不要になった銘柄を削除できるように。
-  const handleDeletePortfolio = async (companyId: string, name: string) => {
+  // 2026/9/12改修: 「マイポートフォリオ」と「お気に入り銘柄」の削除ボタンを統合。
+  // 銘柄がvirtual_investments(100万円シミュレーション追跡)・favorite_companies
+  // (お気に入り登録)のどちらか、または両方に登録されている可能性があるため、
+  // 該当する方だけ(両方登録されていれば両方)を削除する。
+  const handleRemovePortfolioItem = async (companyId: string, name: string, hasInvestment: boolean, hasFavorite: boolean) => {
     if (!confirm(`「${name}」をマイポートフォリオから削除しますか？（元に戻せません）`)) return;
     setDeletingPortfolioId(companyId);
     try {
-      const res = await fetch("/api/portfolio", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        alert(json.error ?? "削除に失敗しました");
+      const tasks: Promise<Response>[] = [];
+      if (hasInvestment) {
+        tasks.push(fetch("/api/portfolio", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId }),
+        }));
+      }
+      if (hasFavorite) {
+        tasks.push(fetch(`/api/favorite-companies?companyId=${companyId}`, { method: "DELETE" }));
+      }
+      const results = await Promise.all(tasks);
+      if (results.some((r) => !r.ok)) {
+        alert("削除に失敗しました");
         return;
       }
       setData((prev: any) => ({
         ...prev,
         virtualInvestments: (prev?.virtualInvestments ?? []).filter((v: any) => v.company_id !== companyId),
-      }));
-    } catch {
-      alert("通信エラーが発生しました");
-    } finally {
-      setDeletingPortfolioId(null);
-    }
-  };
-
-  // 2026/9/12新設: 「お気に入り銘柄」からユーザー自身が登録解除できるように。
-  const handleRemoveFavoriteCompany = async (companyId: string, name: string) => {
-    if (!confirm(`「${name}」をお気に入り銘柄から解除しますか？`)) return;
-    setDeletingFavoriteCompanyId(companyId);
-    try {
-      const res = await fetch(`/api/favorite-companies?companyId=${companyId}`, { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok) {
-        alert(json.error ?? "解除に失敗しました");
-        return;
-      }
-      setData((prev: any) => ({
-        ...prev,
         favoriteCompanies: (prev?.favoriteCompanies ?? []).filter((f: any) => f.company_id !== companyId),
       }));
     } catch {
       alert("通信エラーが発生しました");
     } finally {
-      setDeletingFavoriteCompanyId(null);
+      setDeletingPortfolioId(null);
     }
   };
 
@@ -265,6 +251,39 @@ export default function MyPage() {
     setNotifyState((prev: any) => ({ ...prev, [key]: !prev?.[key] }));
   };
 
+  // 2026/9/12改修: 「マイポートフォリオ(100万円投資シミュレーション)」と「お気に入り銘柄」を
+  // 1つの一覧に統合。上場前は「上場予定日」表示、上場後は「公募¥→現在¥」の投資
+  // シミュレーション表示に自動的に切り替える(ユーザー指示: 2つを分ける意味がなくなったため)。
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const portfolioMap = new Map<string, any>();
+  (data.virtualInvestments ?? []).forEach((v: any) => {
+    portfolioMap.set(v.company_id, {
+      companyId: v.company_id,
+      company: v.ipo_companies ?? {},
+      investedAmount: v.invested_amount ?? 1000000,
+      entryPrice: v.entry_price,
+      hasInvestment: true,
+      hasFavorite: false,
+    });
+  });
+  (data.favoriteCompanies ?? []).forEach((f: any) => {
+    const existing = portfolioMap.get(f.company_id);
+    if (existing) {
+      existing.hasFavorite = true;
+    } else {
+      const c = f.ipo_companies ?? {};
+      portfolioMap.set(f.company_id, {
+        companyId: f.company_id,
+        company: c,
+        investedAmount: 1000000,
+        entryPrice: c.ipo_price ?? null,
+        hasInvestment: false,
+        hasFavorite: true,
+      });
+    }
+  });
+  const portfolioItems = Array.from(portfolioMap.values());
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f4fbfc", fontFamily: "'Noto Sans JP',sans-serif" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px 48px" }}>
@@ -320,28 +339,58 @@ export default function MyPage() {
           </div>
         </Section>
 
-        {/* 2.5 マイポートフォリオ(100万円投資シミュレーション) 2026/9/6新設 */}
-        {(data.virtualInvestments ?? []).length > 0 && (
+        {/* 2.5 マイポートフォリオ（100万円投資シミュレーション） 2026/9/6新設、2026/9/12改修:
+            従来の「マイポートフォリオ」(virtual_investments、追跡開始が必要)と
+            「お気に入り銘柄」(favorite_companies、上場前から登録可)を1つの一覧に統合。
+            上場前の銘柄は「上場予定日」、上場済みの銘柄は「公募¥→現在¥」の
+            投資シミュレーション表示に自動的に切り替わる。 */}
+        {portfolioItems.length > 0 && (
           <Section icon={<TrendingUp size={16} />} title="マイポートフォリオ（100万円投資シミュレーション）">
             <p style={{ fontSize: 11, color: "#64748b", marginBottom: 14, lineHeight: 1.6 }}>
-              各銘柄に公募価格で100万円ずつ投資したと仮定した場合の、現在の評価額です（銘柄ごとに独立した試算で、実際の売買ではありません）。
+              気になる銘柄・投資を追跡中の銘柄の一覧です。上場後は、公募価格で100万円ずつ投資したと仮定した場合の現在の評価額を表示します（銘柄ごとに独立した試算で、実際の売買ではありません）。
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {(data.virtualInvestments ?? []).map((v: any) => {
-                const c = v.ipo_companies ?? {};
-                const invested = v.invested_amount ?? 1000000;
-                const entryPrice = v.entry_price;
-                const latest = data.latestPrices?.[v.company_id];
+              {portfolioItems.map((item) => {
+                const c = item.company;
+                const isListed = !!c.listing_date && c.listing_date <= todayStr;
+                const entryPrice = item.entryPrice ?? c.ipo_price ?? null;
+
+                // 上場前(または上場済みでも公募価格が未確定)の銘柄: シンプルなカード表示
+                if (!isListed || !entryPrice) {
+                  return (
+                    <div key={item.companyId}
+                      style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                          {[c.exchange, c.sector].filter(Boolean).join("・")}
+                          {isListed ? (c.listing_date ? `（上場日：${c.listing_date}・公募価格未確定）` : "") : (c.listing_date ? `（上場予定日：${c.listing_date}）` : "")}
+                        </div>
+                      </a>
+                      <button
+                        onClick={() => handleRemovePortfolioItem(item.companyId, c.name ?? "この銘柄", item.hasInvestment, item.hasFavorite)}
+                        disabled={deletingPortfolioId === item.companyId}
+                        title="マイポートフォリオから削除"
+                        style={{ background: "none", border: "none", cursor: deletingPortfolioId === item.companyId ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                }
+
+                // 上場済みの銘柄: 公募¥→現在¥の投資シミュレーション表示
+                const invested = item.investedAmount ?? 1000000;
+                const latest = data.latestPrices?.[item.companyId];
                 const currentPrice = latest?.price ?? entryPrice;
                 const currentValue = entryPrice > 0 ? Math.round((invested / entryPrice) * currentPrice) : invested;
                 const pnl = currentValue - invested;
                 const pnlPercent = invested > 0 ? Math.round((pnl / invested) * 1000) / 10 : 0;
                 const isGain = pnl >= 0;
                 return (
-                  <div key={v.id}
+                  <div key={item.companyId}
                     style={{ padding: "12px 14px", backgroundColor: isGain ? "#f0fdf4" : "#fef2f2", borderRadius: 10, border: `1px solid ${isGain ? "#bbf7d0" : "#fecaca"}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <a href={`/analysis/${v.company_id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                      <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
                         <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
                           公募¥{entryPrice?.toLocaleString()} → 現在¥{currentPrice?.toLocaleString()}
@@ -349,7 +398,7 @@ export default function MyPage() {
                         </div>
                       </a>
                       <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                        <a href={`/analysis/${v.company_id}`} style={{ textDecoration: "none" }}>
+                        <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none" }}>
                           <div style={{ fontSize: 14, fontWeight: 900, color: isGain ? "#15803d" : "#b91c1c" }}>
                             {isGain ? "+" : ""}{pnlPercent}%
                           </div>
@@ -358,44 +407,14 @@ export default function MyPage() {
                           </div>
                         </a>
                         <button
-                          onClick={() => handleDeletePortfolio(v.company_id, c.name ?? "この銘柄")}
-                          disabled={deletingPortfolioId === v.company_id}
+                          onClick={() => handleRemovePortfolioItem(item.companyId, c.name ?? "この銘柄", item.hasInvestment, item.hasFavorite)}
+                          disabled={deletingPortfolioId === item.companyId}
                           title="マイポートフォリオから削除"
-                          style={{ background: "none", border: "none", cursor: deletingPortfolioId === v.company_id ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
+                          style={{ background: "none", border: "none", cursor: deletingPortfolioId === item.companyId ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
-
-        {/* 2.6 お気に入り銘柄 2026/9/12新設: virtual_investments(公募価格確定後のみ)と違い、
-            上場前の「気になる」段階から登録できる軽量なブックマーク一覧。無料会員でも利用可。 */}
-        {(data.favoriteCompanies ?? []).length > 0 && (
-          <Section icon={<span style={{ fontSize: 15 }}>⭐</span>} title="お気に入り銘柄">
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {(data.favoriteCompanies ?? []).map((f: any) => {
-                const c = f.ipo_companies ?? {};
-                return (
-                  <div key={f.id}
-                    style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <a href={`/analysis/${f.company_id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
-                      <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
-                        {[c.exchange, c.sector].filter(Boolean).join("・")}{c.listing_date ? `（上場予定日：${c.listing_date}）` : ""}
-                      </div>
-                    </a>
-                    <button
-                      onClick={() => handleRemoveFavoriteCompany(f.company_id, c.name ?? "この銘柄")}
-                      disabled={deletingFavoriteCompanyId === f.company_id}
-                      title="お気に入り銘柄から解除"
-                      style={{ background: "none", border: "none", cursor: deletingFavoriteCompanyId === f.company_id ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 );
               })}

@@ -43,21 +43,37 @@ export async function GET() {
     .gte("note_date", threeMonthsAgo.toISOString().slice(0, 10))
     .order("note_date", { ascending: false });
 
-  // 2026/9/6新設: 「100万円投資シミュレーション」機能。ユーザーが追跡中の
-  // 仮想投資一覧と、各銘柄の最新株価(stock_price_history)を合わせて返す。
+  // 2026/9/6新設: 「100万円投資シミュレーション」機能。ユーザーが追跡中の仮想投資一覧。
   const { data: virtualInvestments } = await serviceSupabase
     .from("virtual_investments")
     .select("*, ipo_companies(id, name, ticker, ipo_price, listing_date)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
+  // 2026/9/12新設: 「この銘柄をマイページにお気に入り登録する」機能(お気に入り銘柄)。
+  // virtual_investments(公募価格確定後のみ)と違い、上場前の「気になる」段階から
+  // 登録できる軽量なブックマーク一覧。無料会員でも利用可(api/favorite-companies参照)。
+  // 2026/9/12追記: マイポートフォリオ表示と統合したため、上場後は「公募→現在」の
+  // シミュレーション表示に切り替えられるよう ipo_price も取得するようにした。
+  const { data: favoriteCompanies } = await serviceSupabase
+    .from("favorite_companies")
+    .select("id, company_id, created_at, ipo_companies(id, name, listing_date, sector, exchange, ipo_price)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  // 2026/9/12改修: マイポートフォリオとお気に入り銘柄を1つの表示に統合したため、
+  // 株価取得の対象もこの2つのcompany_idの和集合にする(以前はvirtual_investments分のみ)。
+  const priceTargetCompanyIds = Array.from(new Set([
+    ...(virtualInvestments ?? []).map((v) => v.company_id),
+    ...(favoriteCompanies ?? []).map((f) => f.company_id),
+  ]));
+
   let latestPrices: Record<string, { price: number; price_date: string }> = {};
-  if (virtualInvestments && virtualInvestments.length > 0) {
-    const companyIds = virtualInvestments.map((v) => v.company_id);
+  if (priceTargetCompanyIds.length > 0) {
     const { data: historyRows } = await serviceSupabase
       .from("stock_price_history")
       .select("company_id, price, price_date")
-      .in("company_id", companyIds)
+      .in("company_id", priceTargetCompanyIds)
       .order("price_date", { ascending: false });
 
     // company_idごとに最新(price_date降順の先頭)の1件だけを残す
@@ -67,15 +83,6 @@ export async function GET() {
       }
     }
   }
-
-  // 2026/9/12新設: 「この銘柄をマイページにお気に入り登録する」機能(お気に入り銘柄)。
-  // virtual_investments(公募価格確定後のみ)と違い、上場前の「気になる」段階から
-  // 登録できる軽量なブックマーク一覧。無料会員でも利用可(api/favorite-companies参照)。
-  const { data: favoriteCompanies } = await serviceSupabase
-    .from("favorite_companies")
-    .select("id, company_id, created_at, ipo_companies(id, name, listing_date, sector, exchange)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
 
   return NextResponse.json({
     email, profile,
