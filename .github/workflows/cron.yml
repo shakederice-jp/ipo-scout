@@ -8,6 +8,7 @@ on:
     - cron: '0 3 * * *'
     - cron: '0 9 * * *'
     - cron: '0 9 * * 1,3,5'
+    - cron: '0 16 * * *'
   workflow_dispatch:
 
 jobs:
@@ -52,3 +53,10 @@ jobs:
     steps:
       - name: Generate X Post Drafts
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/generate-x-drafts -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  detect-scraping:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Detect Paid Content Scraping
+        run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-scraping -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"

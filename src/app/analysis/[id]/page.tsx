@@ -21,13 +21,14 @@ async function fetchCompany(id: string) {
 
 // この銘柄をこのユーザーが閲覧できるかどうかを判定する
 // (無料枠の銘柄 / ログイン済みかつ有料プラン加入 / ログイン済みかつ単品購入済み のいずれか)
-async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<boolean> {
-  if (isFreeCompany) return true;
+// 2026/9/12改修: スクレイピング早期検知(paid_access_logs)のためuser_idも返すよう変更。
+async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<{ hasAccess: boolean; userId: string | null }> {
+  if (isFreeCompany) return { hasAccess: true, userId: null };
 
   const routeClient = await createSupabaseRouteClient();
-  if (!routeClient) return false;
+  if (!routeClient) return { hasAccess: false, userId: null };
   const { data: { session } } = await routeClient.auth.getSession();
-  if (!session) return false;
+  if (!session) return { hasAccess: false, userId: null };
 
   const serviceSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +41,7 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<b
     .eq("id", session.user.id)
     .single();
 
-    if (profile?.plan && ["report", "complete"].includes(profile.plan)) return true;
+    if (profile?.plan && ["report", "complete"].includes(profile.plan)) return { hasAccess: true, userId: session.user.id };
 
   const { data: purchase } = await serviceSupabase
     .from("purchased_stocks")
@@ -49,7 +50,7 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<b
     .eq("company_id", companyId)
     .maybeSingle();
 
-  return !!purchase;
+  return { hasAccess: !!purchase, userId: session.user.id };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -137,8 +138,24 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
 
   // 無料公開対象の銘柄かどうか(月初3銘柄まで)はfetchIpoCompanies側で計算済み
   const isFreeCompany = (allCompanies as any[] | null)?.find((c) => c.id === company.id)?.is_free ?? false;
-  const hasAccess = await checkAccess(company.id, isFreeCompany);
+  const { hasAccess, userId } = await checkAccess(company.id, isFreeCompany);
   console.error("課金判定診断:", "company.id=", company.id, "isFreeCompany=", isFreeCompany, "hasAccess=", hasAccess);
+
+  // 2026/9/12追加: 有料コンテンツの不正スクレイピング早期検知のため、実際に有料コンテンツへの
+  // アクセス権が発生したケース(無料公開銘柄を除く)をpaid_access_logsに記録する。
+  // 集計・異常検知は別のcron(/api/cron/detect-scraping、1日1回)でまとめて行う設計にし、
+  // ここでは書き込みのみ(失敗してもページ表示に影響しないようtry/catchで握りつぶす)。
+  if (hasAccess && !isFreeCompany && userId) {
+    try {
+      const logSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      await logSupabase.from("paid_access_logs").insert({ user_id: userId, company_id: company.id });
+    } catch (e) {
+      console.error("paid_access_logsへの記録失敗:", e);
+    }
+  }
 
   // アクセス権が無い場合は、要約・スコアなどの「無料プレビュー」部分だけ残し、
   // 詳細分析(軸別スコア・シナリオ・インサイト)はクライアントに一切送らない

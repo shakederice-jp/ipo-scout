@@ -18,13 +18,17 @@ async function fetchCompany(id: string) {
   return { data, error };
 }
 
-async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<boolean> {
-  if (isFreeCompany) return true;
+// 2026/9/12改修: スクレイピング早期検知(paid_access_logs)のためuser_idも返すよう変更。
+// 通常版(src/app/analysis/[id]/page.tsx)と同じ改修を、こちらの初心者向けページにも適用
+// (このページ経由でも有料コンテンツにアクセスできるため、片方だけ対応すると
+// もう片方が抜け道になってしまう)。
+async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<{ hasAccess: boolean; userId: string | null }> {
+  if (isFreeCompany) return { hasAccess: true, userId: null };
 
   const routeClient = await createSupabaseRouteClient();
-  if (!routeClient) return false;
+  if (!routeClient) return { hasAccess: false, userId: null };
   const { data: { session } } = await routeClient.auth.getSession();
-  if (!session) return false;
+  if (!session) return { hasAccess: false, userId: null };
 
   const serviceSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +41,7 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<b
     .eq("id", session.user.id)
     .single();
 
-  if (profile?.plan && ["report", "complete"].includes(profile.plan)) return true;
+  if (profile?.plan && ["report", "complete"].includes(profile.plan)) return { hasAccess: true, userId: session.user.id };
 
   const { data: purchase } = await serviceSupabase
     .from("purchased_stocks")
@@ -46,7 +50,7 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<b
     .eq("company_id", companyId)
     .maybeSingle();
 
-  return !!purchase;
+  return { hasAccess: !!purchase, userId: session.user.id };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -113,7 +117,7 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
   }
 
   const isFreeCompany = (allCompanies as any[] | null)?.find((c) => c.id === company.id)?.is_free ?? false;
-  const hasAccess = await checkAccess(company.id, isFreeCompany);
+  const { hasAccess, userId } = await checkAccess(company.id, isFreeCompany);
 
   if (initialAnalysis && !hasAccess) {
     initialAnalysis = {
@@ -125,6 +129,26 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
       long_grade: initialAnalysis.long_grade,
       is_new_format: initialAnalysis.is_new_format,
     };
+  }
+
+  // 2026/9/12追加: 通常版page.tsxと同じ2つの対応をこちらにも適用。
+  // ①長期の強み・差別化(STEP8 long_term_strength)は有料限定のため、無料ユーザーには
+  // このキーだけ取り除いたcompanyを渡す。②実際に有料コンテンツへアクセスできたケースを
+  // paid_access_logsに記録し、スクレイピングの早期検知(/api/cron/detect-scraping)に使う。
+  const companyForClient = hasAccess || !co.analysis_deep_dive
+    ? company
+    : { ...co, analysis_deep_dive: { ...co.analysis_deep_dive, long_term_strength: undefined } };
+
+  if (hasAccess && !isFreeCompany && userId) {
+    try {
+      const logSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      await logSupabase.from("paid_access_logs").insert({ user_id: userId, company_id: company.id });
+    } catch (e) {
+      console.error("paid_access_logsへの記録失敗:", e);
+    }
   }
 
   const ticker = co.ticker;
@@ -152,7 +176,7 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <AnalysisClient
-        company={company as any}
+        company={companyForClient as any}
         initialAnalysis={initialAnalysis}
         visualizationData={hasAccess ? visualizationData : null}
         allCompanies={allCompanies as any[]}

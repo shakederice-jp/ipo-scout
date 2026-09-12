@@ -33,12 +33,15 @@ export default function Footer() {
         <span style={{ color: "#e2e8f0" }}>|</span>
         <a href="/privacy" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>プライバシーポリシー</a>
         <span style={{ color: "#e2e8f0" }}>|</span>
+        {/* 2026/9/12新設: 転載・スクレイピング禁止等を明記した利用規約ページへのリンクを追加 */}
+        <a href="/terms" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>利用規約</a>
+        <span style={{ color: "#e2e8f0" }}>|</span>
         <a href="/contact" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>お問い合わせ</a>
       </div>
       <p style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>
         本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br />
         最終的な投資判断はご自身の責任のもとで行ってください。<br />
-        © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製を禁じます。
+        © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製・スクレイピングを禁じます（<a href="/terms" style={{ color: "#94a3b8" }}>利用規約</a>）。
       </p>
     </footer>
   );
