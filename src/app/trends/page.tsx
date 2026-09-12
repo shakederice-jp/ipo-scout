@@ -114,7 +114,7 @@ export default function TrendsPage() {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
-  // お気に入り保存(有料プラン会員限定)のボタン状態と通知トースト
+  // お気に入り保存(2026/9/12〜無料会員も利用可)のボタン状態と通知トースト
   const [favoriteStatus, setFavoriteStatus] = useState<Record<string, "saving" | "saved">>({});
   const [favoriteMessage, setFavoriteMessage] = useState<string | null>(null);
 
@@ -146,9 +146,9 @@ export default function TrendsPage() {
         }),
       });
       if (res.status === 401) {
-        setFavoriteMessage("お気に入り保存にはログインが必要です");
+        setFavoriteMessage("お気に入り保存には無料会員登録（ログイン）が必要です");
       } else if (res.status === 403) {
-        setFavoriteMessage("お気に入り保存は有料プラン会員限定の機能です(記事の単体購入のみの方は対象外です)");
+        setFavoriteMessage("お気に入り保存ができませんでした。時間をおいて再度お試しください");
       } else if (!res.ok) {
         setFavoriteMessage("保存に失敗しました。時間をおいて再度お試しください");
       } else {
@@ -472,7 +472,7 @@ export default function TrendsPage() {
             <div style={{ padding: "0 14px 14px" }}>
               <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, lineHeight: 1.6 }}>
                 ※「今日の最新記事」欄は直近20件までの表示です。それより前の記事も、上のカテゴリーから各カテゴリー直近60件まで遡って読めます(それより古い記事は一覧に出ません)。<br />
-                有料プラン会員は、記事を「お気に入り」に保存して期限なく読み返せます(記事の単体購入のみの方は対象外です)。
+                無料会員登録すれば、記事を「お気に入り」に保存して期限なく読み返せます。
               </p>
             </div>
           </div>
@@ -480,7 +480,7 @@ export default function TrendsPage() {
           <a href="/trends/favorites" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #f59e0b" }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 900, color: "#082b2e" }}>⭐ お気に入り記事</div>
-              <div style={{ fontSize: 10, color: "#d97706", marginTop: 2 }}>保存した記事を読み返す(有料プラン会員限定)</div>
+              <div style={{ fontSize: 10, color: "#d97706", marginTop: 2 }}>保存した記事を読み返す(無料会員から利用可)</div>
             </div>
             <span style={{ fontSize: 16, color: "#f59e0b" }}>→</span>
           </a>

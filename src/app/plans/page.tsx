@@ -58,8 +58,8 @@ const plans = [
     period: "/月",
     color: "#7c3aed",
     bg: "#f5f3ff",
-    border: "#ddd6fe",
-    badge: null,
+    border: "#7c3aed",
+    badge: "🔥 一番人気",
     target: "毎月すべての銘柄を研究したい方・情報量重視の方",
     features: [
       { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
@@ -132,9 +132,9 @@ export default function PlansPage() {
         {/* プランカード */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
           {plans.map(plan => (
-            <div key={plan.id} style={{ backgroundColor: "white", borderRadius: 20, border: `2px solid ${plan.border}`, overflow: "hidden", boxShadow: plan.badge ? "0 4px 24px rgba(102,195,198,0.2)" : "0 2px 8px rgba(0,0,0,0.06)", position: "relative" }}>
+            <div key={plan.id} style={{ backgroundColor: "white", borderRadius: 20, border: `2px solid ${plan.border}`, overflow: "hidden", boxShadow: plan.badge ? `0 4px 24px ${plan.color}33` : "0 2px 8px rgba(0,0,0,0.06)", position: "relative" }}>
               {plan.badge && (
-                <div style={{ backgroundColor: C.teal, color: C.dark, fontSize: 11, fontWeight: 900, textAlign: "center", padding: "6px 0" }}>
+                <div style={{ backgroundColor: plan.color, color: "white", fontSize: 11, fontWeight: 900, textAlign: "center", padding: "6px 0" }}>
                   {plan.badge}
                 </div>
               )}

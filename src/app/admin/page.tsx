@@ -108,7 +108,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
       const data = await res.json();
-      setStep("2", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社`);
+      setStep("2", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社・${data.listing_date_note??""}`);
     } catch { setStep("2", false, "❌ 通信エラー"); }
   };
 

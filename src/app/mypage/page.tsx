@@ -49,6 +49,7 @@ export default function MyPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [deletingPortfolioId, setDeletingPortfolioId] = useState<string | null>(null);
+  const [deletingFavoriteCompanyId, setDeletingFavoriteCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     // 管理者プレビューモード（URLに?admin=1がある場合）
@@ -123,6 +124,28 @@ export default function MyPage() {
       alert("通信エラーが発生しました");
     } finally {
       setDeletingPortfolioId(null);
+    }
+  };
+
+  // 2026/9/12新設: 「お気に入り銘柄」からユーザー自身が登録解除できるように。
+  const handleRemoveFavoriteCompany = async (companyId: string, name: string) => {
+    if (!confirm(`「${name}」をお気に入り銘柄から解除しますか？`)) return;
+    setDeletingFavoriteCompanyId(companyId);
+    try {
+      const res = await fetch(`/api/favorite-companies?companyId=${companyId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "解除に失敗しました");
+        return;
+      }
+      setData((prev: any) => ({
+        ...prev,
+        favoriteCompanies: (prev?.favoriteCompanies ?? []).filter((f: any) => f.company_id !== companyId),
+      }));
+    } catch {
+      alert("通信エラーが発生しました");
+    } finally {
+      setDeletingFavoriteCompanyId(null);
     }
   };
 
@@ -343,6 +366,36 @@ export default function MyPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* 2.6 お気に入り銘柄 2026/9/12新設: virtual_investments(公募価格確定後のみ)と違い、
+            上場前の「気になる」段階から登録できる軽量なブックマーク一覧。無料会員でも利用可。 */}
+        {(data.favoriteCompanies ?? []).length > 0 && (
+          <Section icon={<span style={{ fontSize: 15 }}>⭐</span>} title="お気に入り銘柄">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(data.favoriteCompanies ?? []).map((f: any) => {
+                const c = f.ipo_companies ?? {};
+                return (
+                  <div key={f.id}
+                    style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <a href={`/analysis/${f.company_id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
+                      <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                        {[c.exchange, c.sector].filter(Boolean).join("・")}{c.listing_date ? `（上場予定日：${c.listing_date}）` : ""}
+                      </div>
+                    </a>
+                    <button
+                      onClick={() => handleRemoveFavoriteCompany(f.company_id, c.name ?? "この銘柄")}
+                      disabled={deletingFavoriteCompanyId === f.company_id}
+                      title="お気に入り銘柄から解除"
+                      style={{ background: "none", border: "none", cursor: deletingFavoriteCompanyId === f.company_id ? "default" : "pointer", padding: 2, color: "#94a3b8", flexShrink: 0 }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 );
               })}

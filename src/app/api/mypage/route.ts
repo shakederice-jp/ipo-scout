@@ -68,6 +68,15 @@ export async function GET() {
     }
   }
 
+  // 2026/9/12新設: 「この銘柄をマイページにお気に入り登録する」機能(お気に入り銘柄)。
+  // virtual_investments(公募価格確定後のみ)と違い、上場前の「気になる」段階から
+  // 登録できる軽量なブックマーク一覧。無料会員でも利用可(api/favorite-companies参照)。
+  const { data: favoriteCompanies } = await serviceSupabase
+    .from("favorite_companies")
+    .select("id, company_id, created_at, ipo_companies(id, name, listing_date, sector, exchange)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
   return NextResponse.json({
     email, profile,
     referralLogs: referralLogs ?? [],
@@ -76,5 +85,6 @@ export async function GET() {
     calendarNotes: calendarNotes ?? [],
     virtualInvestments: virtualInvestments ?? [],
     latestPrices,
+    favoriteCompanies: favoriteCompanies ?? [],
   });
 }

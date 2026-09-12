@@ -45,7 +45,7 @@ export default function FavoriteArticlesPage() {
             <h1 style={{ fontSize: 20, fontWeight: 900, color: "#082b2e", margin: 0 }}>お気に入り記事</h1>
           </div>
           <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-            保存した記事は期限なくいつでも読み返せます(有料プラン会員限定・記事の単体購入のみの方は対象外です)
+            保存した記事は期限なくいつでも読み返せます(無料会員登録から利用できます)
           </p>
         </div>
 
@@ -66,8 +66,7 @@ export default function FavoriteArticlesPage() {
         {status === "not_premium" && (
           <div style={{ background: "white", borderRadius: 12, padding: 24, border: "1px solid #e2e8f0", textAlign: "center" }}>
             <p style={{ fontSize: 13, color: "#374151", margin: "0 0 16px", lineHeight: 1.8 }}>
-              お気に入り保存は有料プラン会員限定の機能です。<br />
-              (記事を1本購入しただけの方は対象外です)
+              お気に入りの読み込みに失敗しました。時間をおいて再度お試しください。
             </p>
             <Link href="/plans"
               style={{ fontSize: 13, fontWeight: 700, color: "white", backgroundColor: "#f59e0b", padding: "10px 20px", borderRadius: 8, textDecoration: "none" }}>

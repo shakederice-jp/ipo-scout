@@ -11,6 +11,7 @@ type Company = {
   sector?: string;
   exchange?: string;
   listing_date: string;
+  listing_date_confirmed?: boolean;
   ai_summary?: string;
   is_free?: boolean;
   lockup_90_date?: string | null;
@@ -528,7 +529,7 @@ export default function CalendarClient() {
                           </div>
                           {hasSim && (
                             <div style={{ marginTop:8, marginLeft:32, padding:"8px 12px", borderRadius:10, backgroundColor: isUp ? "#f0fdf4" : "#fef2f2", border: `1px solid ${isUp ? "#bbf7d0" : "#fecaca"}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"2px 10px" }}>
-                              <span style={{ fontSize:11, fontWeight:700, color: isUp ? "#166534" : "#991b1b" }}>💰 {lang === "ja" ? "100万円投資なら現在、" : "$1M invested → now:"}</span>
+                              <span style={{ fontSize:11, fontWeight:700, color: isUp ? "#166534" : "#991b1b" }}>💰 {lang === "ja" ? "公募価格で100万円買っていたら現在、" : "If bought $1M at IPO price → now:"}</span>
                               <span style={{ fontSize:18, fontWeight:900, color: isUp ? "#15803d" : "#b91c1c", whiteSpace:"nowrap" }}>
                                 ¥{simValue!.toLocaleString()}
                                 <span style={{ fontSize:12 }}>{"（"}{isUp ? "+" : ""}{simPct}%{"）"}</span>
@@ -538,10 +539,24 @@ export default function CalendarClient() {
                         </>
                       );
                     }
+                    // 2026/9/12新設: 「上場まであと○日」カウントダウン(赤枠・白抜き文字)。
+                    // 上場予定日がネット情報で確認済み(listing_date_confirmed)の銘柄のみ表示する。
+                    // 未確認のまま日程が動いた場合に信用を落とすのを避けるため、未確認銘柄は
+                    // 従来通り日付のみの表示にとどめる(ユーザー要望に基づく設計)。
+                    const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
                     return (
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, marginLeft:32 }}>
-                        <span style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</span>
-                        <span style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</span>
+                      <div style={{ marginTop:8, marginLeft:32 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <span style={{ fontSize:10, color:C.muted }}>{lang === "ja" ? "上場予定日" : "Listing Date"}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:C.nav }}>{dateStr}</span>
+                        </div>
+                        {company.listing_date_confirmed && (
+                          <span style={{ display:"inline-block", marginTop:6, fontSize:11, fontWeight:900, color:"white", backgroundColor:"#dc2626", border:"1.5px solid #dc2626", borderRadius:6, padding:"2px 10px" }}>
+                            {daysLeft <= 0
+                              ? (lang === "ja" ? "本日上場！" : "Listing today!")
+                              : (lang === "ja" ? `上場まであと${daysLeft}日` : `${daysLeft} days to listing`)}
+                          </span>
+                        )}
                       </div>
                     );
                   })()}

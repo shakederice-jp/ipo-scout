@@ -10,10 +10,12 @@ const getServiceSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// お気に入り保存は「有料プラン会員」限定の機能。記事の単体購入(purchased_stocks)のみの
-// ユーザーは対象外とするため、user_profiles.plan が free 以外かどうかだけを見る
-// (/api/access のサブスク判定と同じロジック)。
-async function requirePremiumUser(): Promise<
+// 2026/9/12変更: お気に入り保存は、以前は「有料プラン会員」限定の機能だったが、
+// 無料ユーザーを増やすための導線見直しの一環で、ログインさえしていれば
+// 無料会員でも使えるように変更した(有料プランの判定は行わない)。
+// 関数名はrequireLoggedInUserに変更したが、呼び出し側の互換のため
+// 戻り値の形は変更していない。
+async function requireLoggedInUser(): Promise<
   | { userId: string; service: ReturnType<typeof getServiceSupabase> }
   | { error: NextResponse }
 > {
@@ -28,22 +30,11 @@ async function requirePremiumUser(): Promise<
   }
 
   const service = getServiceSupabase();
-  const { data: profile } = await service
-    .from("user_profiles")
-    .select("plan")
-    .eq("id", session.user.id)
-    .single();
-
-  const isPremium = !!profile?.plan && profile.plan !== "free";
-  if (!isPremium) {
-    return { error: NextResponse.json({ error: "not_premium" }, { status: 403 }) };
-  }
-
   return { userId: session.user.id, service };
 }
 
 export async function GET() {
-  const result = await requirePremiumUser();
+  const result = await requireLoggedInUser();
   if ("error" in result) return result.error;
 
   const { data, error } = await result.service
@@ -61,7 +52,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const result = await requirePremiumUser();
+  const result = await requireLoggedInUser();
   if ("error" in result) return result.error;
 
   const body = await req.json().catch(() => null);
@@ -95,7 +86,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const result = await requirePremiumUser();
+  const result = await requireLoggedInUser();
   if ("error" in result) return result.error;
 
   const marketTrendsId = req.nextUrl.searchParams.get("marketTrendsId");

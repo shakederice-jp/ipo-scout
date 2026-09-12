@@ -19,7 +19,7 @@ interface Analysis {
   axes:{ultra_short:AxisItem[];short:AxisItem[];long:AxisItem[]};
   sources:{label:string;url:string}[];
 }
-interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;lockup_90_date?:string;lockup_180_date?:string;initial_price?:number|null;price_change_rate?:number|null;status?:string|null; }
+interface IpoCompany { id:string;name:string;ticker?:string;exchange?:string;sector?:string;biz_type?:string;listing_date?:string;listing_date_confirmed?:boolean;lockup_90_date?:string;lockup_180_date?:string;initial_price?:number|null;price_change_rate?:number|null;status?:string|null; }
 
 const PRIMARY="#66c3c6",DARK="#082b2e",MID="#0d4f52",LIGHT="#e8f9f9",BORDER="#b3e8ea",TTEXT="#2a7a7e";
 
@@ -729,6 +729,54 @@ function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;or
   );
 }
 
+// 2026/9/12新設: 「この銘柄をマイページにお気に入り登録する」機能。公募価格が未確定の
+// 上場前の銘柄でも使える軽量なブックマーク(virtual_investmentsと違い、価格確定を待たずに
+// 「気になる」段階から登録できる)。無料会員でも利用可(api/favorite-companies参照)。
+function FavoriteCompanyButton({companyId,userId}:{companyId:string;userId:string|null}) {
+  const [status,setStatus]=useState<"loading"|"idle"|"saved"|"saving"|"removing">("loading");
+
+  useEffect(()=>{
+    if(!userId){ setStatus("idle"); return; }
+    let cancelled=false;
+    fetch(`/api/favorite-companies?companyId=${companyId}`)
+      .then(r=>r.json())
+      .then(d=>{ if(!cancelled) setStatus(d.favorited?"saved":"idle"); })
+      .catch(()=>{ if(!cancelled) setStatus("idle"); });
+    return ()=>{ cancelled=true; };
+  },[userId,companyId]);
+
+  if(!userId){
+    return (
+      <a href="/auth" style={{fontSize:11,fontWeight:700,color:"white",textDecoration:"none",backgroundColor:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.5)",borderRadius:20,padding:"6px 12px",display:"inline-flex",alignItems:"center",gap:4}}>
+        ☆ ログインしてお気に入り登録
+      </a>
+    );
+  }
+
+  const handleClick=async()=>{
+    if(status==="saved"){
+      setStatus("removing");
+      try{
+        await fetch(`/api/favorite-companies?companyId=${companyId}`,{method:"DELETE"});
+        setStatus("idle");
+      }catch{ setStatus("saved"); }
+    }else{
+      setStatus("saving");
+      try{
+        await fetch("/api/favorite-companies",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({companyId})});
+        setStatus("saved");
+      }catch{ setStatus("idle"); }
+    }
+  };
+
+  return (
+    <button onClick={handleClick} disabled={status==="loading"||status==="saving"||status==="removing"}
+      style={{fontSize:11,fontWeight:700,color:status==="saved"?"#78350f":"white",backgroundColor:status==="saved"?"#fef3c7":"rgba(255,255,255,0.2)",border:`1px solid ${status==="saved"?"#f59e0b":"rgba(255,255,255,0.5)"}`,borderRadius:20,padding:"6px 12px",display:"inline-flex",alignItems:"center",gap:4,cursor:status==="loading"?"default":"pointer"}}>
+      {status==="saved" ? "★ マイページのお気に入り銘柄に登録済み" : status==="saving" ? "登録中..." : status==="removing" ? "解除中..." : "☆ この銘柄をマイページにお気に入り登録する"}
+    </button>
+  );
+}
+
 // 2026/9/6新設: 「100万円投資シミュレーション」機能。上のシナリオ別試算テーブルは
 // AIが目論見書から予測した"仮想"レンジだが、こちらは公募価格で実際に100万円ぶん
 // 購入したと仮定し、上場後の"本物の"株価(Yahoo Financeから毎日取得・
@@ -807,6 +855,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
   const [userId,setUserId]=useState<string|null>(null);
+  // 2026/9/12新設: 「あなたの投資スタイル、どのタイプですか？」を実際の1問ミニクイズに変更。
+  // 選んだタイプに応じて、対応する9軸グループ(超短期/短期/長期)まで自動スクロールする。
+  const [quizAnswer,setQuizAnswer]=useState<"ultra_short"|"short"|"long"|null>(null);
 
   useEffect(()=>{
     const supabase=createSupabaseBrowserClient();
@@ -1030,6 +1081,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 </div>
                 <h1 style={{fontWeight:900,fontSize:24,color:DARK,lineHeight:1.2,margin:"0 0 4px"}}>{company.name}</h1>
                 {company.sector&&<div style={{fontWeight:600,fontSize:12,color:MID,marginBottom:10}}>{company.sector}</div>}
+                <div style={{marginBottom:10}}>
+                  <FavoriteCompanyButton companyId={company.id} userId={userId}/>
+                </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {company.listing_date&&(
                     <div style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:8,padding:"6px 10px"}}>
@@ -1037,6 +1091,21 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                       <div style={{fontWeight:900,fontSize:13,color:DARK}}>{company.listing_date}</div>
                     </div>
                   )}
+                  {/* 2026/9/12新設: 「上場まであと○日」カウントダウン。上場予定日がネット情報で
+                      確認済み(listing_date_confirmed)の銘柄のみ表示し、未確認銘柄は非表示のまま
+                      にする(日程が動いた場合に信用を落とさないため)。 */}
+                  {company.listing_date&&company.listing_date_confirmed&&(()=>{
+                    const today=new Date();today.setHours(0,0,0,0);
+                    const ld=new Date(company.listing_date);ld.setHours(0,0,0,0);
+                    const daysLeft=Math.ceil((ld.getTime()-today.getTime())/(1000*60*60*24));
+                    return (
+                      <div style={{display:"flex",alignItems:"center"}}>
+                        <span style={{fontSize:11,fontWeight:900,color:"white",backgroundColor:"#dc2626",border:"1.5px solid #dc2626",borderRadius:8,padding:"6px 10px"}}>
+                          {daysLeft>0?`上場まであと${daysLeft}日`:daysLeft===0?"本日上場！":"上場済み"}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {company.biz_type&&(
                     <div style={{backgroundColor:"rgba(255,255,255,0.85)",borderRadius:8,padding:"6px 10px"}}>
                       <div style={{fontSize:9,color:MID,fontWeight:700}}>業態</div>
@@ -1418,11 +1487,12 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               })}
            </div>
           </div>
-          {/* 2026/9/5: 「投資スタイル別」訴求の第1弾。従来は/ipo-guideへの小さなピル型リンクのみ
-              だったが、無料ユーザーに対して「この下の9軸分析を読む価値」を先に伝える目的で、
-              リード文(見出し+補足)を追加し、視覚的にも目立つカードに変更した。
-              あなたの投資スタイル(超短期/短期/長期)に合った判断軸がこの下にある、という
-              パーソナライズ訴求。既存の/ipo-guideへのリンクはCTAボタンとして残す。 */}
+          {/* 2026/9/5: 「投資スタイル別」訴求の第1弾。無料ユーザーに対して「この下の9軸分析を
+              読む価値」を先に伝える目的で、リード文(見出し+補足)を追加し、視覚的にも目立つ
+              カードに変更した。既存の/ipo-guideへのリンクはCTAボタンとして残す。
+              2026/9/12改訂: 単なる問いかけコピーから、実際に選べる1問ミニクイズに変更。
+              選んだ答えに応じて対応する9軸グループまで自動スクロールし、パーソナライズされた
+              体験にすることでエンゲージメントを高める狙い(⑧マーケティング施策)。 */}
           <div style={{padding:"18px 20px",background:"linear-gradient(135deg, #fff9ec 0%, #fef3c7 100%)",borderTop:`1px solid ${BORDER}`,borderBottom:`1px solid ${BORDER}`}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:14}}>
               <span style={{fontSize:22,lineHeight:1,flexShrink:0}}>💡</span>
@@ -1431,11 +1501,40 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   あなたの投資スタイル、どのタイプですか？
                 </div>
                 <p style={{fontSize:12,color:"#92400e",lineHeight:1.7,margin:0}}>
-                  「初値で売り抜けたい」「数週間〜数ヶ月で利益を取りたい」「数年単位でじっくり育てたい」——どのタイプでも、この下の9つの視点があなたの判断材料になります。
+                  1問だけ答えると、この銘柄のどの分析軸から読むべきかがわかります。
                 </p>
               </div>
             </div>
-            <div style={{display:"flex",justifyContent:"center"}}>
+            {!quizAnswer ? (
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>
+                {[
+                  {key:"ultra_short" as const,label:"⚡ 初値で売り抜けたい",sub:"超短期"},
+                  {key:"short"       as const,label:"📈 数週間〜数ヶ月で利益を取りたい",sub:"短期"},
+                  {key:"long"        as const,label:"🏛 数年単位でじっくり育てたい",sub:"長期"},
+                ].map(opt=>(
+                  <button key={opt.key}
+                    onClick={()=>{
+                      setQuizAnswer(opt.key);
+                      setTimeout(()=>{
+                        document.getElementById(`axis-${opt.key}`)?.scrollIntoView({behavior:"smooth",block:"start"});
+                      },50);
+                    }}
+                    style={{fontSize:12,fontWeight:700,color:"#92400e",backgroundColor:"white",border:"1.5px solid #f59e0b",borderRadius:20,padding:"10px 16px",cursor:"pointer"}}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{textAlign:"center"}}>
+                <p style={{fontSize:13,fontWeight:900,color:"#78350f",margin:"0 0 12px"}}>
+                  {(()=>{const g=GROUPS.find(g=>g.key===quizAnswer);return `あなたは「${g?.label}」タイプです。下の${g?.label}セクションが特に参考になります👇`;})()}
+                </p>
+                <button onClick={()=>setQuizAnswer(null)} style={{fontSize:11,color:"#92400e",background:"none",border:"none",textDecoration:"underline",cursor:"pointer",marginBottom:10}}>
+                  もう一度選び直す
+                </button>
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"center",marginTop:14}}>
               <a href="/ipo-guide" style={{fontSize:13,color:"white",textDecoration:"none",fontWeight:900,display:"flex",alignItems:"center",gap:8,padding:"12px 22px",borderRadius:22,backgroundColor:"#f59e0b",boxShadow:"0 3px 8px rgba(245,158,11,0.4)",textAlign:"center"}}>
                 <span style={{display:"flex",flexDirection:"column",lineHeight:1.5}}>
                   <span>IPO投資で資産を増やす</span>
@@ -1451,7 +1550,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               if(!items.length) return null;
               const avgScore=items.length?Math.round(items.reduce((s,x)=>s+x.score,0)/items.length):0;
               return (
-                <div key={g.key} style={{borderBottom:"1px solid #f1f5f9"}}>
+                <div key={g.key} id={`axis-${g.key}`} style={{borderBottom:"1px solid #f1f5f9"}}>
                   <div style={{backgroundColor:g.bg,borderBottom:`1px solid ${g.color}`,padding:"12px 16px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <span style={{fontSize:20,lineHeight:1}}>{g.icon}</span>
