@@ -102,47 +102,47 @@ export default function AdminPage() {
     } catch { setStep("1", false, "❌ 通信エラー"); }
   };
 
-  const handleStep7 = async () => {
-    if (!selectedCompany) return;
-    setStep("7", true);
-    try {
-      const res = await fetch("/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
-      const data = await res.json();
-      setStep("7", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社`);
-    } catch { setStep("7", false, "❌ 通信エラー"); }
-  };
-
   const handleStep2 = async () => {
     if (!selectedCompany) return;
     setStep("2", true);
     try {
-      const res = await fetch("/api/structure", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
+      const res = await fetch("/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
       const data = await res.json();
-      setStep("2", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
+      setStep("2", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社`);
     } catch { setStep("2", false, "❌ 通信エラー"); }
   };
 
   const handleStep3 = async () => {
     if (!selectedCompany) return;
     setStep("3", true);
+    try {
+      const res = await fetch("/api/structure", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
+      const data = await res.json();
+      setStep("3", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
+    } catch { setStep("3", false, "❌ 通信エラー"); }
+  };
+
+  const handleStep4 = async () => {
+    if (!selectedCompany) return;
+    setStep("4", true);
     const parts = [
-      { key:"score",     label:"①総合スコア" },
-      { key:"insights",  label:"②まずここに注目" },
-      { key:"scenarios", label:"③株価シナリオ" },
+      { key:"score",     label:"総合スコア" },
+      { key:"insights",  label:"まずここに注目" },
+      { key:"scenarios", label:"株価シナリオ" },
     ];
     const merged: Record<string, any> = {};
     for (let i = 0; i < parts.length; i++) {
       const p = parts[i];
-      setStepResult(prev => ({...prev, "3": `⏳ ${p.label} 生成中 (${i+1}/${parts.length+1})...`}));
+      setStepResult(prev => ({...prev, "4": `⏳ ${p.label} 生成中 (${i+1}/${parts.length+1})...`}));
       try {
         const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:p.key }) });
         const data = await res.json();
-        if (data.error) { setStep("3", false, `❌ ${p.label}: ${data.error}`); return; }
+        if (data.error) { setStep("4", false, `❌ ${p.label}: ${data.error}`); return; }
         Object.assign(merged, data);
-      } catch { setStep("3", false, `❌ ${p.label}: 通信エラー`); return; }
+      } catch { setStep("4", false, `❌ ${p.label}: 通信エラー`); return; }
     }
-    // ④まずここに注目・初心者向けリライト（別呼び出しにして負荷分散）
-    setStepResult(prev => ({...prev, "3": `⏳ ④まずここに注目（初心者向け）生成中 (4/4)...`}));
+    // まずここに注目・初心者向けリライト（別呼び出しにして負荷分散）
+    setStepResult(prev => ({...prev, "4": `⏳ まずここに注目（初心者向け）生成中 (4/4)...`}));
     try {
       const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:"insights_beginner", insights:merged.insights ?? [] }) });
       const data = await res.json();
@@ -151,25 +151,25 @@ export default function AdminPage() {
       }
     } catch { /* 初心者向けリライト失敗は致命的ではないため、通常保存は続行する */ }
 
-    setStepResult(prev => ({...prev, "3": "⏳ 保存中..."}));
+    setStepResult(prev => ({...prev, "4": "⏳ 保存中..."}));
     try {
       const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
-      if (saveData.error) { setStep("3", false, `❌ 保存エラー: ${saveData.error}`); return; }
-      setStep("3", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
+      if (saveData.error) { setStep("4", false, `❌ 保存エラー: ${saveData.error}`); return; }
+      setStep("4", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
       return;
-    } catch { setStep("3", false, "❌ 保存通信エラー"); return; }
+    } catch { setStep("4", false, "❌ 保存通信エラー"); return; }
   };
 
   // 2026/9/4追加: STEP 8｜深掘り3要素(ビジネスモデル・ストーリー・競合との違い)。
   // タイムアウト対策として2つの独立したpartに分け、片方が失敗してももう片方は
   // 保存済みのまま残る(/api/deep-dive側で各partごとに個別保存しているため)。
-  const handleDeepDive = async () => {
+  const handleStep8 = async () => {
     if (!selectedCompany) return;
     setStep("8", true);
     const parts = [
-      { key: "business_story", label: "①ビジネスモデル・ストーリー" },
-      { key: "competitor_diff", label: "②競合との違い" },
+      { key: "business_story", label: "ビジネスモデル・ストーリー" },
+      { key: "competitor_diff", label: "競合との違い" },
     ];
     const messages: string[] = [];
     for (let i = 0; i < parts.length; i++) {
@@ -215,13 +215,13 @@ export default function AdminPage() {
     return true;
   };
 
-  const handleAllAxes = async () => {
+  const handleStep5 = async () => {
     if (!selectedCompany) return;
     setAllAxesLoading(true);
-    setStep("4",true); setStep("5",true); setStep("6",true);
-    const ok4 = await runAxes("ultra_short","超短期3軸","4"); if (!ok4) { setAllAxesLoading(false); return; }
-    const ok5 = await runAxes("short","短期3軸","5"); if (!ok5) { setAllAxesLoading(false); return; }
-    await runAxes("long","長期3軸","6");
+    setStep("5a",true); setStep("5b",true); setStep("5c",true);
+    const ok4 = await runAxes("ultra_short","超短期3軸","5a"); if (!ok4) { setAllAxesLoading(false); return; }
+    const ok5 = await runAxes("short","短期3軸","5b"); if (!ok5) { setAllAxesLoading(false); return; }
+    await runAxes("long","長期3軸","5c");
     setAllAxesLoading(false);
   };
   const runBeginnerRewrite = async (period: string, label: string, stepNum: string) => {
@@ -267,7 +267,7 @@ export default function AdminPage() {
   };
 
   const [beginnerLoading, setBeginnerLoading] = useState(false);
-  const handleBeginnerRewrite = async () => {
+  const handleStep7 = async () => {
     if (!selectedCompany) return;
     setBeginnerLoading(true);
     setStep("7a",true); setStep("7b",true); setStep("7c",true);
@@ -277,7 +277,7 @@ export default function AdminPage() {
     setBeginnerLoading(false);
   };
 
-  const handleVisualize = async () => {
+  const handleStep6 = async () => {
     if (!selectedCompany) return;
     setVizLoading(true);
     const chartTypes = ["revenue_chart","shareholders_chart","valuation_table","market_structure_chart","ipo_summary_table","use_of_proceeds_table","risk_table","shareholders_lockup_table","key_metrics_table"];
@@ -832,7 +832,7 @@ export default function AdminPage() {
                 <div style={{ padding:"16px 20px", display:"flex", flexDirection:"column", gap:16 }}>
                   <div>
                     <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:4 }}>🏢 競合他社財務データ取得</div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>⑦で収集した競合企業の財務データを取得します</p>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>②で収集した競合企業の財務データを取得します</p>
                     {!selectedCompany
                       ? <p style={{ fontSize:11, color:"#94a3b8" }}>※ 右の「銘柄分析」で銘柄を選択してください</p>
                       : <>
@@ -905,7 +905,7 @@ export default function AdminPage() {
             {/* 銘柄分析 */}
             <div style={sectionStyle}>
               <h2 style={{ fontSize:"15px", fontWeight:900, color:"#082b2e", marginBottom:4 }}>🔬 銘柄分析（手動作業）</h2>
-              <p style={{ fontSize:11, color:"#64748b", marginBottom:16 }}>新規IPO銘柄が出たら、以下の順番で実行してください。<br/><strong>① → ⑦ → ② → ③ → ④⑤⑥一括 → 視覚化</strong></p>
+              <p style={{ fontSize:11, color:"#64748b", marginBottom:16 }}>新規IPO銘柄が出たら、以下の順番で実行してください。<br/><strong>① → ② → ③ → ④ → ⑤ → ⑥</strong>（⑦⑧は任意）</p>
 
               <div style={{ marginBottom:14, padding:"12px 14px", backgroundColor:"#f0fafa", borderRadius:10, border:"1px solid #b3e8ea" }}>
                 <div style={{ fontWeight:700, fontSize:12, color:"#082b2e", marginBottom:6 }}>
@@ -1003,16 +1003,16 @@ export default function AdminPage() {
                     <p style={{ fontSize:11, fontWeight:700, color:"#2a7a7e", marginBottom:10 }}>▼ 以下の順番で実行してください</p>
                   </div>
                   <StepRow num="1" color="#3b82f6" title="STEP 1｜EDINETからテキスト取得" desc="目論見書のテキストをDBに保存します（約10〜20秒）" btnLabel="① テキストを取得する" onClick={handleStep1}/>
-                  <StepRow num="7" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="⑦ 市場・競合情報を収集する" onClick={handleStep7}/>
-                  <StepRow num="2" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="② 財務データを構造化する" onClick={handleStep2}/>
-                  <StepRow num="3" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc={"総合スコア→まずここに注目→株価シナリオの順に3回に分けて生成します（約40〜60秒）\nX投稿用の文章と画像が自動生成されます"} btnLabel="③ スコア・シナリオを生成する" onClick={handleStep3}/>
-                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fecaca":stepResult["6"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["4"]||stepResult["5"]||stepResult["6"])?.startsWith("❌")?"#fef2f2":stepResult["6"]?"#f0fdf4":"#f8fafc" }}>
+                  <StepRow num="2" color="#0369a1" title="STEP 2｜市場・競合情報収集" desc="主幹事証券・競合企業・業界PER・直近IPO事例を収集します（約20〜30秒）" btnLabel="② 市場・競合情報を収集する" onClick={handleStep2}/>
+                  <StepRow num="3" color="#16a34a" title="STEP 3｜財務データを構造化" desc="テキストから財務・株主・ロックアップ情報をJSON化します（約15〜25秒）" btnLabel="③ 財務データを構造化する" onClick={handleStep3}/>
+                  <StepRow num="4" color="#0e7490" title="STEP 4｜スコア・シナリオ生成" desc={"総合スコア→まずここに注目→株価シナリオの順に3回に分けて生成します（約40〜60秒）\nX投稿用の文章と画像が自動生成されます"} btnLabel="④ スコア・シナリオを生成する" onClick={handleStep4}/>
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["5a"]||stepResult["5b"]||stepResult["5c"])?.startsWith("❌")?"#fecaca":stepResult["5c"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["5a"]||stepResult["5b"]||stepResult["5c"])?.startsWith("❌")?"#fef2f2":stepResult["5c"]?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#7c3aed", fontSize:13, marginBottom:3 }}>STEP 5｜9軸 詳細分析（一括実行）</div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>超短期・短期・長期の9軸をすべて自動で順番に分析します（約2〜4分）</p>
-                    <button onClick={handleAllAxes} disabled={allAxesLoading} style={btnStyle("#7c3aed", allAxesLoading)}>
-                      {allAxesLoading?"⏳ 分析中（しばらくお待ちください）...":"④⑤⑥ 9軸を一括分析する"}
+                    <button onClick={handleStep5} disabled={allAxesLoading} style={btnStyle("#7c3aed", allAxesLoading)}>
+                      {allAxesLoading?"⏳ 分析中（しばらくお待ちください）...":"⑤ 9軸を一括分析する"}
                     </button>
-                    {["4","5","6"].map(n=>stepResult[n]&&(
+                    {["5a","5b","5c"].map(n=>stepResult[n]&&(
                       <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
                         {stepResult[n]}
                       </div>
@@ -1021,16 +1021,16 @@ export default function AdminPage() {
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${vizResult?.startsWith("❌")?"#fecaca":vizResult?.includes("完了")?"#bbf7d0":"#e2e8f0"}`, background:vizResult?.startsWith("❌")?"#fef2f2":vizResult?.includes("完了")?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#0d4f52", fontSize:13, marginBottom:3 }}>STEP 6｜視覚化データ生成</div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>グラフ・表データをまとめて生成します（約30〜60秒）</p>
-                    <button onClick={handleVisualize} disabled={vizLoading} style={btnStyle("#0d4f52", vizLoading)}>
-                      {vizLoading?"⏳ 生成中...":"📊 視覚化データを生成"}
+                    <button onClick={handleStep6} disabled={vizLoading} style={btnStyle("#0d4f52", vizLoading)}>
+                      {vizLoading?"⏳ 生成中...":"⑥ 視覚化データを生成する"}
                     </button>
                     {vizResult && <div style={{ marginTop:6, fontSize:11, padding:"4px 8px", borderRadius:6, background:vizResult.startsWith("❌")?"#fef2f2":"#f0fdf4", color:vizResult.startsWith("❌")?"#dc2626":"#166534" }}>{vizResult}</div>}
                   </div>
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${(stepResult["7a"]||stepResult["7b"]||stepResult["7c"])?.startsWith("❌")?"#fecaca":stepResult["7c"]?"#bbf7d0":"#e2e8f0"}`, background:(stepResult["7a"]||stepResult["7b"]||stepResult["7c"])?.startsWith("❌")?"#fef2f2":stepResult["7c"]?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#db2777", fontSize:13, marginBottom:3 }}>STEP 7｜初心者向けリライト（一括実行）</div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>④⑤⑥の9軸レポートを初心者向けにやさしく書き直します（約2〜4分・要④⑤⑥完了後）</p>
-                    <button onClick={handleBeginnerRewrite} disabled={beginnerLoading} style={btnStyle("#db2777", beginnerLoading)}>
-                      {beginnerLoading?"⏳ 書き直し中（しばらくお待ちください）...":"📖 初心者向けにリライトする"}
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>⑤の9軸レポートを初心者向けにやさしく書き直します（約2〜4分・要⑤完了後）</p>
+                    <button onClick={handleStep7} disabled={beginnerLoading} style={btnStyle("#db2777", beginnerLoading)}>
+                      {beginnerLoading?"⏳ 書き直し中（しばらくお待ちください）...":"⑦ 初心者向けにリライトする"}
                     </button>
                     {["7a","7b","7c"].map(n=>stepResult[n]&&(
                       <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
@@ -1040,8 +1040,8 @@ export default function AdminPage() {
                   </div>
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${stepResult["8"]?.includes("❌")?"#fecaca":stepResult["8"]?.includes("✅")?"#bbf7d0":"#e2e8f0"}`, background:stepResult["8"]?.includes("❌")?"#fef2f2":stepResult["8"]?.includes("✅")?"#f0fdf4":"#f8fafc" }}>
                     <div style={{ fontWeight:900, color:"#0891b2", fontSize:13, marginBottom:3 }}>STEP 8｜深掘り3要素（無料公開・分析ページ上部＋トレンド用）</div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>ビジネスモデル・上場までのストーリー・競合との違いを生成します（約30〜60秒・要②③⑦完了後）</p>
-                    <button onClick={handleDeepDive} disabled={stepLoading["8"]} style={btnStyle("#0891b2", stepLoading["8"])}>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>ビジネスモデル・上場までのストーリー・競合との違いを生成します（約30〜60秒・要②③④完了後）</p>
+                    <button onClick={handleStep8} disabled={stepLoading["8"]} style={btnStyle("#0891b2", stepLoading["8"])}>
                       {stepLoading["8"]?"⏳ 生成中...":"⑧ 深掘り3要素を生成する"}
                     </button>
                     {stepResult["8"] && (
