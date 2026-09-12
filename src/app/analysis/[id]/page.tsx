@@ -156,6 +156,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
 
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
+  const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
 
   // 2026/9/5追加: dateModifiedが常に「今」(new Date())になっており、実際には
   // 中身が変わっていないアクセスのたびにGoogleへ「更新した」という偽の鮮度シグナルを
@@ -193,9 +194,24 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     },
   };
 
+  // 2026/9/12追加: 画面上のパンくず(AppHeader.tsxの「トップ＞銘柄分析」)は見た目のみで
+  // Google向けの構造化データが無かったため、こちらで別途BreadcrumbListを付与する。
+  // AppHeaderは全ページ共通のクライアントコンポーネントで会社名を持たないため、末尾の
+  // 項目には(見た目の「銘柄分析」より具体的な)実際の会社名を使い、検索結果でのパンくず
+  // 表示の精度を優先した(見た目のラベルと完全一致させる必要はない)。
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "トップ", "item": "https://ipo.finance-tower.com" },
+      { "@type": "ListItem", "position": 2, "name": company.name, "item": url },
+    ],
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <AnalysisClient
         company={company as any}
         initialAnalysis={initialAnalysis}

@@ -43,6 +43,16 @@ export default async function sitemap() {
     priority: 0.9,
   }));
 
+  // 2026/9/12追加: 初心者向け分析ページ(/analysis/[id]/beginner)が一件もサイトマップに
+  // 含まれていなかった漏れを修正。サイト内リンク(ヘッダーの初心者/中上級者切替)からは
+  // 辿れるため致命的ではなかったが、通常版と同じ銘柄一覧から機械的に生成できるため追加する。
+  const beginnerPages = (companies ?? []).map(c => ({
+    url: `${baseUrl}/analysis/${(c as any).ticker ?? c.id}/beginner`,
+    lastModified: new Date(c.listing_date ?? new Date()),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
   const trendArticlePages = (trendArticles ?? []).map(a => ({
     url: `${baseUrl}/trends/${a.id}`,
     lastModified: new Date(a.fetched_at ?? new Date()),
@@ -50,5 +60,5 @@ export default async function sitemap() {
     priority: 0.6,
   }));
 
-  return [...staticPages, ...companyPages, ...trendArticlePages];
+  return [...staticPages, ...companyPages, ...beginnerPages, ...trendArticlePages];
 }
