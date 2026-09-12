@@ -66,20 +66,70 @@ function renderContent(content: string): React.ReactNode {
   return parts;
 }
 
+// 2026/9/12改修: SEO対策。検索結果に出るtitle/descriptionを、サイト内のカテゴリー
+// 自動判定(/trendsページのtitle.startsWithによる前方一致)やこのページのH1見出しに
+// そのまま使われている内部的な記事ラベル(article.title、例:「初値・その後の値動き
+// (会社名・上場2日目)」)とは切り離し、検索者が実際に打ち込む言葉(会社名+初値・上場日等)
+// に寄せて別途組み立てる。article.title自体は変更しない
+// (1つの文字列を複数の用途で使い回すと片方に合わせて片方が壊れる、というappeal_narrative
+// 新設時と同じ教訓を踏まえた設計)。会社名を含まない記事(経済指標カレンダー等)は
+// ブランド名を付けるだけの軽い調整に留める。
+function buildSeoMeta(rawTitle: string, content: string): { title: string; description: string } {
+  const fallback = content.replace(/\s+/g, " ").trim().slice(0, 140);
+  const brand = "大手町調査室九課";
+  const m = rawTitle.match(/^(.+?)\(([^)]+)\)$/);
+  if (!m) return { title: `${rawTitle}｜${brand}`, description: fallback };
+
+  const label = m[1];
+  const companyName = m[2].split("・")[0];
+
+  if (label.startsWith("初値・その後の値動き")) {
+    return {
+      title: `${companyName} IPO初値・上場後の値動き｜AI事前分析との答え合わせ｜${brand}`,
+      description: `${companyName}のIPO初値・上場後の株価推移を、上場前のAI分析と突き合わせて解説。${fallback}`.slice(0, 160),
+    };
+  }
+  if (label.startsWith("ロックアップ解除カウントダウン")) {
+    return {
+      title: `${companyName} IPOロックアップ解除情報｜需給インパクトをAI解説｜${brand}`,
+      description: `${companyName}のロックアップ解除が株価に与える影響をAIが解説。${fallback}`.slice(0, 160),
+    };
+  }
+  if (label.startsWith("IPO企業 vs 競合の決算比較")) {
+    return {
+      title: `${companyName}と競合他社の決算比較｜IPO分析｜${brand}`,
+      description: `${companyName}の業績を競合他社と比較しAIが分析。${fallback}`.slice(0, 160),
+    };
+  }
+  if (label.startsWith("ビジネスモデル・ストーリー・競合との違い")) {
+    return {
+      title: `${companyName}のビジネスモデル・上場ストーリー｜IPO分析｜${brand}`,
+      description: `${companyName}の儲けの仕組み・上場までの経緯・競合との違いをAIが解説。${fallback}`.slice(0, 160),
+    };
+  }
+  if (label.startsWith("新規IPO紹介")) {
+    return {
+      title: `${companyName} IPO情報まとめ｜上場日・事業内容をAI解析｜${brand}`,
+      description: `${companyName}のIPO情報。上場日・事業内容・目論見書の要点をAIが解析。${fallback}`.slice(0, 160),
+    };
+  }
+  return { title: `${rawTitle}｜${brand}`, description: fallback };
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const article = await fetchArticle(id);
   if (!article) return { title: "記事が見つかりません" };
 
-  const description = (article.content as string).replace(/\s+/g, " ").trim().slice(0, 140);
+  const { title, description } = buildSeoMeta(article.title, article.content as string);
   const url = `https://ipo.finance-tower.com/trends/${id}`;
   const image = article.image_url || "https://ipo.finance-tower.com/ogp.png";
 
   return {
-    title: article.title,
+    title,
     description,
     openGraph: {
-      title: article.title,
+      title,
       description,
       url,
       siteName: "大手町調査室九課",
@@ -89,7 +139,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     },
     twitter: {
       card: "summary_large_image",
-      title: article.title,
+      title,
       description,
       images: [image],
     },
