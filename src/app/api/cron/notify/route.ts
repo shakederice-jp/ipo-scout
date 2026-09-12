@@ -53,15 +53,21 @@ export async function GET(req: NextRequest) {
   const fromDate = nextMonday.toISOString().slice(0, 10);
   const toDate   = nextSunday.toISOString().slice(0, 10);
 
-  const selectFields = 'id,name,ticker,bb_start_date,apply_start_date,listing_date,ai_summary,analysis_summary,structured_data';
+  const selectFields = 'id,name,ticker,bb_start_date,apply_start_date,listing_date,lockup_90_date,lockup_180_date,ai_summary,analysis_summary,structured_data';
 
-  const [{ data: bbList }, { data: applyList }, { data: listingList }] = await Promise.all([
+  // 2026/9/12追記: 設定画面には「🔓ロックアップ90日解除」「🔓ロックアップ180日解除」の
+  // トグルがあるが、このcronでは元々listing/BB/applyの3種類しか処理しておらず、
+  // ユーザーがONにしても実際には何も送られない不整合があった。lockup_90_date/
+  // lockup_180_dateも同じ翌週(月〜日)の範囲で取得し、対応するsectionを追加する。
+  const [{ data: bbList }, { data: applyList }, { data: listingList }, { data: lockup90List }, { data: lockup180List }] = await Promise.all([
     supabase.from('ipo_companies').select(selectFields).gte('bb_start_date', fromDate).lte('bb_start_date', toDate),
     supabase.from('ipo_companies').select(selectFields).gte('apply_start_date', fromDate).lte('apply_start_date', toDate),
     supabase.from('ipo_companies').select(selectFields).gte('listing_date', fromDate).lte('listing_date', toDate),
+    supabase.from('ipo_companies').select(selectFields).gte('lockup_90_date', fromDate).lte('lockup_90_date', toDate),
+    supabase.from('ipo_companies').select(selectFields).gte('lockup_180_date', fromDate).lte('lockup_180_date', toDate),
   ]);
 
-  const hasAny = (bbList?.length ?? 0) + (applyList?.length ?? 0) + (listingList?.length ?? 0) > 0;
+  const hasAny = (bbList?.length ?? 0) + (applyList?.length ?? 0) + (listingList?.length ?? 0) + (lockup90List?.length ?? 0) + (lockup180List?.length ?? 0) > 0;
   if (!hasAny) {
     return NextResponse.json({ message: '翌週の通知対象なし', sent: 0 });
   }
@@ -96,9 +102,16 @@ export async function GET(req: NextRequest) {
   }
 
   // 通知設定を取得
+  // 2026/9/12追記: company_idで絞り込んでいなかったため、マイページの全体設定
+  // (company_id: null)に加えて、各分析ページの「今すぐ通知設定」ボタンで保存される
+  // 銘柄ごとの設定(company_id: 特定の銘柄)も同時にヒットし、両方設定しているユーザーには
+  // この週次ダイジェストメールが重複して複数回送信されてしまう不具合があった。
+  // この週次ダイジェストは元々マイページの全体設定のみを対象にする設計のため、
+  // daily-reminder(前日通知)と同様に company_id is null で絞り込む。
   const { data: settings } = await supabase
     .from('notification_settings')
-    .select('user_id, notify_bb, notify_apply, notify_listing, method_email')
+    .select('user_id, notify_bb, notify_apply, notify_listing, notify_lockup_90, notify_lockup_180, method_email')
+    .is('company_id', null)
     .eq('method_email', true);
 
   if (!settings || settings.length === 0) {
@@ -165,6 +178,14 @@ export async function GET(req: NextRequest) {
     if (setting.notify_apply && applyList?.length) {
       sections.push(`<h3 style="color:#d97706;font-size:14px;margin:20px 0 8px">🟡 申込開始銘柄</h3>`);
       applyList.forEach((c: any) => sections.push(buildCard(c, '申込開始', '#d97706', formatDate(c.apply_start_date))));
+    }
+    if (setting.notify_lockup_90 && lockup90List?.length) {
+      sections.push(`<h3 style="color:#7c3aed;font-size:14px;margin:20px 0 8px">🔓 ロックアップ90日解除銘柄</h3>`);
+      lockup90List.forEach((c: any) => sections.push(buildCard(c, 'ロックアップ解除(90日)', '#7c3aed', formatDate(c.lockup_90_date))));
+    }
+    if (setting.notify_lockup_180 && lockup180List?.length) {
+      sections.push(`<h3 style="color:#7c3aed;font-size:14px;margin:20px 0 8px">🔓 ロックアップ180日解除銘柄</h3>`);
+      lockup180List.forEach((c: any) => sections.push(buildCard(c, 'ロックアップ解除(180日)', '#7c3aed', formatDate(c.lockup_180_date))));
     }
 
     if (sections.length === 0) continue;
