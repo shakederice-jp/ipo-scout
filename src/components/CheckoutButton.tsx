@@ -17,7 +17,7 @@ const PLANS: {
     label: "通知プラン",
     price: "¥890/月",
     icon: <Bell className="h-3.5 w-3.5" aria-hidden />,
-    description: "週末「次週戦略指令書」フル配信",
+    description: "上場日・BB・申込開始・ロックアップ解除を前週金曜18時にまとめて通知",
   },
   {
     id: "report",
