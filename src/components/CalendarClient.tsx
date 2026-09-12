@@ -590,6 +590,32 @@ export default function CalendarClient() {
           {!loading && sorted.length === 0 && (
             <div style={{ textAlign:"center", padding:"40px 0", fontSize:13, color:C.muted }}>現在登録されている銘柄はありません</div>
           )}
+
+          {/* 2026/9/12新設: 月移動リンク(フッター)。従来は画面上部の「◀▶」ボタンでしか
+              月を移動できず、下までスクロールした後にまた上まで戻る必要があり不親切だった
+              ため、一覧の下にも同じ月移動を置いた(ユーザー要望「内部リンクを張り巡らせたい」
+              にも合致)。 */}
+          {!loading && (() => {
+            const prevMonthNum = month === 0 ? 12 : month;
+            const prevYear = month === 0 ? year - 1 : year;
+            const nextMonthNum = month === 11 ? 1 : month + 2;
+            const nextYear = month === 11 ? year + 1 : year;
+            const prevLabel = `${prevYear !== year ? prevYear + "年" : ""}${prevMonthNum}月`;
+            const nextLabel = `${nextYear !== year ? nextYear + "年" : ""}${nextMonthNum}月`;
+            return (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 4px 4px", marginTop:8, borderTop:`1px solid ${C.border}` }}>
+                <button onClick={() => { prevMonth(); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ display:"flex", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", color:C.nav, fontWeight:700, fontSize:13, padding:8 }}>
+                  <ChevronLeft size={16} />{lang === "ja" ? `${prevLabel}` : `Prev`}
+                </button>
+                <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ background:"none", border:"none", cursor:"pointer", color:C.muted, fontSize:11, padding:8 }}>
+                  {lang === "ja" ? "▲ 上に戻る" : "▲ Back to top"}
+                </button>
+                <button onClick={() => { nextMonth(); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ display:"flex", alignItems:"center", gap:2, background:"none", border:"none", cursor:"pointer", color:C.nav, fontWeight:700, fontSize:13, padding:8 }}>
+                  {lang === "ja" ? `${nextLabel}` : `Next`}<ChevronRight size={16} />
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
