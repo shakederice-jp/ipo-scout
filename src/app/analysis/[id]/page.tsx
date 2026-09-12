@@ -154,6 +154,16 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     };
   }
 
+  // 2026/9/12追加: STEP8のlong_term_strength(9軸長期の「強み・差別化」補足)は、
+  // 既存のbusiness_story/competitor_diffと異なり無料公開にせず、9軸分析の長期区分と
+  // 同様に有料会員限定にする方針(2026/9/12相談)。company丸ごとをAnalysisClientに渡す
+  // 既存の実装のままだと analysis_deep_dive の中身も無料ユーザーに届いてしまうため、
+  // ここで hasAccess が無い場合だけ long_term_strength キーを取り除いたcompanyを渡す。
+  // (business_story・competitor_diff・updated_at 等、他のキーは従来通り無料のまま)
+  const companyForClient = hasAccess || !co.analysis_deep_dive
+    ? company
+    : { ...co, analysis_deep_dive: { ...co.analysis_deep_dive, long_term_strength: undefined } };
+
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
@@ -213,7 +223,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <AnalysisClient
-        company={company as any}
+        company={companyForClient as any}
         initialAnalysis={initialAnalysis}
         visualizationData={hasAccess ? visualizationData : null}
         allCompanies={allCompanies as any[]}

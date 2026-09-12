@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchCompetitorFinancials } from "@/lib/competitor-financials";
+import Anthropic from "@anthropic-ai/sdk";
 
 // 2026/9/4追加: 「ビジネスモデル(儲けの手法・からくり)」「上場までのストーリー」
 // 「競合企業との違い」の3要素を生成するSTEP(管理画面の表示上は「⑧ 深掘り3要素」)。
@@ -8,20 +9,32 @@ import { fetchCompetitorFinancials } from "@/lib/competitor-financials";
 // 「なぜ・どうやって儲けているか」「なぜ今上場するのか」「競合と何が違うのか」という、
 // 既存の9軸分析にはない切り口を無料公開コンテンツとして追加するためのもの。
 //
-// タイムアウト対策(2026/9/3の相談で決定): 2つの独立したpartに分割し、それぞれ
-// 個別に保存する(片方が失敗してももう片方の結果は残る)。
+// タイムアウト対策(2026/9/3の相談で決定): 独立したpartに分割し、それぞれ
+// 個別に保存する(1つが失敗しても他の結果は残る)。
 // ・part="business_story": structured_data(EDINETから抽出済みのデータ)のみを使い、
 //   新たなWeb検索は行わない。生成が速く、タイムアウトリスクが低い。
 // ・part="competitor_diff": 既にSTEP⑦(市場・競合情報収集)で取得済みのanalysis_market.
 //   competitors、および必要なら競合財務データ(fetchCompetitorFinancials、EDINETベース)
 //   を使う。こちらも新たなWeb検索(web_search)は行わない
 //   (2026/9/3の相談「EDINETの情報だけでどこまで競合に迫れますか」を踏まえた設計)。
+// ・part="long_term_strength"(2026/9/12追加): 9軸分析が目論見書の財務データのみに
+//   基づくため、長期区分がどうしても財務不安要素中心になりがちという相談を受けて追加。
+//   STEP⑦の市場・競合情報収集は主幹事・PER水準・初値実績等のベンチマーク情報が中心で、
+//   その銘柄「ならでは」の差別化・強みという切り口の検索はしていないため、このpart内で
+//   専用のWeb検索(STEP⑦と同じHaiku+web_search方式)を新たに行う。9軸分析(STEP5)側は
+//   一切変更しない。生成結果はanalysis_deep_dive.long_term_strengthに保存されるが、
+//   他の2要素と違い無料公開はせず、9軸分析の長期区分と同様に有料会員限定で表示する
+//   (page.tsx側でhasAccessが無い場合にこのキーだけ取り除く処理を追加している)。
+//   トーン方針(2026/9/12相談): 見つかった事実の範囲で誠実に書き、実績・評価の
+//   でっち上げや過度な美化はしない。買いを煽る表現も禁止(STYLE_NOTEを踏襲)。
 export const maxDuration = 60;
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 function buildBusinessContext(structured: any): string {
   const d = structured ?? {};
@@ -150,12 +163,73 @@ ${STYLE_NOTE}
   return { competitor_diff: String(parsed.competitor_diff ?? "").trim() };
 }
 
+// 2026/9/12追加: 9軸分析の長期区分が財務不安要素に偏りがちという相談を受けて追加。
+// STEP⑦(市場・競合情報収集)はベンチマーク目的の検索のため、差別化・強み・優位性という
+// 切り口の材料が無い。ここで専用のWeb検索(STEP⑦と同じHaiku+web_search方式)を行い、
+// 見つかった事実だけをもとに文章化する。見つからない場合に無理な美化・でっち上げを
+// しないことを強く指示している(2026/9/12相談での方針確認を反映)。
+async function generateLongTermStrength(co: any): Promise<{ long_term_strength: string }> {
+  const structured = co.structured_data ?? {};
+  const businessSummary = (structured.business_summary ?? "").slice(0, 400);
+  const growthDrivers = (structured.growth_drivers ?? "").slice(0, 400);
+  const competitors: any[] = co.analysis_market?.competitors ?? [];
+  const competitorNames = competitors.map((c: any) => c.name).filter(Boolean).join("、");
+
+  const searchResponse = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 2000,
+    tools: [{ type: "web_search_20250305", name: "web_search" } as any],
+    messages: [{
+      role: "user",
+      content: `「${co.name}」（${co.sector ?? ""}）のIPOに関して、以下を検索してください。
+
+1. この会社が競合他社と比べて「差別化」できている具体的なポイント（技術・サービス内容・顧客層・販売チャネル等）
+2. この会社ならではの「オンリーワン」と言える強み（独自の技術・特許・提携・実績等）
+3. 業界内での競争優位性（シェア・実績・評価等の裏付けがあるもの）
+
+競合として${competitorNames || "同業他社"}などが挙げられます。事実に基づく具体的な情報のみを探してください。見つからない場合は無理に作らず「該当する情報が見つからなかった」旨を書いてください。`,
+    }],
+  });
+
+  const searchText = searchResponse.content
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("\n");
+
+  const prompt = `あなたは日本のIPOを分かりやすく紹介するライターです。
+${co.name}(${co.sector ?? "tech"})について、以下のWeb検索結果と会社データをもとに、
+この会社の差別化ポイント・強み・競争優位性を伝える文章を作成してください。
+JSONのみで返答してください。マークダウン・コードブロック・余分なテキスト一切不要。
+
+【Web検索結果】
+${searchText.slice(0, 3000) || "(検索結果なし)"}
+
+【会社データ】
+事業概要:${businessSummary}
+成長要因:${growthDrivers}
+
+${STYLE_NOTE}
+
+【絶対ルール】
+・Web検索結果や会社データに書かれていない強みを作り上げないこと。見つかった事実の範囲で書くこと。
+・見つかった情報が乏しい場合は、無理に美化せず、分かる範囲で誠実に書くこと（存在しない実績や評価をでっち上げない）。
+・「買うべき」等の投資助言や煽り文句は書かないこと。あくまで会社を理解するための読み物として、事実・見方を提示するにとどめること。
+
+【出力形式】
+{
+  "long_term_strength": "この会社の差別化・強み・競争優位性を400〜600字程度で説明する文章。具体的な事実（技術・実績・提携・顧客層等）を交えること。見つかった材料が少ない場合は、無理に水増しせず分かる範囲で誠実にまとめること"
+}`;
+  const raw = await callClaude(prompt, 1800);
+  const parsed = parseJson(raw);
+  return { long_term_strength: String(parsed.long_term_strength ?? "").trim() };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { company_id, part } = await req.json();
     if (!company_id) return NextResponse.json({ error: "company_id required" }, { status: 400 });
-    if (part !== "business_story" && part !== "competitor_diff") {
-      return NextResponse.json({ error: "partは business_story / competitor_diff のいずれかを指定してください" }, { status: 400 });
+    if (part !== "business_story" && part !== "competitor_diff" && part !== "long_term_strength") {
+      return NextResponse.json({ error: "partは business_story / competitor_diff / long_term_strength のいずれかを指定してください" }, { status: 400 });
     }
 
     const supabase = getSupabase();
@@ -170,8 +244,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "②財務データ構造化が未完了です。先に②を実行してください。" }, { status: 400 });
       }
       addition = await generateBusinessStory(co);
-    } else {
+    } else if (part === "competitor_diff") {
       addition = await generateCompetitorDiff(co, supabase);
+    } else {
+      addition = await generateLongTermStrength(co);
     }
 
     const merged = { ...existing, ...addition, updated_at: new Date().toISOString() };

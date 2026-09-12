@@ -711,6 +711,29 @@ function DeepDiveSection({deepDive}:{deepDive:any}) {
   );
 }
 
+// 2026/9/12追加: 9軸分析(目論見書ベース)が財務不安要素に偏りがちという相談を受け、
+// STEP8内でWeb検索して生成した「差別化・強み・優位性」の文章を9軸長期区分の末尾に
+// 追加表示するためのカード。既存のDeepDiveSection(無料公開)とは異なり、このカードは
+// 9軸長期のitems.length>0のときだけ呼ばれる箇所に置くことで有料会員限定にしている
+// (無料ユーザー分はpage.tsx側でanalysis_deep_dive.long_term_strength自体を取り除いて
+// 渡している)。誠実に書く方針のため煽り文句は無く、事実ベースの範囲にとどめている。
+function LongTermStrengthCard({text}:{text:string}) {
+  if(!text) return null;
+  return (
+    <div style={{margin:"10px 14px 14px",padding:"14px 16px",borderRadius:10,
+      backgroundColor:"#faf5ff",border:"1px solid #e9d5ff"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+        <span style={{fontSize:15,lineHeight:1}}>🌟</span>
+        <span style={{fontWeight:900,fontSize:13,color:"#6b21a8"}}>この会社の強み・差別化ポイント</span>
+      </div>
+      {text.split(/\n\n+/).map((para,i)=>(
+        <p key={i} style={{fontSize:12,color:"#334155",lineHeight:1.9,margin:i===0?"0 0 10px":"10px 0"}}>{renderInline(para.trim())}</p>
+      ))}
+      <p style={{fontSize:9,color:"#a78bfa",margin:"6px 0 0"}}>※ AIによるWeb調査をもとにした情報整理であり、投資助言ではありません</p>
+    </div>
+  );
+}
+
 function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;order:string;title:string;subtitle:string;accent:string}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:12,margin:"28px 0 4px",padding:"14px 16px",
@@ -1590,6 +1613,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                         <DeepDiveCard item={item} accentColor={g.color} level={level}/>
                       </div>
                     ))}
+                    {g.key==="long" && (
+                      <LongTermStrengthCard text={(company as any).analysis_deep_dive?.long_term_strength}/>
+                    )}
                   </div>
                 </div>
               );

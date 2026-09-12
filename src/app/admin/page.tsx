@@ -161,15 +161,18 @@ export default function AdminPage() {
     } catch { setStep("4", false, "❌ 保存通信エラー"); return; }
   };
 
-  // 2026/9/4追加: STEP 8｜深掘り3要素(ビジネスモデル・ストーリー・競合との違い)。
-  // タイムアウト対策として2つの独立したpartに分け、片方が失敗してももう片方は
+  // 2026/9/4追加: STEP 8｜深掘り要素(ビジネスモデル・ストーリー・競合との違い)。
+  // タイムアウト対策として独立したpartに分け、1つが失敗しても他は
   // 保存済みのまま残る(/api/deep-dive側で各partごとに個別保存しているため)。
+  // 2026/9/12追加: 「長期の強み・差別化」を4つ目のpartとして追加。他の2要素と違い、
+  // これは無料公開ではなく9軸長期区分と同じく有料会員限定表示になる(page.tsx参照)。
   const handleStep8 = async () => {
     if (!selectedCompany) return;
     setStep("8", true);
     const parts = [
       { key: "business_story", label: "ビジネスモデル・ストーリー" },
       { key: "competitor_diff", label: "競合との違い" },
+      { key: "long_term_strength", label: "長期の強み・差別化（有料限定）" },
     ];
     const messages: string[] = [];
     for (let i = 0; i < parts.length; i++) {
@@ -1039,10 +1042,10 @@ export default function AdminPage() {
                     ))}
                   </div>
                   <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:`1px solid ${stepResult["8"]?.includes("❌")?"#fecaca":stepResult["8"]?.includes("✅")?"#bbf7d0":"#e2e8f0"}`, background:stepResult["8"]?.includes("❌")?"#fef2f2":stepResult["8"]?.includes("✅")?"#f0fdf4":"#f8fafc" }}>
-                    <div style={{ fontWeight:900, color:"#0891b2", fontSize:13, marginBottom:3 }}>STEP 8｜深掘り3要素（無料公開・分析ページ上部＋トレンド用）</div>
-                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>ビジネスモデル・上場までのストーリー・競合との違いを生成します（約30〜60秒・要②③④完了後）</p>
+                    <div style={{ fontWeight:900, color:"#0891b2", fontSize:13, marginBottom:3 }}>STEP 8｜深掘り要素（ビジネスモデル等は無料公開／長期の強みは有料限定）</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px" }}>ビジネスモデル・上場までのストーリー・競合との違い・9軸長期の強み/差別化を生成します（約40〜90秒・要②③④完了後。長期の強みは⑦市場・競合情報収集も済ませておくと精度が上がります）</p>
                     <button onClick={handleStep8} disabled={stepLoading["8"]} style={btnStyle("#0891b2", stepLoading["8"])}>
-                      {stepLoading["8"]?"⏳ 生成中...":"⑧ 深掘り3要素を生成する"}
+                      {stepLoading["8"]?"⏳ 生成中...":"⑧ 深掘り要素を生成する"}
                     </button>
                     {stepResult["8"] && (
                       <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult["8"].includes("❌")?"#fef2f2":"#f0fdf4", color:stepResult["8"].includes("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
