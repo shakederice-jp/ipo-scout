@@ -13,6 +13,18 @@
 export default function Footer() {
   return (
     <footer style={{ borderTop: "1px solid #b3e8ea", backgroundColor: "white", padding: "24px 16px", textAlign: "center" as const }}>
+      {/* 2026/9/12新設: サイト内の主要ページへの内部リンク行。以前は法的表記3リンクのみ
+          だったが、ユーザー要望「今後も内部的なリンクを張り巡らせたい」を受けて追加。
+          全ページ共通フッターに置くことで、どのページからでも主要ページへ1クリックで
+          移動できるようにした。折り返し対策は既存の3リンク行と同じ方針
+          (flexWrap+各リンクにwhiteSpace:nowrap)を踏襲。 */}
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 14 }}>
+        <a href="/" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ホーム</a>
+        <a href="/plans" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>料金プラン</a>
+        <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>トレンド記事</a>
+        <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
+        <a href="/mypage" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>マイページ</a>
+      </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 10 }}>
         <a href="/tokushoho" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>特定商取引法に基づく表記</a>
         <span style={{ color: "#e2e8f0" }}>|</span>
