@@ -468,10 +468,13 @@ export default function CalendarClient() {
               <div style={{ fontWeight:900, fontSize:13, color:"#082b2e", marginBottom:2 }}>
                 {lang === "ja" ? "まず無料でお試しください" : "Try for Free First"}
               </div>
+              {/* 2026/9/12改修: 「無料公開レポート(ログイン不要)」と「無料会員登録(ログインのみ)」が
+                  混同されやすいため、この一番目立つ無料訴求の中で両者を明確に呼び分けて説明する
+                  一文を追加(サイト全体のフリー/有料導線見直しの一環)。 */}
               <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:0 }}>
                 {lang === "ja"
-                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます。特定銘柄だけをピックアップして読む場合は¥500です。また、すべてコミコミの<strong style={{ color:"#082b2e" }}>コンプリートパック</strong>もあります。</>
-                  : <>The first <strong style={{ color:"#082b2e" }}>2 IPO reports each month are completely free</strong>. Single reports are ¥500. A <strong style={{ color:"#082b2e" }}>Complete Pack</strong> with all features is also available.</>
+                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます（ログイン不要）。特定銘柄だけをピックアップして読む場合は¥500です。また、すべてコミコミの<strong style={{ color:"#082b2e" }}>コンプリートパック</strong>もあります。無料会員登録（ログインのみ・課金不要）をすると、気になる銘柄のお気に入り登録・100万円投資シミュレーション・友達紹介特典（2ヶ月無料）もご利用いただけます。</>
+                  : <>The first <strong style={{ color:"#082b2e" }}>2 IPO reports each month are completely free</strong> (no login required). Single reports are ¥500. A <strong style={{ color:"#082b2e" }}>Complete Pack</strong> with all features is also available. Free member registration (login only, no charge) also unlocks favorites, the ¥1M investment simulation, and referral rewards.</>
                 }
               </p>
             </div>

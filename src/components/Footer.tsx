@@ -23,7 +23,10 @@ export default function Footer() {
         <a href="/plans" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>料金プラン</a>
         <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>トレンド記事</a>
         <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
-        <a href="/mypage" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>マイページ</a>
+        {/* 2026/9/12改修: 「マイページ」だけだと、押した先で急に「ログインが必要」と
+            出るまで無料か有料か分からなかったため、無料で登録できることを明示
+            (サイト全体のフリー/有料導線見直しの一環)。 */}
+        <a href="/mypage" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>マイページ（無料登録）</a>
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 10 }}>
         <a href="/tokushoho" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>特定商取引法に基づく表記</a>

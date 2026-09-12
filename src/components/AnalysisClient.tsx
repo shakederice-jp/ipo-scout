@@ -618,9 +618,13 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
         <div style={{fontSize:13,fontWeight:700,color:DARK,marginBottom:4}}>{company.name}</div>
         {status==="needsPlan"&&(
           <div style={{backgroundColor:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#92400e"}}>
+            {/* 2026/9/12改修: 「ログインが必要」とだけ表示すると、通知機能そのものが
+                有料なのか無料会員登録だけで使えるのかが伝わらなかったため、
+                「登録は無料・実際の配信には通知プランが必要」の2段階を明示する
+                文言に変更(サイト全体のフリー/有料導線見直しの一環)。 */}
             {!userId
-              ? <>通知機能を使うには<strong>ログイン</strong>が必要です。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>ログイン・新規登録 →</a></>
-              : <>通知機能は<strong>通知プラン（¥890/月）</strong>以上でご利用いただけます。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
+              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>通知プラン（¥890/月）</strong>に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
+              : <>通知の配信には<strong>通知プラン（¥890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
             }
           </div>
         )}
@@ -748,7 +752,10 @@ function FavoriteCompanyButton({companyId,userId}:{companyId:string;userId:strin
   if(!userId){
     return (
       <a href="/auth" style={{fontSize:11,fontWeight:700,color:"white",textDecoration:"none",backgroundColor:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.5)",borderRadius:20,padding:"6px 12px",display:"inline-flex",alignItems:"center",gap:4}}>
-        ☆ ログインしてお気に入り登録
+        {/* 2026/9/12改修: 「ログインしてお気に入り登録」だけだと、課金が必要だと
+            誤解されうるため、無料でできることを明示する文言に変更(サイト全体の
+            フリー/有料導線見直しの一環)。 */}
+        ☆ 無料登録でお気に入り登録
       </a>
     );
   }
@@ -821,9 +828,15 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
       </p>
 
       {!userId ? (
-        <a href="/auth" style={{display:"inline-block",padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,color:"white",fontWeight:900,fontSize:12,textDecoration:"none"}}>
-          ログインして追跡を始める
-        </a>
+        <>
+          <a href="/auth" style={{display:"inline-block",padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,color:"white",fontWeight:900,fontSize:12,textDecoration:"none"}}>
+            無料登録して追跡を始める
+          </a>
+          {/* 2026/9/12改修: 「ログインして追跡を始める」だけでは課金要否が伝わらず離脱に
+              つながりうるため、無料会員登録だけで使える機能であることを明示(サイト全体の
+              フリー/有料導線見直しの一環)。 */}
+          <p style={{fontSize:10,color:"#64748b",margin:"8px 0 0"}}>※ 無料会員登録（メールアドレスのみ・課金不要）でご利用いただけます</p>
+        </>
       ) : status==="added" ? (
         <div style={{fontSize:12,color:"#15803d",fontWeight:700}}>
           ✅ ポートフォリオに追加しました。<a href="/mypage" style={{color:"#15803d",textDecoration:"underline"}}>マイページ</a>で値動きを確認できます。
@@ -858,6 +871,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   // 2026/9/12新設: 「あなたの投資スタイル、どのタイプですか？」を実際の1問ミニクイズに変更。
   // 選んだタイプに応じて、対応する9軸グループ(超短期/短期/長期)まで自動スクロールする。
   const [quizAnswer,setQuizAnswer]=useState<"ultra_short"|"short"|"long"|null>(null);
+  // 2026/9/12改修: 無料/有料の境目が、詳細分析の直前(下までスクロールしないと分からない)
+  // にしか出ておらず分かりにくかったため、タイトルカードに「今この銘柄が読めるかどうか」を
+  // 一目で示すバッジを追加(サイト全体のフリー/有料導線見直しの一環)。
+  const isFreeCompany = allCompanies?.find(c=>c.id===company.id)?.is_free ?? false;
 
   useEffect(()=>{
     const supabase=createSupabaseBrowserClient();
@@ -1076,6 +1093,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {isFreeCompany
+                    ? <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,backgroundColor:"#dcfce7",color:"#15803d"}}>🆓 今月の無料公開銘柄</span>
+                    : !hasAccess && <span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,backgroundColor:"#fef3c7",color:"#92400e"}}>🔒 詳細は有料会員限定</span>
+                  }
                   {company.exchange&&<span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.25)",color:DARK}}>{company.exchange}</span>}
                   {company.ticker&&<span style={{fontWeight:700,fontSize:10,color:MID}}>{company.ticker}</span>}
                 </div>

@@ -117,10 +117,15 @@ export default async function Home({
             <span style={{ fontSize:16, color:"#22c55e" }}>→</span>
           </a>
 
-                   {/* マイページ（冒頭） */}
-          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", fontWeight:900, fontSize:14, color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
-            <User size={16} color="white" />
-            👤 マイページ・通知設定
+                   {/* マイページ（冒頭） 2026/9/12改修: 「マイページ・通知設定」だけでは
+                       無料でできることが伝わらなかったため、無料会員登録である旨と
+                       使える機能を一言添えた(サイト全体のフリー/有料導線見直しの一環)。 */}
+          <a href="/mypage" style={{ ...cardStyle, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"12px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, fontWeight:900, fontSize:14 }}>
+              <User size={16} color="white" />
+              👤 マイページ・通知設定
+            </div>
+            <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.9)" }}>無料会員登録（課金不要）でご利用いただけます</div>
           </a>
 
           {/* 2026/9/6追加: 紹介プログラムがマイページの奥にしかなく気づかれにくかったため、

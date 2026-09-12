@@ -192,9 +192,15 @@ export default function MyPage() {
 
   if (!data || data.error) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f4fbfc" }}>
-      <div style={{ textAlign: "center" }}>
-        <p style={{ color: "#64748b", marginBottom: 16 }}>ログインが必要です</p>
-        <a href="/auth" style={{ padding: "10px 24px", backgroundColor: PRIMARY, color: "white", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>ログイン</a>
+      {/* 2026/9/12改修: 「ログインが必要です」の一文だけでは、マイページで何が
+          できるようになるのか(=無料会員登録だけで使える機能)が伝わらなかったため、
+          具体的なメリットを添えた(サイト全体のフリー/有料導線見直しの一環)。 */}
+      <div style={{ textAlign: "center", maxWidth: 320, padding: "0 16px" }}>
+        <p style={{ color: "#64748b", marginBottom: 8, fontWeight: 700 }}>ログインが必要です</p>
+        <p style={{ color: "#94a3b8", fontSize: 12, lineHeight: 1.8, marginBottom: 20 }}>
+          無料会員登録（メールアドレスのみ・課金不要）だけで、お気に入り銘柄の登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（2ヶ月無料）がご利用いただけます。
+        </p>
+        <a href="/auth" style={{ padding: "10px 24px", backgroundColor: PRIMARY, color: "white", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>ログイン / 無料会員登録</a>
       </div>
     </div>
   );
