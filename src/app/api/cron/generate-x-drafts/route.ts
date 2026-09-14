@@ -15,6 +15,7 @@ import {
   generateMonthlyIpoRoundupPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
 
 // テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる。
 // 2026/9/8: テーマ数が増えるにつれ直列実行の合計時間が伸び、この上限に達して
@@ -60,6 +61,10 @@ async function saveThemeArticle(
   externalId: string
 ): Promise<SaveOutcome> {
   if (!result) return "no_content";
+  // 2026/9/14追加: 「マーケットトレンドの記事には必ずハッシュタグを入れてほしい」との要望を受け、
+  // AIへのプロンプト指示に頼らず、保存直前に機械的にハッシュタグを追記する
+  // (AIの指示追従だけに頼ると付け忘れが起こりうるため)。
+  const hashtags = buildMarketTrendsHashtags(themeLabel, sector);
   const { error } = await supabase.from("market_trends").insert({
     source: "大手町調査室九課",
     title: themeLabel,
@@ -70,7 +75,7 @@ async function saveThemeArticle(
     ai_comment: null,
     is_featured: true,
     is_theme_article: true,
-    content: extractCleanContent(result.content) + X_SHARE_FOOTER,
+    content: extractCleanContent(result.content) + X_SHARE_FOOTER + `\n\n${hashtags}`,
     source_links: result.sourceLinks,
     fetched_at: new Date().toISOString(),
     external_id: externalId,

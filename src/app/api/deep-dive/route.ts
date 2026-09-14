@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchCompetitorFinancials } from "@/lib/competitor-financials";
 import Anthropic from "@anthropic-ai/sdk";
 import { notifyNoteArticleReady } from "@/lib/notify-admin";
+import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
 
 // 2026/9/4追加: 「ビジネスモデル(儲けの手法・からくり)」「上場までのストーリー」
 // 「競合企業との違い」の3要素を生成するSTEP(管理画面の表示上は「⑧ 深掘り3要素」)。
@@ -258,6 +259,9 @@ function buildNoteArticle(co: any, dd: Record<string, any>): string {
     dd.story ? `## なぜ「今」上場するのか\n\n${dd.story}` : "",
     dd.competitor_diff ? `## 競合とどう違うのか\n\n${dd.competitor_diff}` : "",
     `---\n\nもっと詳しく知りたい方は、目論見書をAIが分析した詳細レポートをこちらでご覧いただけます。\n👉 ${name} IPO分析レポート ${url}`,
+    // 2026/9/14追加: マーケットトレンド記事には必ずハッシュタグを入れてほしいとの要望により追記。
+    // 2026/9/13に見本記事として提示した構成(末尾に会社名を含むハッシュタグ)と同じ形式。
+    buildMarketTrendsHashtags(`新規IPO紹介(${name})`, co.sector, name),
   ].filter(Boolean);
 
   return parts.join("\n\n");

@@ -10,6 +10,7 @@ import { buildRevenueChartData, formatKeyMetricsTrend } from "@/lib/ipo-revenue-
 import { computeAxisGroupScores, computeIndividualAxisScores } from "@/lib/ipo-axis-scores";
 import { fetchMarketSnapshotContext } from "@/lib/market-snapshot";
 import { pingIndexNow } from "@/lib/indexnow";
+import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -415,7 +416,9 @@ export async function POST(req: NextRequest) {
           // 詳しい紹介文(initialText)をそのまま使う。2026/8/29、ai_summaryだけの短い文章に
           // 変更したところ「文字数が減って冷たい感じになった」とのフィードバックを受け、
           // Xの競合対策で作った文章に戻し、末尾に分析ページへのリンクを付けた。
-          const trendsContent = `${initialText}\n\n${analysisUrl}`;
+          // 2026/9/14追加: マーケットトレンド記事には必ずハッシュタグを入れてほしいとの要望により、
+          // 保存直前に機械的に追記する(src/lib/market-trends-hashtags.ts参照)。
+          const trendsContent = `${initialText}\n\n${analysisUrl}\n\n${buildMarketTrendsHashtags(`新規IPO紹介(${co.name})`, co.sector, co.name)}`;
           let trendsDebug = "";
           try {
             const { error: trendsError } = await supabaseAdmin.from("market_trends").upsert({
