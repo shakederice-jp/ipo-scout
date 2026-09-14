@@ -40,6 +40,9 @@ const CATEGORIES: { label: string; emoji: string; prefix?: boolean }[] = [
   { label: "経済指標・イベント速報", emoji: "📰", prefix: true },
   { label: "IPO企業 vs 競合の決算比較", emoji: "⚖️", prefix: true },
   { label: "ビジネスモデル・ストーリー・競合との違い", emoji: "💼", prefix: true },
+  // 2026/9/14追加(追記⑫-⑤、はてなブックマーク向け「保存版」まとめコンテンツ):
+  // 月1回生成される「IPOスケジュール保存版まとめ」テーマ用のカテゴリー。
+  { label: "IPOスケジュール保存版まとめ", emoji: "📚" },
 ];
 
 // テーマ記事のtitleから、対応するカテゴリー(右カラムのカテゴリーと同じ定義)を判定する。

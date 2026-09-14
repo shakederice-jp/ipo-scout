@@ -451,8 +451,9 @@ export default function CalendarClient() {
         <div style={{ marginTop:16 }}>
           <div style={{ marginBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              {/* 2026/9/14改修(追記⑩): 「IPOカレンダー・スケジュール」という検索語を見出しに追加 */}
               <h2 style={{ fontSize:15, fontWeight:900, color:C.nav, margin:0 }}>
-                {lang === "ja" ? "📋 IPO予定企業一覧" : "Upcoming IPOs"}
+                {lang === "ja" ? "📋 IPO予定企業一覧（IPOカレンダー・スケジュール）" : "Upcoming IPOs (IPO Calendar & Schedule)"}
               </h2>
               <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "en" ? " co." : "社"}）`}</span>
             </div>

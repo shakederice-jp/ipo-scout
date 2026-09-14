@@ -222,6 +222,21 @@ export default async function TrendArticlePage({ params }: { params: Promise<{ i
               </div>
             </div>
           )}
+
+          {/* 2026/9/14新設(追記⑪-3、トピッククラスター化): マーケットトレンドの個別記事から
+              「実践的法則ガイド(/ipo-guide)」への相互リンク。/ipo-guide側にも代表的なテーマ記事
+              へのリンクを追加しており、双方向のリンクで「IPO投資の実践知識」というトピックの
+              まとまりをGoogleに伝える狙い。 */}
+          <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 16, paddingTop: 14 }}>
+            <Link href="/ipo-guide" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none",
+              backgroundColor: "#f0fdfd", border: "1px solid #b3e8ea", borderRadius: 10, padding: "10px 14px" }}>
+              <span style={{ fontSize: 16 }}>📖</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#0d4f52" }}>IPO投資で資産を増やす実践的法則を読む</div>
+                <div style={{ fontSize: 10, color: "#66c3c6" }}>超短期・短期・長期、投資スタイル別の戦略ガイド →</div>
+              </div>
+            </Link>
+          </div>
         </div>
 
         <div style={{ marginTop: 24 }}>

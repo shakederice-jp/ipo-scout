@@ -23,6 +23,10 @@ export default function Footer() {
         <a href="/plans" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>料金プラン</a>
         <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>トレンド記事</a>
         <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
+        {/* 2026/9/14新設: E-E-A-T対策として新設した「運営者について・分析手法について」ページへの
+            導線。法的表記の行(下)ではなく、この主要リンク行に置くことで信頼性シグナルとしての
+            露出を優先した。 */}
+        <a href="/about" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>運営者について</a>
         {/* 2026/9/12改修: 「マイページ」だけだと、押した先で急に「ログインが必要」と
             出るまで無料か有料か分からなかったため、無料で登録できることを明示
             (サイト全体のフリー/有料導線見直しの一環)。 */}

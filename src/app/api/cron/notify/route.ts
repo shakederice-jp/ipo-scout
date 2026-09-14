@@ -222,6 +222,15 @@ export async function GET(req: NextRequest) {
                   全銘柄の分析レポートを見る →
                 </a>
               </div>
+              <!-- 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 既に通知設定をONにしている
+                   エンゲージメントの高いユーザー宛のメールに、紹介プログラムの案内を追加。
+                   個人ごとの紹介コードをこのメール内に出すには対象ユーザーの絞り込みロジックの
+                   変更が必要になり影響範囲が大きいため、まずはマイページへの導線のみのシンプルな
+                   案内にとどめた(招待URL自体はマイページ側で確認できる)。 -->
+              <div style="margin-top:16px;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;text-align:center">
+                <p style="margin:0 0 8px;font-size:12px;color:#92400e;font-weight:700">🎁 友達を紹介すると、あなたも友達も2ヶ月無料</p>
+                <a href="${SITE_URL}/mypage" style="font-size:12px;color:#0d4f52;font-weight:700;text-decoration:underline">マイページで招待URLを確認する →</a>
+              </div>
               <p style="margin-top:24px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px">
                 このメールは毎週金曜日18時に通知設定を有効にしているユーザーへ送信されます。<br/>
                 © 大手町調査室九課

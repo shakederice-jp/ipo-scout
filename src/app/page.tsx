@@ -5,12 +5,15 @@ import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Zap, Crown, AlertCircle, User } from "lucide-react";
 
+// 2026/9/14改修(追記⑩ロングテールキーワード対応): 「IPOカレンダー」「IPOスケジュール」を
+// 前方に出したtitle/descriptionに変更。既存の「IPO企業情報AI分析レポート」という訴求は
+// descriptionの方に残し、トップページの本質(スケジュール一覧+AI分析)を両方伝える形にした。
 export const metadata: Metadata = {
-  title: "IPO企業情報AI分析レポート｜大手町調査室九課",
-  description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。大手町調査室九課が運営。",
+  title: "IPOカレンダー・スケジュール｜AI分析レポート｜大手町調査室九課",
+  description: "2026年のIPOスケジュール・IPOカレンダーを一覧掲載。上場予定企業のAI分析レポートで総合スコア・株価シナリオ・9軸詳細分析を掲載。大手町調査室九課が運営。",
   openGraph: {
-    title: "IPO企業情報AI分析レポート｜大手町調査室九課",
-    description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
+    title: "IPOカレンダー・スケジュール｜AI分析レポート｜大手町調査室九課",
+    description: "2026年のIPOスケジュール・IPOカレンダーを一覧掲載。上場予定企業のAI分析レポートで総合スコア・株価シナリオ・9軸詳細分析を掲載。",
     url: "https://ipo.finance-tower.com",
     siteName: "大手町調査室九課",
     locale: "ja_JP",
@@ -19,8 +22,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "IPO企業情報AI分析レポート｜大手町調査室九課",
-    description: "2026年IPO予定企業のAI分析レポート。総合スコア・株価シナリオ・9軸詳細分析を掲載。",
+    title: "IPOカレンダー・スケジュール｜AI分析レポート｜大手町調査室九課",
+    description: "2026年のIPOスケジュール・IPOカレンダーを一覧掲載。上場予定企業のAI分析レポートで総合スコア・株価シナリオ・9軸詳細分析を掲載。",
     images: ["https://ipo.finance-tower.com/ogp.png"],
   },
   alternates: { canonical: "https://ipo.finance-tower.com" },

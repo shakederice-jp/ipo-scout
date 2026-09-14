@@ -91,6 +91,72 @@ ${STYLE_GUIDE}
   return { content, sourceLinks };
 }
 
+// 2026/9/14新設(追記⑫-⑤、はてなブックマーク向け「保存版」まとめコンテンツ):
+// 既存の「IPOカレンダー」(直近2週間・X投稿向けの短い速報)とは別に、当月まるごとの
+// IPOスケジュールを網羅した、保存・引用されやすい「まとめ」記事を新設する。
+// 月1回(月初)だけ生成すればよいテーマのため、runTheme()のexternal_idを
+// 日付(jstDay)ではなく年月(年-月)単位にして、月内での重複生成を防ぐ設計にする
+// (呼び出し側のsrc/app/api/cron/generate-x-drafts/route.tsでexternal_idを組み立てる)。
+// 文体はSTYLE_GUIDE(X投稿向けの短文IR速報調)ではなく、保存版まとめとして読みやすい
+// 一覧性を優先した独自のプロンプトにしている。
+export async function generateMonthlyIpoRoundupPost(): Promise<ThemedPostResult | null> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const monthLabel = `${year}年${month + 1}月`;
+
+  const { data, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, ticker, name, exchange, sector, biz_type, listing_date, price_range_min, price_range_max")
+    .gte("listing_date", monthStart.toISOString().split("T")[0])
+    .lte("listing_date", monthEnd.toISOString().split("T")[0])
+    .order("listing_date", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    console.error("月間IPOまとめ取得失敗またはデータなし:", error);
+    return null;
+  }
+
+  const listBlock = data
+    .map((c) => {
+      const price =
+        c.price_range_min && c.price_range_max
+          ? `想定価格帯${c.price_range_min}〜${c.price_range_max}円`
+          : "価格未定";
+      return `- ${c.listing_date} ${c.name}(${c.ticker || "コード未定"}・${c.exchange || ""}・${c.sector || c.biz_type || "業種不明"}) ${price}`;
+    })
+    .join("\n");
+
+  const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は${monthLabel}に上場予定・上場済みのIPO銘柄一覧です。この情報をもとに、「${monthLabel}のIPOスケジュール保存版まとめ」という、後から見返したり、ブックマークして参照したりするのに向いた一覧記事を1本作成してください。
+
+# ${monthLabel}のIPO一覧(上場日順)
+${listBlock}
+
+# 記載構成のルール(重要)
+- 冒頭で「${monthLabel}は全${data.length}社が上場(予定)」という要約を1〜2文で示す
+- 続けて、上場日順に銘柄を箇条書きでリストアップする。各銘柄について、事実として分かっている情報(業種・想定価格帯・上場日)を簡潔に添える
+- 「成長ドライバー・強み」「投資判断のポイント・懸念点」といった評価コメントは、事実に基づく一言のみに留め、断定的な投資助言(買い/見送り等)は書かないこと
+- 見出し・箇条書きに番号や記号(▼①②③・など)を使い、後から特定の銘柄を探しやすい一覧性の高い構成にすること
+- 「です・ます」調は使わず、簡潔なリスト・レポート調で統一する
+- 全体で1200〜1800文字程度。銘柄数が多い月はやや長くなってもよい
+- URLは含めない
+- 記事の最後に「各銘柄の詳しい分析は、プロフィール欄のリンクから特設ページでご覧いただけます」といった一文を必ず加えること
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+
+  const content = await generateWithGemini(prompt);
+  const sourceLinks = data.map((c: any) => ({
+    title: c.name,
+    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    source: "自社DB",
+  }));
+  return { content, sourceLinks };
+}
+
 // テーマ: 週内の重要経済指標カレンダー(自社DB由来)
 export async function generateEconomicCalendarPost(): Promise<ThemedPostResult | null> {
   const today = new Date();

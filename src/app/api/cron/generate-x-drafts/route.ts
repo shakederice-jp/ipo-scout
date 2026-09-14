@@ -12,6 +12,7 @@ import {
   generateCompetitorComparisonPost,
   generateDeepDiveTrendPost,
   generateLockupPreRecapPost,
+  generateMonthlyIpoRoundupPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 
@@ -174,6 +175,11 @@ export async function GET(request: Request) {
     // JSTの日付文字列(YYYY-MM-DD)。1日1回だけ生成すればよいテーマの重複防止に使う。
     // 以前UTC基準の日付境界でズレが起きたことがあるため、必ずAsia/Tokyoで計算する。
     const jstDay = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+    // 2026/9/14追加: テーマ⑯(月間IPOスケジュール保存版まとめ)は月1回だけ生成すればよいため、
+    // 年月単位(YYYY-MM)のキーを別途用意する。runTheme()の「external_idが既存なら
+    // generateを呼ばずスキップ」という仕組みをそのまま使うだけで、月内2回目以降の
+    // cron実行では自動的にスキップされる(日次テーマと同じ仕組みを月次に応用しただけ)。
+    const jstMonth = jstDay.slice(0, 7);
 
     // テーマ①/③: 「初値・その後の値動き」答え合わせ、該当が無い日は「IPO投資ワンポイント講座」で埋める
     // (2026/9/2、「大株主・VC/PEの異動ウォッチ」の廃止と入れ替えで新設)
@@ -336,6 +342,7 @@ export async function GET(request: Request) {
       runTheme(3, "週内の重要経済指標カレンダー", "マクロ経済", "該当イベントなし", `econ-calendar-${jstDay}`, generateEconomicCalendarPost),
       runTheme(9, "直近承認銘柄のスコア傾向", "IPOスコア分析", "対象銘柄なし", `score-trend-${jstDay}`, generateScoreTrendPost),
       runTheme(10, "ロックアップ解除カレンダー", "IPO需給", "該当銘柄なし", `lockup-calendar-${jstDay}`, generateLockupCalendarPost),
+      runTheme(16, "IPOスケジュール保存版まとめ", "IPOカレンダー", "対象銘柄なし", `monthly-ipo-roundup-${jstMonth}`, generateMonthlyIpoRoundupPost),
       runTheme1(),
       runTheme11(),
       runTheme12(),
@@ -392,7 +399,13 @@ export async function GET(request: Request) {
       }
 
       if (lockupPreRecapText) {
-        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(そのままXにコピペ可)\n${"=".repeat(30)}\n\n${lockupPreRecapText}`;
+        // 2026/9/14改修(追記⑫-②、X投稿のThreads・Bluesky等への同時展開): 実際の投稿は
+        // 完全手動(X APIによる自動投稿は行っていない)と判明したため、同じコピペ用テキストを
+        // Threads・Blueskyにも使い回せる旨を案内に追加。ただしBlueskyの文字数上限(300字)は
+        // X/Threadsより厳しく、このテキストがそれより長い場合に「そのまま使える」と案内すると
+        // 誤解を招くため、「そのまま」はX・Threadsのみに限定し、Blueskyは要約が必要な旨を明記した
+        // (新たな文章生成・AI呼び出しは追加していない)。
+        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮してご利用ください)\n${"=".repeat(30)}\n\n${lockupPreRecapText}`;
       }
 
       if (ipoRepostCount > 0) {
@@ -406,7 +419,7 @@ export async function GET(request: Request) {
 
         if (repostDrafts && repostDrafts.length > 0) {
           const repostBody = repostDrafts.map(d => d.content).join("\n\n" + "─".repeat(20) + "\n\n");
-          emailBody += `\n\n${"=".repeat(30)}\n📌 IPO再掲ドラフト(${ipoRepostCount}件・そのままXにコピペ可)\n${"=".repeat(30)}\n\n${repostBody}`;
+          emailBody += `\n\n${"=".repeat(30)}\n📌 IPO再掲ドラフト(${ipoRepostCount}件・X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮)\n${"=".repeat(30)}\n\n${repostBody}`;
         }
       }
 

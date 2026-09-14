@@ -969,7 +969,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
       <Card>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
           <Shield size={14} color="#ef4444"/>
-          <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析</span>
+          {/* 2026/9/14改修(追記⑩): 「流動性」「ロックアップ」「VC売却懸念」という
+              投資家が検索で使う語句を見出しに明示。狭い固定幅チップ(ALL_AXIS_LABELS等)は
+              レイアウト崩れのリスクがあるため触らず、この余白のある見出し側で対応した。 */}
+          <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析（流動性・ロックアップ・VC売却懸念）</span>
           <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
@@ -1123,7 +1126,14 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                   {company.exchange&&<span style={{fontWeight:900,fontSize:10,padding:"2px 8px",borderRadius:8,backgroundColor:"rgba(255,255,255,0.25)",color:DARK}}>{company.exchange}</span>}
                   {company.ticker&&<span style={{fontWeight:700,fontSize:10,color:MID}}>{company.ticker}</span>}
                 </div>
-                <h1 style={{fontWeight:900,fontSize:24,color:DARK,lineHeight:1.2,margin:"0 0 4px"}}>{company.name}</h1>
+                {/* 2026/9/14改修(追記⑩ロングテールキーワード対応): H1テキスト自体に
+                    「IPO・上場情報」という検索語を含める。見た目の主役は引き続き会社名にしたいため、
+                    サフィックス部分はfontSize/fontWeightを落として視覚的な重みは変えず、
+                    H1のテキストコンテンツとしてのみキーワードを含める形にした。 */}
+                <h1 style={{fontWeight:900,fontSize:24,color:DARK,lineHeight:1.2,margin:"0 0 4px"}}>
+                  {company.name}
+                  <span style={{fontWeight:700,fontSize:13,color:MID,marginLeft:6}}>のIPO・上場情報</span>
+                </h1>
                 {company.sector&&<div style={{fontWeight:600,fontSize:12,color:MID,marginBottom:10}}>{company.sector}</div>}
                 <div style={{marginBottom:10}}>
                   <FavoriteCompanyButton companyId={company.id} userId={userId}/>
@@ -1162,6 +1172,32 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 <ScoreRing score={score} size={80}/>
                 <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginTop:4}}>AI総合評価</div>
                 <div style={{fontWeight:900,fontSize:12,color:PRIMARY}}>{grade}ランク</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2026/9/14新設(追記⑩ロングテールキーワード対応): 「{会社名}の上場日は？」
+            「{会社名}の評価は？」という、投資家が実際に検索しそうな質問形式の小さなFAQ欄。
+            対応するFAQPage構造化データは、company/analysisの値をこの画面と共有しているpage.tsx
+            (サーバーコンポーネント)側で生成し、見た目と構造化データの内容を一致させている。 */}
+        <div style={{borderRadius:12,padding:"12px 14px",backgroundColor:"white",border:`1px solid ${BORDER}`}}>
+          <div style={{fontWeight:900,fontSize:12,color:DARK,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+            <span>❓</span><span>よくある質問</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {company.name}の上場日はいつですか？</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>
+                A. {(company as any).listing_date
+                  ? `${(company as any).listing_date_confirmed ? "" : "（現時点の目論見書ベースの予定であり、確定情報ではありません）"}${(company as any).listing_date}が上場予定日です。`
+                  : "現時点では上場日が確定していません。判明次第このページに反映されます。"}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {company.name}のAI分析評価は？</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>
+                A. 目論見書をAIが解析した総合評価は{grade}ランク（{score}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。
               </div>
             </div>
           </div>
@@ -1254,6 +1290,12 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <a href="/plans" style={{display:"inline-block",padding:"10px 24px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:8,fontWeight:800,fontSize:13,textDecoration:"none"}}>
               料金プランを見る →
             </a>
+            {/* 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 有料の壁にぶつかった
+                まさにその瞬間に、課金以外の選択肢(友達紹介で2ヶ月無料)も併せて案内する。
+                離脱してしまう前にもう1つの導線を見せる狙い。 */}
+            <div style={{marginTop:10,fontSize:11,color:"#a0d4d6"}}>
+              または<a href="/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、2ヶ月無料でご利用いただけます🎁
+            </div>
           </div>
         )}
 
@@ -1332,7 +1374,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         <Card>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
             <BarChart2 size={14} color={PRIMARY}/>
-            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>株価シナリオ分析</span>
+            {/* 2026/9/14改修(追記⑩): 「公募割れ」という検索語を、既存の正直なリスク開示方針
+                (強気一辺倒にしない)と整合する形で見出しに含めた。 */}
+            <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>株価シナリオ分析（公募割れリスクを含む）</span>
           </div>
           <div style={{display:"flex",gap:6,marginBottom:10}}>
             {(["short","long"] as const).map(tab=>(

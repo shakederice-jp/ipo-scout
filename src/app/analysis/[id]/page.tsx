@@ -80,13 +80,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     ? `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・総合スコア${score}/100（${grade}評価）を掲載。${summary}`
     : `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・9軸スコアを掲載。${summary}`
   ).slice(0, 160);
-  const title = `${data.name} IPO 上場日・初値シナリオ分析｜大手町調査室九課`;
+  // 2026/9/14改修(追記⑩ロングテールキーワード対応): 「銘柄名+証券コード」で検索する
+  // 投資家向けに、titleへ証券コードを追加。
+  const title = `${data.name}${tickerPart} IPO 上場日・初値シナリオ分析｜大手町調査室九課`;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
   return {
     title,
     description,
-    keywords: [`${data.name}`, "IPO分析", "初値予想", "上場日", "IPOスコア", "目論見書", (data as any).sector ?? ""].filter(Boolean),
+    keywords: [`${data.name}`, ticker ?? "", "IPO分析", "初値予想", "上場日", "証券コード", "IPOスコア", "目論見書", "公募割れ", (data as any).sector ?? ""].filter(Boolean),
     openGraph: {
       title, description, url,
       siteName: "大手町調査室九課",
@@ -235,10 +237,37 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     ],
   };
 
+  // 2026/9/14追加(追記⑩ロングテールキーワード対応): AnalysisClient.tsx側に新設した
+  // 「よくある質問」の見た目のFAQと、内容(質問文・回答文)を一致させたFAQPage構造化データ。
+  // Googleのガイドラインに沿い、画面に表示されない内容をJSON-LDだけに含めることは避けている。
+  const listingDateStr = co.listing_date ?? null;
+  const faqAnswer1 = listingDateStr
+    ? `${co.listing_date_confirmed ? "" : "（現時点の目論見書ベースの予定であり、確定情報ではありません）"}${listingDateStr}が上場予定日です。`
+    : "現時点では上場日が確定していません。判明次第このページに反映されます。";
+  const faqGrade = analysisSummary?.grade ?? "B";
+  const faqScore = analysisSummary?.total_score ?? 65;
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": `${company.name}の上場日はいつですか？`,
+        "acceptedAnswer": { "@type": "Answer", "text": faqAnswer1 },
+      },
+      {
+        "@type": "Question",
+        "name": `${company.name}のAI分析評価は？`,
+        "acceptedAnswer": { "@type": "Answer", "text": `目論見書をAIが解析した総合評価は${faqGrade}ランク（${faqScore}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。` },
+      },
+    ],
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
       <AnalysisClient
         company={companyForClient as any}
         initialAnalysis={initialAnalysis}

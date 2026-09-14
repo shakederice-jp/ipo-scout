@@ -195,6 +195,19 @@ export default function IpoGuidePage() {
               流通比率・主幹事・需給の3点セットを見るだけで、初値勝率は大幅に上がる。当社のAI分析では9軸スコアで需給の強弱を数値化。目論見書を読む時間がなくても、お宝銘柄を素早く見極められる。
             </p>
           </div>
+
+          {/* 2026/9/14新設(追記⑪-3、トピッククラスター化): マーケットトレンドの
+              関連テーマ記事(初値・その後の値動き等)へのリンク。個別記事IDへの直リンクは
+              記事の差し替え(note.com自動生成機能等)で切れる恐れがあるため、一覧ページへの
+              リンクにテーマの説明を添える形にした。 */}
+          <Link href="/trends" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginTop: 12,
+            backgroundColor: "white", border: `1px solid ${C.teal}`, borderRadius: 10, padding: "10px 14px" }}>
+            <span style={{ fontSize: 16 }}>📡</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: C.nav }}>関連記事：各銘柄の「初値・その後の値動き」記事を読む</div>
+              <div style={{ fontSize: 10, color: C.teal }}>AI事前分析と実際の初値を答え合わせしたマーケットトレンド記事一覧 →</div>
+            </div>
+          </Link>
         </div>
 
         {/* ═══ 短期セクション ═══ */}
@@ -269,6 +282,15 @@ export default function IpoGuidePage() {
               「成長株は保有、割高株は初値売り」が鉄則。AI分析の短期グレード（B以上）かつロックアップ解除まで90日以上あれば保有継続を検討する価値がある。
             </p>
           </div>
+
+          <Link href="/trends" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginTop: 12,
+            backgroundColor: "white", border: `1px solid ${C.teal}`, borderRadius: 10, padding: "10px 14px" }}>
+            <span style={{ fontSize: 16 }}>📡</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: C.nav }}>関連記事：各銘柄の「ロックアップ解除カウントダウン」記事を読む</div>
+              <div style={{ fontSize: 10, color: C.teal }}>解除タイミング・需給インパクトをAIが解説するマーケットトレンド記事一覧 →</div>
+            </div>
+          </Link>
         </div>
 
         {/* ═══ 長期セクション ═══ */}
@@ -348,6 +370,15 @@ export default function IpoGuidePage() {
               長期グレードAの銘柄を「黎明期〜成長期」に仕込み、「停滞期」のシグナルが出たら利確——これが10倍株への王道。AI分析の長期軸スコアを参考に、数年後の姿を今から見据えよう。
             </p>
           </div>
+
+          <Link href="/trends" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginTop: 12,
+            backgroundColor: "white", border: `1px solid ${C.teal}`, borderRadius: 10, padding: "10px 14px" }}>
+            <span style={{ fontSize: 16 }}>📡</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: C.nav }}>関連記事：各銘柄の「ビジネスモデル・上場ストーリー・競合との違い」記事を読む</div>
+              <div style={{ fontSize: 10, color: C.teal }}>儲けの仕組み・上場の経緯・競合比較をAIが解説するマーケットトレンド記事一覧 →</div>
+            </div>
+          </Link>
         </div>
 
         {/* CTA */}
