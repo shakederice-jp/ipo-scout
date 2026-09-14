@@ -1709,6 +1709,11 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </div>
             ))}
           </div>
+          {/* 2026/9/14追加: この9軸がなぜ・どう分かれているかを説明する専用ページへの導線。
+              まさに9軸が表示されているこの場所からのリンクが最も文脈に合う。 */}
+          <a href="/methodology" style={{display:"block",marginTop:10,fontSize:10,color:"#66c3c6",textDecoration:"none"}}>
+            この9軸の見方・分け方を詳しく見る →
+          </a>
         </Card>
         <BeginnerCaption level={level} text="株価が「割安か割高か」を判断するための指標（PER・PBR・時価総額など）をまとめた表です。"/>
         {visualizationData && <ValuationTable vizData={visualizationData} />}
