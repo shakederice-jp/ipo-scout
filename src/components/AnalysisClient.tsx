@@ -83,28 +83,18 @@ function BeginnerCaption({text,level}:{text:string;level:"expert"|"beginner"}) {
   );
 }
 
-// 参考資料の各グループ（超短期・短期・長期投資家向け）を、初心者向けではデフォルト折りたたみにする。
-// 中上級者向けは従来通り常に開いた状態(=見た目・挙動は今までと変わらない)。
-function ReferenceGroup({icon,order,title,subtitle,accent,level,children}:{
+// 2026/9/14変更: 以前は初心者向けで「▼詳しいデータを見る」ボタンによるデフォルト
+// 折りたたみを行っていたが、「無料ユーザーにも無料でここまで公開しているんだぞ、
+// というのを見てもらいたい」との要望を受け、折りたたみ自体を廃止。初心者・中上級者
+// 問わず、参考資料の中身は常にそのまま表示する。
+function ReferenceGroup({icon,order,title,subtitle,accent,children}:{
   icon:string;order:string;title:string;subtitle:string;accent:string;
   level:"expert"|"beginner";children:React.ReactNode;
 }) {
-  const isBeginner=level==="beginner";
-  const [open,setOpen]=useState(!isBeginner);
   return (
     <>
       <ReferenceGroupHeader icon={icon} order={order} title={title} subtitle={subtitle} accent={accent}/>
-      {isBeginner&&(
-        <div style={{display:"flex",justifyContent:"center",margin:"2px 0 12px"}}>
-          <button onClick={()=>setOpen(o=>!o)} style={{
-            display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:700,color:MID,
-            backgroundColor:"white",border:`1.5px solid ${BORDER}`,borderRadius:20,padding:"8px 16px",cursor:"pointer",
-          }}>
-            {open?"▲ 詳しいデータを閉じる":"▼ 詳しいデータ（表・グラフ）を見る"}
-          </button>
-        </div>
-      )}
-      {(open||!isBeginner)&&children}
+      {children}
     </>
   );
 }
