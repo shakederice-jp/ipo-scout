@@ -193,12 +193,29 @@ export function ShareholdersLockupTable({ vizData }: { vizData: any }) {
   );
 }
 
-/* ⑰ 事業等のリスク（重要度別） */
+/* ⑰ 事業等のリスク（重要度別）
+   2026/9/16改修: 従来は左ボーダー3px固定+バッジ色のみで重要度を表現していたが、
+   ユーザーから「大中小に応じてビジュアル上でも危険度がわかりやすいように、アイコンや色、
+   文字の大きさで伝えたい」との要望があった。severity("高"/"中"/"低"、AIが目論見書の
+   リスク記載の深刻度・言及の強さから判定)ごとに、①絵文字アイコン、②左ボーダーの太さ、
+   ③タイトル・バッジの文字サイズ、④背景色の濃さ、の4点をまとめて段階的に変えることで、
+   一覧をざっと眺めただけでも重要度の高いリスクが視覚的に強調されるようにした。
+   あわせて、重要度の高い順（高→中→低、想定外の値は最後）に並べ替えて表示する。 */
+const RISK_SEVERITY_META: Record<string, { color: string; bg: string; icon: string; border: number; titleSize: number; badgeSize: number; order: number }> = {
+  "高": { color: "#dc2626", bg: "#fef2f2", icon: "🔴", border: 5, titleSize: 14, badgeSize: 11, order: 0 },
+  "中": { color: "#d97706", bg: "#fffbeb", icon: "🟠", border: 3, titleSize: 13, badgeSize: 10, order: 1 },
+  "低": { color: "#64748b", bg: "#f8fafc", icon: "⚪", border: 2, titleSize: 12, badgeSize: 9,  order: 2 },
+};
+const RISK_SEVERITY_FALLBACK = { color: "#64748b", bg: "#f8fafc", icon: "⚪", border: 2, titleSize: 12, badgeSize: 9, order: 3 };
+
 export function RiskTable({ vizData }: { vizData: any }) {
   const risk_table = vizData?.risk_table;
   const riskRows: any[] = risk_table?.rows ?? [];
   const visible = risk_table?.available && riskRows.length > 0;
   if (!visible) return null;
+  const sortedRows = [...riskRows].sort(
+    (a, b) => (RISK_SEVERITY_META[a.severity]?.order ?? RISK_SEVERITY_FALLBACK.order) - (RISK_SEVERITY_META[b.severity]?.order ?? RISK_SEVERITY_FALLBACK.order)
+  );
   return (
     <CardShell>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -209,16 +226,17 @@ export function RiskTable({ vizData }: { vizData: any }) {
         <p style={{ fontSize: 10, color: "#6b9ea0", marginBottom: 12 }}>📄 {risk_table.citation}</p>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {riskRows.map((r: any, i: number) => {
-          const sevColor = r.severity === "高" ? "#dc2626" : r.severity === "中" ? "#d97706" : "#64748b";
-          const sevBg = r.severity === "高" ? "#fef2f2" : r.severity === "中" ? "#fffbeb" : "#f8fafc";
+        {sortedRows.map((r: any, i: number) => {
+          const meta = RISK_SEVERITY_META[r.severity] ?? RISK_SEVERITY_FALLBACK;
           return (
-            <div key={i} style={{ backgroundColor: sevBg, borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${sevColor}` }}>
+            <div key={i} style={{ backgroundColor: meta.bg, borderRadius: 10, padding: "10px 12px", borderLeft: `${meta.border}px solid ${meta.color}` }}>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 900, padding: "1px 8px", borderRadius: 20, backgroundColor: sevColor, color: "white" }}>{r.severity}</span>
+                <span style={{ fontSize: meta.badgeSize, fontWeight: 900, padding: "1px 8px", borderRadius: 20, backgroundColor: meta.color, color: "white", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                  <span aria-hidden="true">{meta.icon}</span>{r.severity}
+                </span>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 8px", borderRadius: 20, backgroundColor: "white", color: "#64748b", border: "1px solid #e2e8f0" }}>{r.category}</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#082b2e", marginBottom: 2 }}>{r.title}</div>
+              <div style={{ fontSize: meta.titleSize, fontWeight: 900, color: "#082b2e", marginBottom: 2 }}>{r.title}</div>
               <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.6 }}>{r.description}</div>
             </div>
           );

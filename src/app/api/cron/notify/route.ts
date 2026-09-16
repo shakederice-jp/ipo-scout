@@ -160,7 +160,8 @@ export async function GET(req: NextRequest) {
             ${ultraGrade ? `<span style="font-size:11px;color:#64748b;margin-left:8px">超短期:${ultraGrade} / 短期:${shortGrade ?? '-'} / 長期:${longGrade ?? '-'}</span>` : ''}
           </div>` : ''}
           ${aiSummary ? `<p style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.6">${aiSummary}</p>` : ''}
-          ${ticker ? `<a href="${analysisUrl}" style="display:inline-block;padding:8px 18px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">詳細レポートを見る →</a>` : ''}
+          ${ticker ? `<a href="${analysisUrl}" style="display:inline-block;padding:8px 18px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">詳細レポートを見る →</a>
+          <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${analysisUrl}</div>` : ''}
         </div>
       `;
     };
