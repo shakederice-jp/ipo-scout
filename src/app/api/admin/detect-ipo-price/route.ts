@@ -59,7 +59,12 @@ export async function POST(req: NextRequest) {
     let lastStatus = 0;
 
     for (const docType of [1, 5]) {
-      const url = `https://disclosure.edinet-fsa.go.jp/api/v2/documents/${doc_id}?type=${docType}`;
+      // 2026/9/16修正: disclosure.edinet-fsa.go.jp はブラウザ画面遷移前提のホストで、
+      // プログラムから直接叩くと「規定外操作」のHTMLエラーページが返ってくる
+      // (2026/8/31にedinet/route.tsで発覚・修正した不具合と同一原因)。
+      // 他のEDINET取得箇所(edinet/route.ts・competitor-financials.ts等)と同じ
+      // api.edinet-fsa.go.jp に統一。
+      const url = `https://api.edinet-fsa.go.jp/api/v2/documents/${doc_id}?type=${docType}`;
       const urlWithKey = `${url}&Subscription-Key=${EDINET_KEY}`;
       const res = await fetch(urlWithKey, {
         signal: AbortSignal.timeout(25000),

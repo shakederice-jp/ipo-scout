@@ -957,26 +957,33 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
     const slices=chart.map((d:any)=>{const a=2*Math.PI*(d.pct/100);const x1=cx+r*Math.cos(ang),y1=cy+r*Math.sin(ang),x2=cx+r*Math.cos(ang+a),y2=cy+r*Math.sin(ang+a),ix1=cx+ir*Math.cos(ang),iy1=cy+ir*Math.sin(ang),ix2=cx+ir*Math.cos(ang+a),iy2=cy+ir*Math.sin(ang+a),lg=a>Math.PI?1:0,path=`M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${ir} ${ir} 0 ${lg} 0 ${ix1} ${iy1} Z`;ang+=a;return{...d,path};});
     return(
       <Card>
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-          <Shield size={14} color="#ef4444"/>
+        {/* 2026/9/16改修: スマホ幅で見出しバッジ・株主構成の凡例テキストが極端に狭い列に
+            押し込められ、日本語が1文字ずつ縦に改行される不具合(flexboxの子要素がCJKテキストの
+            改行可能性を利用して極小幅まで縮んでしまう罠、Footer.tsx等と同種)が発生していた。
+            対応として、①バッジ類にflexShrink:0+whiteSpace:nowrapを付け縮まないようにし、
+            ②チャート行にflexWrap:"wrap"を付け、幅が足りない時は凡例がチャートの下に回り込む
+            (横に押し込められない)ようにし、③凡例列にminWidth(200px)を設定して、それ以上は
+            縮まず通常の複数文字ずつの折り返しになるようにした。 */}
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+          <Shield size={14} color="#ef4444" style={{flexShrink:0}}/>
           {/* 2026/9/14改修(追記⑩): 「流動性」「ロックアップ」「VC売却懸念」という
               投資家が検索で使う語句を見出しに明示。狭い固定幅チップ(ALL_AXIS_LABELS等)は
               レイアウト崩れのリスクがあるため触らず、この余白のある見出し側で対応した。 */}
           <span style={{fontWeight:900,fontSize:14,color:"#1e293b"}}>需給・VC分析（流動性・ロックアップ・VC売却懸念）</span>
-          <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10}}>参考値</span>
+          <span style={{fontSize:9,color:"#94a3b8",backgroundColor:"#f1f5f9",padding:"2px 6px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap"}}>参考値</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:10,flexWrap:"wrap"}}>
           <svg width={sz} height={sz} style={{flexShrink:0}}>
             {slices.map((s:any,i:number)=><path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth={2}/>)}
             <text x={cx} y={cy-6} textAnchor="middle" fontSize={9} fill="#64748b">株主構成</text>
             <text x={cx} y={cy+8} textAnchor="middle" fontSize={9} fill="#64748b">{valid.length>0?"(実データ)":"(概算)"}</text>
           </svg>
-          <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{flex:1,minWidth:200,display:"flex",flexDirection:"column",gap:6}}>
             {chart.map((d:any,i:number)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
                 <div style={{width:10,height:10,borderRadius:2,backgroundColor:d.color,flexShrink:0}}/>
                 <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:"#475569"}}>{d.label}</div><div style={{fontSize:9,color:"#94a3b8"}}>{d.lockup}</div></div>
-                <span style={{fontSize:11,fontWeight:900,color:"#1e293b"}}>{valid.length>0?`${d.pct}%`:"目論見書参照"}</span>
+                <span style={{fontSize:11,fontWeight:900,color:"#1e293b",flexShrink:0,whiteSpace:"nowrap"}}>{valid.length>0?`${d.pct}%`:"目論見書参照"}</span>
               </div>
             ))}
             {valid.length===0&&shareholders.length>0&&(
