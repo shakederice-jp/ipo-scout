@@ -1,6 +1,8 @@
 import { TwitterApi } from "twitter-api-v2";
 
-export async function postToX(text: string): Promise<{ success: boolean; error?: string }> {
+// 2026/9/19追加: 自動投稿の記録(market_trends.x_post_id等)に使うため、投稿できたツイートの
+// idも返すように拡張した。既存の呼び出し元(test-x-post等)はidを無視するだけで動作に影響なし。
+export async function postToX(text: string): Promise<{ success: boolean; error?: string; id?: string }> {
   try {
     const client = new TwitterApi({
       appKey: process.env.X_API_KEY!,
@@ -9,8 +11,8 @@ export async function postToX(text: string): Promise<{ success: boolean; error?:
       accessSecret: process.env.X_ACCESS_SECRET!,
     });
 
-    await client.v2.tweet(text);
-    return { success: true };
+    const res = await client.v2.tweet(text);
+    return { success: true, id: res?.data?.id };
   } catch (e: any) {
     console.error("X投稿エラー:", e?.message);
     console.error("X投稿エラー詳細:", JSON.stringify(e?.data ?? e?.errors ?? {}, null, 2));

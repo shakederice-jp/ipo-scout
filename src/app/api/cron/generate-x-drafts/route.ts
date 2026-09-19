@@ -13,6 +13,7 @@ import {
   generateDeepDiveTrendPost,
   generateLockupPreRecapPost,
   generateMonthlyIpoRoundupPost,
+  generateRecentIpoNewsPost,
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
@@ -336,6 +337,28 @@ export async function GET(request: Request) {
       }
     }
 
+    // テーマ⑰: 2026/9/19追加。「直近のIPO銘柄に関する新情報」。X自動投稿(3回/日・本実装)の
+    // 夜枠を優先的に埋めるための新テーマ。①⑪〜⑮と同様、どの銘柄を取り上げるかが日によって
+    // 変わるため、runTheme()の固定external_id方式ではなく関数内で候補ごとに重複チェックする。
+    async function runTheme17(): Promise<ThemeOutcome> {
+      try {
+        const newsResult = await generateRecentIpoNewsPost();
+        if (newsResult) {
+          const outcome = await saveThemeArticle(
+            `直近のIPO銘柄に関する新情報(${newsResult.companyName})`,
+            newsResult.sector,
+            newsResult.result,
+            newsResult.externalId
+          );
+          return { theme: 17, status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped", trendsUpdated: outcome === "saved" };
+        }
+        return { theme: 17, status: "skipped(該当銘柄なし)", trendsUpdated: false };
+      } catch (err) {
+        console.error("直近のIPO銘柄に関する新情報の生成に失敗:", err);
+        return { theme: 17, status: "failed", trendsUpdated: false };
+      }
+    }
+
     // 2026/9/8: 以前はテーマ①⑪⑫⑬⑭⑮を1つずつ直列(await)で実行しており、テーマ数が
     // 増えるにつれて合計の待ち時間が伸び、Vercelの関数タイムアウト(maxDuration)に達して
     // 関数ごと強制終了し、最後の管理者通知メール送信まで到達できないことがあった
@@ -354,6 +377,7 @@ export async function GET(request: Request) {
       runTheme13(),
       runTheme14(),
       runTheme15(),
+      runTheme17(),
     ];
 
     const themeResults = await Promise.all(themeTasks);

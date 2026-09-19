@@ -1,4 +1,5 @@
-﻿name: IPO Scout Cron Jobs
+﻿@'
+name: IPO Scout Cron Jobs
 
 on:
   schedule:
@@ -8,6 +9,9 @@ on:
     - cron: '0 3 * * *'
     - cron: '0 9 * * *'
     - cron: '0 16 * * *'
+    - cron: '0 1 * * 1-5'
+    - cron: '0 10 * * 0-4'
+    - cron: '0 12 * * 0-4'
   workflow_dispatch:
 
 jobs:
@@ -59,3 +63,25 @@ jobs:
     steps:
       - name: Detect Paid Content Scraping
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-scraping -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  auto-post-morning:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 1 * * 1-5' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: X Auto Post (Morning / 平日10時JST)
+        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=morning' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  auto-post-evening1:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 10 * * 0-4' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: X Auto Post (Evening 1 / 日〜木19時JST)
+        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=evening1' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  auto-post-evening2:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 12 * * 0-4' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: X Auto Post (Evening 2 / 日〜木21時JST)
+        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=evening2' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+'@ | Set-Content -Path ".github\workflows\cron.yml" -Encoding UTF8

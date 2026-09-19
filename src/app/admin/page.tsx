@@ -18,6 +18,10 @@ export default function AdminPage() {
   const [testPostText, setTestPostText] = useState("");
   const [testPostLoading, setTestPostLoading] = useState(false);
   const [testPostResult, setTestPostResult] = useState<string | null>(null);
+  // 2026/9/19追加: 3回/日の自動投稿(本実装)を、スケジュール(cron)を待たずに手動で1回試すためのツール。
+  // スロット(朝/夜1/夜2)ごとに優先テーマ→他テーマ穴埋め→連載続きの順で本番Xアカウントに実際に投稿される。
+  const [autoPostLoading, setAutoPostLoading] = useState<string | null>(null);
+  const [autoPostResult, setAutoPostResult] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState<any | null>(null);
   const [dbCheckLoading, setDbCheckLoading] = useState(false);
@@ -392,6 +396,26 @@ export default function AdminPage() {
       );
     } catch { setTestPostResult("❌ 通信エラー"); }
     setTestPostLoading(false);
+  };
+
+  // 2026/9/19追加: 自動投稿(3回/日)の本番動作を、cronの時刻を待たずにその場で1回実行して確認するツール。
+  // 本番アカウントに実際に投稿される点はXテスト投稿と同じ。
+  const handleRunAutoPost = async (slot: "morning" | "evening1" | "evening2") => {
+    setAutoPostLoading(slot); setAutoPostResult(null);
+    try {
+      const res = await fetch("/api/admin/run-auto-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot }),
+      });
+      const data = await res.json();
+      setAutoPostResult(
+        data.posted
+          ? `✅ 投稿成功(${data.charLength}文字)。元記事: ${data.sourceTitle ?? "不明"}`
+          : `⚠️ 投稿なし: ${data.reason ?? data.error ?? "不明"}`
+      );
+    } catch { setAutoPostResult("❌ 通信エラー"); }
+    setAutoPostLoading(null);
   };
 
   const handleHealthCheck = async () => {
@@ -853,6 +877,23 @@ export default function AdminPage() {
                       {testPostLoading?"投稿中...":"この内容でXにテスト投稿する"}
                     </button>
                     {testPostResult && <p style={{ marginTop:6, fontSize:11, color:testPostResult.startsWith("❌")?"#dc2626":"#166534" }}>{testPostResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🐦 X自動投稿(3回/日・本実装) <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（本番アカウントに実際に投稿されます。通常: 平日10時/日曜〜木曜19時・21時に自動実行）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>優先テーマ→無ければ他テーマで穴埋め→深掘り連載の続きがあればそちらを優先、の順で1件選んで投稿します。押した時点で対象記事が無ければ何も投稿されず「投稿なし」と表示されます。</p>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
+                      <button onClick={()=>handleRunAutoPost("morning")} disabled={!!autoPostLoading} style={btnStyle("#1d9bf0", !!autoPostLoading)}>
+                        {autoPostLoading==="morning"?"投稿中...":"朝枠(10時)を今すぐ実行"}
+                      </button>
+                      <button onClick={()=>handleRunAutoPost("evening1")} disabled={!!autoPostLoading} style={btnStyle("#1d9bf0", !!autoPostLoading)}>
+                        {autoPostLoading==="evening1"?"投稿中...":"夜枠①(19時)を今すぐ実行"}
+                      </button>
+                      <button onClick={()=>handleRunAutoPost("evening2")} disabled={!!autoPostLoading} style={btnStyle("#1d9bf0", !!autoPostLoading)}>
+                        {autoPostLoading==="evening2"?"投稿中...":"夜枠②(21時)を今すぐ実行"}
+                      </button>
+                    </div>
+                    {autoPostResult && <p style={{ marginTop:6, fontSize:11, color:autoPostResult.startsWith("❌")?"#dc2626":autoPostResult.startsWith("⚠️")?"#b45309":"#166534" }}>{autoPostResult}</p>}
                   </div>
                 </div>
               )}

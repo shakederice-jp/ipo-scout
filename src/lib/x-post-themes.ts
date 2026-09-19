@@ -907,6 +907,107 @@ ${DEEP_DIVE_TREND_STYLE}
   }
 }
 
+// ===== 2026/9/19追加: テーマ⑰「直近のIPO銘柄に関する新情報」 =====
+// X自動投稿(3回/日・本実装)のうち、夜の2枠(19時・21時)を優先的に埋めるための新テーマ。
+// 既に分析済み(analysis_summary あり)かつ直近180日以内に上場した銘柄を対象に、
+// Claude Haiku + web_search(②経済指標・イベント速報と同じパターン)で直近1週間〜10日程度の
+// ニュース・株価動向・IR発表等を調べ、投資家にとって新情報と呼べるものがあれば記事化する。
+// 同一銘柄については直近10日以内に生成済みなら対象から外し、同じ話題の連投を防ぐ
+// (external_idに日付を含めているため、runTheme()の固定external_id方式ではなく
+// この関数内で候補ごとに重複チェックする方式にしている)。
+// 調査の結果「特筆すべき新情報なし」と判定された銘柄はスキップし、次の候補(より古いIPO)を試す。
+async function fetchRecentIpoNews(co: { name: string; ticker: string | null }): Promise<string> {
+  const query = `${co.name}${co.ticker ? `(証券コード${co.ticker})` : ""}について、直近1週間〜10日程度のニュース・株価動向・IR発表・決算情報等を検索してください。投資家にとって重要な新情報があれば具体的に教えてください。特筆すべき新情報が見つからない場合は、その旨だけ一言で答えてください。`;
+  const res = await anthropicForThemes.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 1500,
+    tools: [{ type: "web_search_20250305", name: "web_search" } as any],
+    messages: [{ role: "user", content: query }],
+  });
+  return (res.content as any[])
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("\n");
+}
+
+function looksLikeNoRecentNews(text: string): boolean {
+  return /特筆すべき新情報(は)?(見つかり|あり)?ません|該当する新情報はありません/.test(text) || text.trim().length < 30;
+}
+
+export async function generateRecentIpoNewsPost(): Promise<{ externalId: string; companyName: string; sector: string; result: ThemedPostResult } | null> {
+  const todayJst = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+  const windowStart = sixMonthsAgo.toISOString().slice(0, 10);
+
+  const { data: rows, error } = await supabaseForThemes
+    .from("ipo_companies")
+    .select("id, name, ticker, sector, listing_date")
+    .not("analysis_summary", "is", null)
+    .gte("listing_date", windowStart)
+    .lte("listing_date", todayJst)
+    .order("listing_date", { ascending: false });
+
+  if (error || !rows || rows.length === 0) {
+    if (error) console.error("直近IPO新情報: 取得失敗", error);
+    return null;
+  }
+
+  const tenDaysAgoIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+
+  for (const co of rows) {
+    // 直近10日以内に同じ銘柄で生成済みなら対象から外す(連投防止)
+    const { data: recent } = await supabaseForThemes
+      .from("market_trends")
+      .select("id")
+      .like("external_id", `recent-ipo-news-${co.id}-%`)
+      .gte("fetched_at", tenDaysAgoIso)
+      .limit(1);
+    if (recent && recent.length > 0) continue;
+
+    let researchText = "";
+    try {
+      researchText = await fetchRecentIpoNews(co);
+    } catch (e) {
+      console.error(`直近IPO新情報: web検索失敗(${co.name}):`, e);
+      continue;
+    }
+    if (!researchText || looksLikeNoRecentNews(researchText)) continue;
+
+    const prompt = `
+あなたは日本の個人投資家向けメディアの編集者です。以下は「${co.name}」という、既にIPO分析済みの銘柄についての直近ニュースの調査結果です。この情報をもとに、X(旧Twitter)投稿を1本作成してください。
+
+# 調査結果
+${researchText}
+
+# 記載のポイント
+- 調査結果に含まれる事実(具体的な数値・発表内容)のみを書き、憶測で補わないこと
+- 個人投資家にとってなぜこの新情報が重要かを一言添えること
+- 断定的な投資助言は書かないこと
+
+${STYLE_GUIDE}
+
+投稿文のみを出力してください。前置きや説明は不要です。
+`;
+    try {
+      const content = await generateWithGemini(prompt);
+      return {
+        externalId: `recent-ipo-news-${co.id}-${todayJst}`,
+        companyName: co.name,
+        sector: co.sector || "IPO関連ニュース",
+        result: {
+          content,
+          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+        },
+      };
+    } catch (e) {
+      console.error(`直近IPO新情報: 記事生成失敗(${co.name}):`, e);
+      continue;
+    }
+  }
+  return null;
+}
+
 // ===== ここから2026/9/8追加: 「初値・その後の値動き」カテゴリーに、ロックアップ解除前の
 // 振り返り記事を追加 =====
 // ユーザー要望の経緯: 当初は「上場後の株価パフォーマンス振り返りを2週間に一度、定期的に
