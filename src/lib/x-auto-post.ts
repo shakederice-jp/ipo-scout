@@ -115,6 +115,16 @@ function splitDeepDiveSections(rawBody: string): { part1: string; part2: string;
   };
 }
 
+// 2026/9/19追加: 連載投稿(1/3・2/3・3/3)だけを見ても、深掘り3要素の本文自体には
+// 銘柄名が明記されないことがあり、「どの銘柄の続きか分からない」との指摘があった。
+// market_trends.titleは「ビジネスモデル・ストーリー・競合との違い(会社名)」の形式で
+// 必ず銘柄名を末尾の括弧に含んでいる(x-post-themes.ts・generate-x-drafts/route.ts参照)ため、
+// そこから銘柄名を取り出して各パートの投稿文に明記する。
+function extractCompanyName(title: string): string | null {
+  const match = title.match(/\(([^()]+)\)\s*$/);
+  return match ? match[1] : null;
+}
+
 async function findInProgressSeries(): Promise<{ progressId: number; marketTrendId: string; nextPart: number } | null> {
   const { data, error } = await supabaseForAutoPost
     .from("x_series_progress")
@@ -230,8 +240,9 @@ async function postSeriesPart(marketTrendId: string, part: number, slot: AutoPos
   const partText = part === 1 ? sections.part1 : part === 2 ? sections.part2 : sections.part3;
   const isFinal = part >= 3;
   const cta = isFinal ? pickCta(slot) : CLIFFHANGER_CTA;
-  const seriesNote = part === 1 ? "" : `(${part}/3)\n`;
-  const finalText = `${seriesNote}${partText}\n\n${cta}`;
+  const companyName = extractCompanyName(row.title);
+  const partLabel = companyName ? `【${companyName}】(${part}/3)` : `(${part}/3)`;
+  const finalText = `${partLabel}\n${partText}\n\n${cta}`;
 
   const postResult = await postToX(finalText);
   if (!postResult.success) {
