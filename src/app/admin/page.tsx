@@ -14,6 +14,10 @@ export default function AdminPage() {
   const [autoResult, setAutoResult] = useState<string | null>(null);
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
+  // 2026/9/19追加: X自動投稿の文字数上限(長文投稿がAPI経由で通るか)を確認するためのテスト投稿ツール
+  const [testPostText, setTestPostText] = useState("");
+  const [testPostLoading, setTestPostLoading] = useState(false);
+  const [testPostResult, setTestPostResult] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState<any | null>(null);
   const [dbCheckLoading, setDbCheckLoading] = useState(false);
@@ -367,6 +371,27 @@ export default function AdminPage() {
       setNotifyResult(data.error ? `❌ ${data.error}` : `✅ 送信完了・${data.sent}件`);
     } catch { setNotifyResult("❌ 通信エラー"); }
     setNotifyLoading(false);
+  };
+
+  // 2026/9/19追加: 自動投稿の文章を280文字超(500〜800文字)にできるか、実際にXへテスト投稿して確認するツール。
+  // 本番のXアカウントに実際に投稿されるため、内容を確認してから実行すること(結果次第でこの後の設計を決める)。
+  const handleTestXPost = async () => {
+    if (!testPostText.trim()) { setTestPostResult("❌ 投稿文を入力してください"); return; }
+    setTestPostLoading(true); setTestPostResult(null);
+    try {
+      const res = await fetch("/api/admin/test-x-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: testPostText }),
+      });
+      const data = await res.json();
+      setTestPostResult(
+        data.success
+          ? `✅ 投稿成功(${data.textLength}文字)。Xで実際の見え方を確認してください。`
+          : `❌ 投稿失敗(${data.textLength ?? testPostText.length}文字): ${data.error ?? "不明なエラー"}`
+      );
+    } catch { setTestPostResult("❌ 通信エラー"); }
+    setTestPostLoading(false);
   };
 
   const handleHealthCheck = async () => {
@@ -816,6 +841,18 @@ export default function AdminPage() {
                       {notifyLoading?"送信中...":"通知メールを今すぐ送信"}
                     </button>
                     {notifyResult && <p style={{ marginTop:6, fontSize:11, color:notifyResult.startsWith("❌")?"#dc2626":"#166534" }}>{notifyResult}</p>}
+                  </div>
+                  <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>🐦 Xテスト投稿 <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（本番アカウントに実際に投稿されます。280文字を超える文章が投稿できるかの確認用）</span></div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>投稿前に文章の内容を確認してください。投稿後に不要であればXアプリ側で削除できます。</p>
+                    <textarea value={testPostText} onChange={e=>setTestPostText(e.target.value)} rows={6} placeholder="ここにテスト投稿する文章を入力(500〜800文字程度で試すと本来の目的に近い確認になります)"
+                      style={{ ...inputStyle, resize:"vertical" as const, fontFamily:"inherit" }}/>
+                    <p style={{ fontSize:10, color:"#94a3b8", margin:"4px 0 8px" }}>現在の文字数: {testPostText.length}文字</p>
+                    <button onClick={handleTestXPost} disabled={testPostLoading} style={btnStyle("#1d9bf0", testPostLoading)}>
+                      {testPostLoading?"投稿中...":"この内容でXにテスト投稿する"}
+                    </button>
+                    {testPostResult && <p style={{ marginTop:6, fontSize:11, color:testPostResult.startsWith("❌")?"#dc2626":"#166534" }}>{testPostResult}</p>}
                   </div>
                 </div>
               )}
