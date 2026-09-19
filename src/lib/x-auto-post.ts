@@ -125,6 +125,55 @@ function extractCompanyName(title: string): string | null {
   return match ? match[1] : null;
 }
 
+// 2026/9/19追加: 「銘柄を取り上げる場合は上場予定日○/○、または○/○上場済みも添えてほしい」
+// との要望を受けて追加。x-post-themes.tsの単一銘柄テーマ(初値・その後の値動き/直近IPO新情報/
+// 深掘り3要素/ロックアップ解除カウントダウン/競合決算比較 等)は例外なく、source_linksに
+// 「{会社名}の詳細分析ページ」というtitleと「.../analysis/{company_id}」というurlを
+// 1件だけ設定している。複数銘柄をまとめて扱うテーマ(IPOカレンダー等)はsource_linksが
+// 複数件になるため、件数が1件かどうかで「単一銘柄の記事か」も同時に判定できる
+// (複数銘柄記事は各銘柄の上場日が既に本文中に書かれているため、あえて付与しない)。
+function extractSingleCompanyFromSourceLinks(
+  sourceLinks: { title: string; url: string; source: string }[] | null
+): { id: string; name: string } | null {
+  if (!sourceLinks || sourceLinks.length !== 1) return null;
+  const link = sourceLinks[0];
+  const match = link.url.match(/\/analysis\/([^/?#]+)/);
+  if (!match) return null;
+  const name = link.title.replace(/の詳細分析ページ$/, "");
+  return { id: match[1], name };
+}
+
+// 上場日が今日(JST)以前なら「○/○上場済み」、まだ先なら「上場予定日○/○」を返す。
+// listing_date未設定(手動登録直後等)の銘柄はnullを返し、呼び出し側は日付ラベル無しで続行する。
+async function fetchListingDateLabel(companyId: string): Promise<string | null> {
+  const { data, error } = await supabaseForAutoPost
+    .from("ipo_companies")
+    .select("listing_date")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (error || !data?.listing_date) return null;
+  const todayJst = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const parts = String(data.listing_date).slice(0, 10).split("-");
+  if (parts.length !== 3) return null;
+  const md = `${Number(parts[1])}/${Number(parts[2])}`;
+  return String(data.listing_date).slice(0, 10) <= todayJst ? `${md}上場済み` : `上場予定日${md}`;
+}
+
+// 単一銘柄の記事であれば「会社名・上場日ラベル」の形の見出し文字列を返す(無ければnull)。
+// source_linksからの抽出を優先し、取れなければmarket_trends.titleの末尾括弧から会社名だけ
+// フォールバックで拾う(この場合は上場日ラベルは付けない)。
+async function buildCompanyLabel(
+  title: string,
+  sourceLinks: { title: string; url: string; source: string }[] | null
+): Promise<string | null> {
+  const company = extractSingleCompanyFromSourceLinks(sourceLinks);
+  if (company) {
+    const dateLabel = await fetchListingDateLabel(company.id);
+    return dateLabel ? `${company.name}・${dateLabel}` : company.name;
+  }
+  return extractCompanyName(title);
+}
+
 async function findInProgressSeries(): Promise<{ progressId: number; marketTrendId: string; nextPart: number } | null> {
   const { data, error } = await supabaseForAutoPost
     .from("x_series_progress")
@@ -196,7 +245,8 @@ async function postPlainRow(row: MarketTrendRow, slot: AutoPostSlot): Promise<Au
     console.error("自動投稿: 要約生成に失敗", e);
     return { posted: false, reason: "要約生成に失敗しました" };
   }
-  const finalText = `${condensed}\n\n${pickCta(slot)}`;
+  const companyLabel = await buildCompanyLabel(row.title, row.source_links);
+  const finalText = `${companyLabel ? `【${companyLabel}】\n` : ""}${condensed}\n\n${pickCta(slot)}`;
 
   const postResult = await postToX(finalText);
   if (!postResult.success) {
@@ -240,8 +290,8 @@ async function postSeriesPart(marketTrendId: string, part: number, slot: AutoPos
   const partText = part === 1 ? sections.part1 : part === 2 ? sections.part2 : sections.part3;
   const isFinal = part >= 3;
   const cta = isFinal ? pickCta(slot) : CLIFFHANGER_CTA;
-  const companyName = extractCompanyName(row.title);
-  const partLabel = companyName ? `【${companyName}】(${part}/3)` : `(${part}/3)`;
+  const companyLabel = await buildCompanyLabel(row.title, row.source_links);
+  const partLabel = companyLabel ? `【${companyLabel}】(${part}/3)` : `(${part}/3)`;
   const finalText = `${partLabel}\n${partText}\n\n${cta}`;
 
   const postResult = await postToX(finalText);
