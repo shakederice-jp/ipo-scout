@@ -1,5 +1,4 @@
-﻿@'
-name: IPO Scout Cron Jobs
+﻿name: IPO Scout Cron Jobs
 
 on:
   schedule:
@@ -84,4 +83,3 @@ jobs:
     steps:
       - name: X Auto Post (Evening 2 / 日〜木21時JST)
         run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=evening2' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
-'@ | Set-Content -Path ".github\workflows\cron.yml" -Encoding UTF8
