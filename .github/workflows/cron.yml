@@ -11,6 +11,7 @@ on:
     - cron: '0 1 * * 1-5'
     - cron: '0 10 * * 0-4'
     - cron: '0 12 * * 0-4'
+    - cron: '0 8 * * *'
   workflow_dispatch:
 
 jobs:
@@ -27,6 +28,13 @@ jobs:
     steps:
       - name: Run EDINET Scan
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
+  detect-ticker:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Detect Ticker (証券コード自動検出)
+        run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ticker -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   detect-ipo-price:
     runs-on: ubuntu-latest
