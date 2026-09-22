@@ -199,12 +199,18 @@ const { data: edinetCompanyList } = await supabase
             analysis = { sector: "不明", biz_type: "不明", ai_summary: "自動検出のため詳細情報は後日更新されます" };
           }
 
+          // 2026/9/22修正: 上場市場(exchange)を「グロース」固定で登録していたバグを修正。
+          // EDINETの提出書類の時点では実際にどの市場(グロース/スタンダード/プライム、
+          // まれに名証など)に上場するか確定していないため、決め打ちせず「未確認」で
+          // 登録する(nullにすると既存のNOT NULL制約等で登録自体が失敗するリスクがあるため、
+          // 文字列の目印にしている)。実際の上場市場は、上場承認時のお知らせ等で確認でき次第、
+          // 管理画面またはSupabaseから正しい値に更新する運用とする。
           const { error: insertError } = await supabase
             .from("ipo_companies")
             .insert({
               name: companyName,
               ticker: edinetCo?.security_code ?? null,
-              exchange: "グロース",
+              exchange: "未確認",
               sector: analysis.sector,
               biz_type: analysis.biz_type,
               ai_summary: analysis.ai_summary,
