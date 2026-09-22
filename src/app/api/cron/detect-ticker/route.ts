@@ -97,10 +97,21 @@ export async function GET(req: NextRequest) {
 
   const autoFilled: string[] = [];
   const needsManual: string[] = [];
+  // 2026/9/22追加: 自動一致に失敗した原因を後から調べられるよう、Yahoo!ファイナンス側が
+  // 実際に何件・どんな候補を返してきたかをレスポンスに残す(デバッグ用、メールには含めない)。
+  const debug: { name: string; quotes_found: number; candidates: string[] }[] = [];
 
   for (const company of targets) {
     const quotes = await searchTicker(company.name);
     const match = findConfidentMatch(company.name, quotes);
+
+    debug.push({
+      name: company.name,
+      quotes_found: quotes.length,
+      candidates: quotes
+        .slice(0, 5)
+        .map((q) => (q.symbol ?? "?") + ":" + (q.shortname ?? q.longname ?? "(名前なし)")),
+    });
 
     if (!match || !match.symbol) {
       needsManual.push("・" + company.name + "(上場日: " + company.listing_date + ")");
@@ -147,6 +158,7 @@ export async function GET(req: NextRequest) {
     needs_manual: needsManual.length,
     autoFilled,
     needsManual,
+    debug,
     fetched_at: new Date().toISOString(),
   });
 }
