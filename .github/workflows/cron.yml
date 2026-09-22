@@ -36,6 +36,13 @@ jobs:
       - name: Detect Ticker (証券コード自動検出)
         run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ticker -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
+  verify-exchange:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Verify Exchange (上場市場クロスチェック)
+        run: "curl -X GET https://ipo.finance-tower.com/api/cron/verify-exchange -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+
   detect-ipo-price:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 10 * * *' || github.event_name == 'workflow_dispatch'
