@@ -395,10 +395,13 @@ async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string): Promi
 
 type CheckpointKey = "day2" | "day10" | "month1";
 
-const CHECKPOINT_META: Record<CheckpointKey, { label: string; axisLabel: string; isFinal: boolean }> = {
-  day2: { label: "上場2日目", axisLabel: "超短期(初値〜当日)", isFinal: true },
-  day10: { label: "上場10日目", axisLabel: "短期(1〜3ヶ月)の経過観察", isFinal: false },
-  month1: { label: "上場1ヶ月後", axisLabel: "短期(1〜3ヶ月)", isFinal: true },
+// 2026/9/23追記: 本文の書き出し2文目(「まずは上場直後の〜」等)をユーザー指定で固定化。
+// 1つ目のチェックポイント(day2)だけ「まずは」を付けた柔らかい言い回しにし、
+// 2つ目以降(day10・month1)は「{ラベル}株価検証をお届けします。」の形に統一する。
+const CHECKPOINT_META: Record<CheckpointKey, { label: string; axisLabel: string; isFinal: boolean; openingLine2: string }> = {
+  day2: { label: "上場2日目", axisLabel: "超短期(初値〜当日)", isFinal: true, openingLine2: "まずは上場直後の株価検証をお届けします。" },
+  day10: { label: "上場10日目", axisLabel: "短期(1〜3ヶ月)の経過観察", isFinal: false, openingLine2: "上場10日目株価検証をお届けします。" },
+  month1: { label: "上場1ヶ月後", axisLabel: "短期(1〜3ヶ月)", isFinal: true, openingLine2: "上場1ヶ月後株価検証をお届けします。" },
 };
 const CHECKPOINT_ORDER: CheckpointKey[] = ["day2", "day10", "month1"];
 
@@ -423,7 +426,12 @@ async function buildPriceCheckpointPost(co: any, key: CheckpointKey, price: numb
 - ${meta.axisLabel}軸の判定: ${grade ? `${grade}グレード` : "不明"}
 - 判定理由: ${reason || "記録なし"}
 
+# 書き出し(必ずこの2文から始めること。一字一句このままでよい)
+当分析室では上場したIPO銘柄のその後の株価を追いかけており、事前のAI分析の検証をしています。
+${meta.openingLine2}
+
 # 記載のポイント
+- 上記の書き出し2文に続けて本文を書くこと(書き出しを言い換えたり省略したりしないこと)
 - 実績(公募価格比${rateText})と、事前のAI判定・理由を両方とも事実として提示すること
 - 実績が事前の判定とおおむね一致していそうか、乖離していそうかについて、断定はせず「〜という見方もできそうです」程度の柔らかい言い方で触れること
 ${meta.isFinal ? "" : "- このチェックポイントは短期軸の判定期間(1〜3ヶ月)の途中経過である旨も一言添えること\n"}- 個別銘柄への売買助言(「買うべき」「今が売り時」等)は一切書かないこと
