@@ -258,7 +258,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       {
         "@type": "Question",
         "name": `${company.name}のAI分析評価は？`,
-        "acceptedAnswer": { "@type": "Answer", "text": `目論見書をAIが解析した総合評価は${faqGrade}ランク（${faqScore}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。` },
+        "acceptedAnswer": { "@type": "Answer", "text": `目論見書を当調査室の独自AI「ナインクロス」が解析した総合評価は${faqGrade}ランク（${faqScore}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。` },
       },
     ],
   };

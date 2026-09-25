@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { parseYenToOku } from "./ipo-revenue-chart";
 import { fetchCompetitorFinancials } from "./competitor-financials";
+import { notifyAdmin } from "./notify-admin";
 
 // 2026/9/2追加: 「②経済指標・イベント速報」テーマで、economic_eventsテーブルに
 // 実績値が保存されていない(日付・種類・ラベルのみ)ため、Claude Haiku + web検索で
@@ -259,6 +260,7 @@ ${listBlock}
 - 特に評価が高い銘柄を具体的に挙げ、理由(業種や特徴)を一言添えること(一覧にない情報を憶測で追加しないこと)
 - 業種別の傾向があれば触れること(例:${topSectorEntry ? topSectorEntry[0] : "特定業種"}が${topSectorEntry ? topSectorEntry[1] : ""}件で最多、など)
 - 最後に、個人投資家として次に何を確認すべきか一言添えること
+- スコア・グレードに触れる際は、当調査室の「独自AIナインクロス」による評価であることが分かるように書くこと
 
 ${STYLE_GUIDE}
 
@@ -365,9 +367,11 @@ ${STYLE_GUIDE}
 // Yahoo FinanceのチャートAPI(無料・無認証)を使う。ただしこちらは「対象日以降で最初に
 // ついた終値」を取りたいため、直近5日固定ではなく直近3ヶ月分を取得し、対象日以降の
 // 最初の取引日を探す専用の関数として実装している(既存のfetchStockPrice()とは別物)。
-async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string): Promise<{ price: number; date: string } | null> {
+// 2026/9/25追記: 投稿時期を過ぎたチェックポイントの株価を「記録だけ」する際に、3ヶ月より
+// 前の株価も取れるよう取得期間(range)を指定できるようにした(既定値は従来通り3mo)。
+async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string, range: "3mo" | "1y" = "3mo"): Promise<{ price: number; date: string } | null> {
   const symbol = `${ticker}.T`;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=3mo`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`;
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
@@ -421,6 +425,48 @@ const CHECKPOINT_META: Record<CheckpointKey, { label: string; axisLabel: string;
 };
 const CHECKPOINT_ORDER: CheckpointKey[] = ["day2", "day10", "month1"];
 
+// 2026/9/25追記(改善要望④): ティアフォー(7/22上場)の「上場2日目」答え合わせが、上場から
+// 2ヶ月後の9/24にXへ投稿されてしまった問題への対応。原因は2つあった。
+//  (1) この関数が「期日を過ぎた未記録チェックポイントのうち最も古いもの」から処理する作りで、
+//      あとから証券コードが埋まった銘柄などの古いチェックポイントも、何ヶ月遅れでも構わず
+//      記事化していた。
+//  (2) X自動投稿(src/lib/x-auto-post.ts)が「最も古い未投稿記事」から順に投稿する作りで、
+//      過去に作られたまま未投稿だった古い答え合わせ記事が今ごろ投稿された。
+// ここでは(1)を直す。各チェックポイントの期日から下記の日数を過ぎてしまったものは、
+// 記事化・X投稿はせず、株価の記録だけを静かに行い(=次回以降に再び候補に上がらないようにする)、
+// 管理者にメールで知らせる。(2)はx-auto-post.ts側で、古い記事を投稿候補から外す形で直している。
+const CHECKPOINT_MAX_DELAY_DAYS: Record<CheckpointKey, number> = {
+  day2: 5,   // 土日・祝日で数日ずれるのは許容。それ以上遅れた「上場2日目」記事は出さない
+  day10: 5,
+  month1: 10,
+};
+// 1回のcron実行で「記録だけ」処理する件数の上限(Yahoo Financeへの問い合わせでcron全体の
+// 実行時間を圧迫しないため。残りは翌日以降のcronで少しずつ片付く)
+const STALE_RECORD_LIMIT_PER_RUN = 6;
+
+// 2026/9/25追記: 日付計算の修正。以前は「上場日のJST0時」をDate型にしてsetDateした後
+// toISOString()(UTC)で日付文字列に戻していたため、1日前にずれ、「上場2日目」の期日が
+// 実際には上場日当日になっていた(初日に値が付かない銘柄では意図と違う日の株価になる)。
+// 日付文字列同士の計算にしてタイムゾーンの影響を受けないようにする。
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+function addMonthsToDateStr(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
+}
+function daysBetween(fromStr: string, toStr: string): number {
+  const [y1, m1, d1] = fromStr.split("-").map(Number);
+  const [y2, m2, d2] = toStr.split("-").map(Number);
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+}
+function checkpointTargetDate(listingDate: string, key: CheckpointKey): string {
+  if (key === "day2") return addDaysToDateStr(listingDate, 1);
+  if (key === "day10") return addDaysToDateStr(listingDate, 9);
+  return addMonthsToDateStr(listingDate, 1);
+}
+
 async function buildPriceCheckpointPost(co: any, key: CheckpointKey, price: number, rate: number | null): Promise<ThemedPostResult> {
   const meta = CHECKPOINT_META[key];
   const summary = co.analysis_summary ?? {};
@@ -449,6 +495,7 @@ ${meta.openingLine2}
 # 記載のポイント
 - 上記の書き出し2文に続けて、語りかけるような自然な文章で本文を書くこと(書き出しを言い換えたり省略したりしないこと)
 - 実績(公募価格比${rateText})と、事前のAI判定・理由を両方とも事実として、読者に説明するように書くこと
+- 事前のAI判定に触れる際は、当分析室の「独自AIナインクロス」による評価であることが分かるように書くこと(例:「独自AIナインクロスの事前判定は〜」)
 - 実績が事前の判定とおおむね一致していそうか、乖離していそうかについて、断定はせず「〜という見方もできそうです」「正直〜という印象です」のような、感想を交えた柔らかい言い方で触れること
 ${meta.isFinal ? "" : "- このチェックポイントは短期軸の判定期間(1〜3ヶ月)の途中経過である旨も、自然な一言で添えること\n"}- 個別銘柄への売買助言(「買うべき」「今が売り時」等)は一切書かないこと
 - 本文の途中か最後に、「この結果は1銘柄の実績であり、AI分析の的中を保証するものではありません」という趣旨の一文を、押し付けがましくない自然な言い回しで必ず入れること
@@ -495,29 +542,90 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
   }
 
   const candidates: { co: any; key: CheckpointKey; targetStr: string }[] = [];
+  // 投稿時期を過ぎてしまったチェックポイント(記事化せず、株価の記録だけ行う)
+  const stale: { co: any; key: CheckpointKey; targetStr: string; lateDays: number }[] = [];
   for (const co of rows) {
     if (!co.listing_date) continue;
-    const listing = new Date(`${co.listing_date}T00:00:00+09:00`);
+    const listingStr = String(co.listing_date).slice(0, 10);
     for (const key of CHECKPOINT_ORDER) {
       if (co[`price_${key}`] != null) continue; // 記録済み。次のチェックポイントへ
-      const target = new Date(listing);
-      if (key === "day2") target.setDate(target.getDate() + 1);
-      if (key === "day10") target.setDate(target.getDate() + 9);
-      if (key === "month1") target.setMonth(target.getMonth() + 1);
-      const targetStr = target.toISOString().slice(0, 10);
-      if (targetStr <= todayJst) candidates.push({ co, key, targetStr });
+      const targetStr = checkpointTargetDate(listingStr, key);
+      if (targetStr > todayJst) break; // まだ期日前。後ろのチェックポイントも当然まだ
+      const lateDays = daysBetween(targetStr, todayJst);
+      if (lateDays > CHECKPOINT_MAX_DELAY_DAYS[key]) {
+        // 投稿時期を過ぎている。記録だけの対象にして、次のチェックポイントも見る
+        stale.push({ co, key, targetStr, lateDays });
+        continue;
+      }
+      candidates.push({ co, key, targetStr });
       break; // この銘柄は最も早い未記録チェックポイントだけを候補にする(順序を飛ばさない)
     }
   }
-  candidates.sort((a, b) => a.targetStr.localeCompare(b.targetStr));
+
+  // --- 投稿時期を過ぎたものは、記事にせず株価の記録だけ行う ---
+  if (stale.length > 0) {
+    const recorded: string[] = [];
+    const notRecorded: string[] = [];
+    for (const st of stale.slice(0, STALE_RECORD_LIMIT_PER_RUN)) {
+      const priceData = await fetchPriceOnOrAfter(st.co.ticker, st.targetStr, "1y");
+      const label = `${st.co.name}(${st.co.ticker})・${CHECKPOINT_META[st.key].label}(期日${st.targetStr}、${st.lateDays}日経過)`;
+      if (!priceData) {
+        notRecorded.push(`・${label}: 株価を取得できませんでした`);
+        continue;
+      }
+      const rate = st.co.ipo_price
+        ? Math.round(((priceData.price - st.co.ipo_price) / st.co.ipo_price) * 1000) / 10
+        : null;
+      const { error: updateError } = await supabaseForThemes
+        .from("ipo_companies")
+        .update({ [`price_${st.key}`]: priceData.price, [`price_${st.key}_rate`]: rate })
+        .eq("id", st.co.id);
+      if (updateError) {
+        notRecorded.push(`・${label}: 保存エラー ${updateError.message}`);
+      } else {
+        recorded.push(`・${label}: ${priceData.price}円を記録のみ(記事化・X投稿はしていません)`);
+      }
+    }
+    if (recorded.length > 0 || notRecorded.length > 0) {
+      const lines = [
+        "上場後の株価チェックポイントのうち、本来の投稿時期を過ぎてしまったものは、",
+        "「今ごろ出しても意味のない記事」になるため、答え合わせ記事の作成・X投稿をスキップしました。",
+        "株価の記録だけは行っているので、データ上の抜けはありません。",
+        "",
+      ];
+      if (recorded.length > 0) lines.push("【記録のみ行ったもの】", ...recorded);
+      if (notRecorded.length > 0) lines.push("", "【記録もできなかったもの(翌日以降に再試行します)】", ...notRecorded);
+      if (stale.length > STALE_RECORD_LIMIT_PER_RUN) {
+        lines.push("", `ほか${stale.length - STALE_RECORD_LIMIT_PER_RUN}件は翌日以降に順次処理します。`);
+      }
+      try {
+        await notifyAdmin("答え合わせ記事: 時期を過ぎたチェックポイントをスキップ", lines.join("\n"), "info");
+      } catch (e) {
+        console.error("答え合わせ: 管理者通知に失敗", e);
+      }
+    }
+  }
+
+  // 期日が近い(=新しい)ものから優先して記事化する。古いものを先に出すと、
+  // 読者にとって鮮度の低い記事から順に出てしまうため。
+  candidates.sort((a, b) => b.targetStr.localeCompare(a.targetStr));
+
+  // 2026/9/25追記(改善要望⑥): 公募価格が未登録のまま「公募価格が不明なため比較できない」
+  // という答え合わせ記事が出てしまう問題への対応。公募価格が無い銘柄は記事化せず保留にし
+  // (DBのチェックポイント欄も埋めないので、公募価格が埋まった翌日以降に改めて記事化される)、
+  // 管理者に知らせる。公募価格の自動取得は src/app/api/cron/detect-ticker/route.ts で行う。
+  const missingIpoPrice: string[] = [];
 
   for (const c of candidates) {
+    if (!c.co.ipo_price) {
+      missingIpoPrice.push(`・${c.co.name}(${c.co.ticker})・${CHECKPOINT_META[c.key].label}`);
+      continue;
+    }
+
     const priceData = await fetchPriceOnOrAfter(c.co.ticker, c.targetStr);
     if (!priceData) continue; // 株価データがまだ無い等。次の候補へ
 
-    const rate = c.co.ipo_price
-      ? Math.round(((priceData.price - c.co.ipo_price) / c.co.ipo_price) * 1000) / 10
-      : null;
+    const rate = Math.round(((priceData.price - c.co.ipo_price) / c.co.ipo_price) * 1000) / 10;
 
     try {
       const result = await buildPriceCheckpointPost(c.co, c.key, priceData.price, rate);
@@ -537,6 +645,22 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
     } catch (e) {
       console.error(`価格チェックポイント記事生成失敗(${c.co.name}/${c.key}):`, e);
       continue; // 次の候補があれば試す
+    }
+  }
+
+  if (missingIpoPrice.length > 0) {
+    try {
+      await notifyAdmin(
+        "答え合わせ記事: 公募価格が未登録のため保留中",
+        "以下の銘柄は公募価格(公開価格)がまだ登録されていないため、「公募価格が不明」のまま\n" +
+          "答え合わせ記事を出さないよう保留しています。公募価格は毎日の自動取得(証券コード・公募価格の\n" +
+          "自動検出バッチ)で埋まり次第、翌日以降に記事化されます。数日たっても埋まらない場合は、\n" +
+          "管理画面から公募価格を入力してください。\n\n" +
+          missingIpoPrice.join("\n"),
+        "warn"
+      );
+    } catch (e) {
+      console.error("答え合わせ: 管理者通知に失敗", e);
     }
   }
   return null;
@@ -867,7 +991,8 @@ const DEEP_DIVE_TREND_STYLE = `
 - 「💼儲けの仕組み」「📖上場までのストーリー」「⚖️競合との違い」の3つの見出しを立て、それぞれ2〜3文程度の短い段落でまとめる
 - 全体で500〜700文字程度に収めること(元の文章を要約・凝縮すること)
 - 「買うべき」「投資すべき」等の断定的な投資助言・煽り文句は書かないこと
-- 最後に一行、「くわしくは分析ページで無料公開中です」という趣旨の一文を添えること(URLは含めない)
+- 最後に一行、「くわしい企業分析は、解説ページにて一部無料で公開中です。」という一文を、この文言のまま添えること(URLは含めない)
+  (2026/9/25修正: 分析ページには有料会員限定のパートもあるため「無料で公開中」ではなく「一部無料で公開中」とする)
 - URLは含めない
 `;
 

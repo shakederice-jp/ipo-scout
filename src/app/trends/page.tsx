@@ -98,6 +98,21 @@ function renderTrendContent(content: string): React.ReactNode {
   return parts;
 }
 
+// 2026/9/25追加(改善要望②): キーワード検索。入力された語を空白で区切り、各語がタイトルまたは
+// 本文のどこかに含まれる記事を、market_trendsテーブル全体(表示件数の上限に関係なく全期間)から探す。
+// 画面に読み込み済みの記事を絞り込むのではなく、毎回データベースに問い合わせる。
+// PostgRESTの条件式を壊す記号(カンマ・括弧など)は取り除いてから使う。
+const SEARCH_RESULT_LIMIT = 50;
+function toSearchWords(q: string): string[] {
+  return q
+    .normalize("NFKC")
+    .replace(/[,()%*\\"'.:]/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0)
+    .slice(0, 3);
+}
+
 const cardStyle: React.CSSProperties = {
   backgroundColor: "white",
   borderRadius: 16,
@@ -116,6 +131,13 @@ export default function TrendsPage() {
   const [categoryArticles, setCategoryArticles] = useState<any[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+
+  // キーワード検索用の状態(入力中の文字と、実際に検索を実行したキーワードを分けて持つ)
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchCount, setSearchCount] = useState<number | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // お気に入り保存(2026/9/12〜無料会員も利用可)のボタン状態と通知トースト
   const [favoriteStatus, setFavoriteStatus] = useState<Record<string, "saving" | "saved">>({});
@@ -225,9 +247,53 @@ export default function TrendsPage() {
     fetchCategoryArticles();
   }, [activeCategory]);
 
-  // カテゴリー選択中はアーカイブ一覧を、それ以外は通常の最新一覧(更新順)を表示する
-  const articlesToShow = activeCategory ? categoryArticles : trends;
-  const showLoading = activeCategory ? categoryLoading : loading;
+  // キーワード検索を実行したら、market_trends全体から該当記事を取得する
+  useEffect(() => {
+    if (searchQuery == null) {
+      setSearchResults([]);
+      setSearchCount(null);
+      return;
+    }
+    const words = toSearchWords(searchQuery);
+    if (words.length === 0) {
+      setSearchResults([]);
+      setSearchCount(0);
+      return;
+    }
+    setSearchLoading(true);
+    const runSearch = async () => {
+      // 各語について「タイトルまたは本文に含む」、複数語はすべて含む(AND)
+      const condition = `and(${words.map((w) => `or(title.ilike.*${w}*,content.ilike.*${w}*)`).join(",")})`;
+      const { data, count } = await supabase
+        .from("market_trends")
+        .select("*", { count: "exact" })
+        .or(condition)
+        .order("fetched_at", { ascending: false })
+        .limit(SEARCH_RESULT_LIMIT);
+      setSearchResults(data ?? []);
+      setSearchCount(count ?? (data ?? []).length);
+      setSearchLoading(false);
+    };
+    runSearch();
+  }, [searchQuery]);
+
+  const submitSearch = () => {
+    const q = searchInput.trim();
+    if (!q) {
+      setSearchQuery(null);
+      return;
+    }
+    setActiveCategory(null);
+    setSearchQuery(q);
+  };
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearchQuery(null);
+  };
+
+  // 検索中は検索結果を、カテゴリー選択中はアーカイブ一覧を、それ以外は通常の最新一覧(更新順)を表示する
+  const articlesToShow = searchQuery != null ? searchResults : activeCategory ? categoryArticles : trends;
+  const showLoading = searchQuery != null ? searchLoading : activeCategory ? categoryLoading : loading;
 
   const updatedAt = trends[0]?.fetched_at
     ? new Date(trends[0].fetched_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -267,7 +333,45 @@ export default function TrendsPage() {
             </p>
           </div>
 
-          {activeCategory ? (
+          {/* 2026/9/25追加(改善要望②): キーワード検索窓。過去の記事も全期間から探せる */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); submitSearch(); }}
+            role="search"
+            style={{ display: "flex", gap: 8, marginBottom: 20, background: "white", borderRadius: 12,
+              border: "1px solid #b3e8ea", padding: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 16, paddingLeft: 6 }} aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="キーワードで記事を検索(例: 銘柄名、ロックアップ、初値)"
+              aria-label="記事をキーワードで検索"
+              style={{ flex: 1, minWidth: 0, border: "none", outline: "none", fontSize: 14, padding: "8px 4px",
+                background: "transparent", color: "#082b2e" }}
+            />
+            <button type="submit"
+              style={{ padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13,
+                backgroundColor: "#0d4f52", color: "white", fontWeight: 700, flexShrink: 0 }}>
+              検索
+            </button>
+          </form>
+
+          {searchQuery != null ? (
+            /* キーワード検索中: 検索結果のヘッダー */
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" as const }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>🔍 キーワード検索(全期間)</div>
+                <h2 style={{ fontSize: 15, fontWeight: 900, color: "#082b2e", margin: 0, wordBreak: "break-all" }}>
+                  「{searchQuery}」の検索結果{searchLoading ? "" : `(${searchCount ?? 0}件${(searchCount ?? 0) > SEARCH_RESULT_LIMIT ? `・新しい順に${SEARCH_RESULT_LIMIT}件を表示` : ""})`}
+                </h2>
+              </div>
+              <button onClick={clearSearch}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #66c3c6", cursor: "pointer", fontSize: 12,
+                  backgroundColor: "#f0fdf4", color: "#0d4f52", fontWeight: 700, flexShrink: 0 }}>
+                ← 最新の記事に戻る
+              </button>
+            </div>
+          ) : activeCategory ? (
             /* カテゴリー選択中: アーカイブ一覧のヘッダー */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
@@ -303,7 +407,7 @@ export default function TrendsPage() {
             <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>読み込み中...</div>
           ) : articlesToShow.length === 0 ? (
             <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-              {activeCategory ? "このカテゴリーの記事はまだありません" : activeTab === "featured" ? "注目ニュースはまだありません" : "ニュースがありません"}
+              {searchQuery != null ? "該当する記事が見つかりませんでした。別のキーワードでお試しください" : activeCategory ? "このカテゴリーの記事はまだありません" : activeTab === "featured" ? "注目ニュースはまだありません" : "ニュースがありません"}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -320,7 +424,7 @@ export default function TrendsPage() {
                       {cat ? (
                         // カテゴリーバッジ: 右カラムのカテゴリー名と共通化し、クリックでそのカテゴリーの記事一覧に飛べるようにする
                         <button
-                          onClick={() => { setActiveCategory(cat.label); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          onClick={() => { setSearchQuery(null); setSearchInput(""); setActiveCategory(cat.label); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                           style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, backgroundColor: "#f0fdf4", color: "#15803d",
                             fontWeight: 700, border: "none", cursor: "pointer" }}>
                           {cat.emoji} {cat.label}
@@ -456,7 +560,7 @@ export default function TrendsPage() {
             </div>
             <div style={{ padding: 10 }}>
               {CATEGORIES.map(c => (
-                <button key={c.label} onClick={() => setActiveCategory(activeCategory === c.label ? null : c.label)}
+                <button key={c.label} onClick={() => { setSearchQuery(null); setSearchInput(""); setActiveCategory(activeCategory === c.label ? null : c.label); }}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                     width: "100%", textAlign: "left" as const, padding: "10px 10px", borderRadius: 10,
@@ -474,7 +578,7 @@ export default function TrendsPage() {
             </div>
             <div style={{ padding: "0 14px 14px" }}>
               <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, lineHeight: 1.6 }}>
-                ※「今日の最新記事」欄は直近20件までの表示です。それより前の記事も、上のカテゴリーから各カテゴリー直近60件まで遡って読めます(それより古い記事は一覧に出ません)。<br />
+                ※「今日の最新記事」欄は直近20件までの表示です。それより前の記事も、上のカテゴリーから各カテゴリー直近60件まで遡って読めます。それより古い記事は、ページ上部のキーワード検索で全期間から探せます。<br />
                 無料会員登録すれば、記事を「お気に入り」に保存して期限なく読み返せます。
               </p>
             </div>

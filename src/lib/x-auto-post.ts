@@ -99,9 +99,18 @@ ${AUTO_POST_STYLE_GUIDE}
 // 見出し絵文字を目印に3パートへ分割する。DEEP_DIVE_TREND_STYLE(x-post-themes.ts)が
 // この3つの絵文字見出しを必ず立てるよう指示しているため、これを分割の目印として使う。
 function splitDeepDiveSections(rawBody: string): { part1: string; part2: string; part3: string } | null {
-  const closingMarker = "くわしくは分析ページで無料公開中です";
-  const closingIdx = rawBody.indexOf(closingMarker);
-  const body = (closingIdx >= 0 ? rawBody.slice(0, closingIdx) : rawBody).trim();
+  // 2026/9/25修正: 締めの一文(「くわしい企業分析は、解説ページにて一部無料で公開中です。」等)は
+  // AIが言い回しを変えることがあり、以前の完全一致の目印では切り取れず、3/3パートの末尾に
+  // 残ってしまっていた。「公開中」を含む最後の行を締めの一文とみなして取り除く。
+  const lines = rawBody.split("\n");
+  let cut = lines.length;
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 4); i--) {
+    if (/公開中/.test(lines[i])) {
+      cut = i;
+      break;
+    }
+  }
+  const body = lines.slice(0, cut).join("\n").trim();
 
   const idx1 = body.indexOf("💼");
   const idx2 = body.indexOf("📖");
@@ -192,6 +201,19 @@ async function getInProgressOrDoneSeriesIds(): Promise<string[]> {
   return (data ?? []).map((r: any) => r.market_trend_id);
 }
 
+// 2026/9/25追記(改善要望④): ティアフォー(7/22上場)の「上場2日目」答え合わせ記事が、
+// 9/24になってXに投稿されてしまった問題への対応。以前は「未投稿の記事のうち最も古いもの」
+// から順に投稿していたため、X自動投稿を始める前に作られて溜まっていた古い記事が、
+// 鮮度を失ったまま今ごろ投稿されていた。時事性のある記事(答え合わせ・直近の新情報・
+// IPOカレンダー等)は、作成から下記の日数以内のものだけを投稿候補にする。
+// 深掘り3部作(ビジネスモデル等)は時期に左右されない内容なので、この制限の対象外。
+const MAX_POST_AGE_DAYS_PRIORITY = 3; // 朝=答え合わせ、夜=直近の新情報
+const MAX_POST_AGE_DAYS_FALLBACK = 5; // それ以外の穴埋め記事
+
+function freshSinceIso(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 async function findFreshRowByPrefix(titlePrefix: string): Promise<MarketTrendRow | null> {
   const { data, error } = await supabaseForAutoPost
     .from("market_trends")
@@ -199,6 +221,7 @@ async function findFreshRowByPrefix(titlePrefix: string): Promise<MarketTrendRow
     .is("posted_to_x_at", null)
     .eq("is_theme_article", true)
     .like("title", `${titlePrefix}%`)
+    .gte("fetched_at", freshSinceIso(MAX_POST_AGE_DAYS_PRIORITY))
     .order("fetched_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -229,6 +252,7 @@ async function findGenericFallbackRow(): Promise<MarketTrendRow | null> {
     .is("posted_to_x_at", null)
     .eq("is_theme_article", true)
     .not("title", "like", `${DEEP_DIVE_TITLE_PREFIX}%`)
+    .gte("fetched_at", freshSinceIso(MAX_POST_AGE_DAYS_FALLBACK))
     .order("fetched_at", { ascending: true })
     .limit(10);
   if (error || !data) return null;

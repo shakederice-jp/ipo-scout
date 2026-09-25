@@ -110,6 +110,7 @@ export async function GET(req: NextRequest) {
         <div style="margin-bottom:12px">
           ${gradeTag(grade)}
           ${ultraGrade ? `<span style="font-size:11px;color:#64748b;margin-left:8px">超短期:${ultraGrade} / 短期:${shortGrade ?? '-'} / 長期:${longGrade ?? '-'}</span>` : ''}
+          <span style="display:block;margin-top:4px;font-size:10px;color:#94a3b8">※独自AIナインクロスによる評価</span>
         </div>` : ''}
         ${aiSummary ? `<p style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.6">${aiSummary}</p>` : ''}
         ${ticker ? `<a href="${analysisUrl}" style="display:inline-block;padding:8px 18px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">詳細レポートを見る →</a>

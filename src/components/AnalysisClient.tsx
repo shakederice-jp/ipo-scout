@@ -1098,7 +1098,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             onClick={() => {
               const grade = analysis?.grade ?? "B";
               const score = analysis?.total_score ?? 0;
-              const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\nAI総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
+              const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\n独自AIナインクロスの総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
               const shareId = company.ticker ?? company.id;
               const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo.finance-tower.com/analysis/${shareId}`)}`;
               window.open(url, "_blank");
@@ -1169,6 +1169,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 <ScoreRing score={score} size={80}/>
                 <div style={{fontWeight:900,fontSize:10,color:TTEXT,marginTop:4}}>AI総合評価</div>
                 <div style={{fontWeight:900,fontSize:12,color:PRIMARY}}>{grade}ランク</div>
+                {/* 2026/9/25追加(改善要望⑤): A〜Eの評価が、当調査室の独自AI「ナインクロス」による
+                    独自の見立てであることを明示する注記 */}
+                <div style={{fontWeight:700,fontSize:8,color:MID,marginTop:3,textAlign:"center",lineHeight:1.35}}>※独自AI<br/>ナインクロスによる評価</div>
               </div>
             </div>
           </div>
@@ -1194,7 +1197,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <div>
               <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {company.name}のAI分析評価は？</div>
               <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>
-                A. 目論見書をAIが解析した総合評価は{grade}ランク（{score}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。
+                A. 目論見書を当調査室の独自AI「ナインクロス」が解析した総合評価は{grade}ランク（{score}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。
               </div>
             </div>
           </div>
