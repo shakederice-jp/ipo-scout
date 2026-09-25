@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
 import {
   fetchMatsuiIpoList,
+  fetchExchangeListings,
   findMatsuiRow,
   checkSources,
   tickerConfirmed,
@@ -19,11 +20,13 @@ import {
 //
 // 2026/9/25全面改修(改善要望③⑥):
 //  1. 松井証券の「IPOスケジュール」「直近IPOの実績」一覧から、会社名で証券コード・公募価格の
-//     候補を探す(一覧で見つからない場合のみ、従来のYahoo!ファイナンス検索を予備として使う)。
-//  2. 上場市場の確認(verify-exchange)と同じく、松井証券・株探・みんかぶの3サイトの銘柄ページを
-//     読み、2つ以上で裏付けが取れた場合だけ自動で確定する。
-//     ・証券コード: その証券コードのページに、その会社名が載っているサイトが2つ以上
-//     ・公募価格: 同じ金額が載っているサイトが2つ以上(松井証券の一覧の値も1票として数える)
+//     候補を探す(見つからない場合は取引所の新規上場一覧、それでも無ければ従来のYahoo!ファイナンス
+//     検索を予備として使う)。
+//  2. 松井証券・株探・取引所(東証/名証の公式の新規上場一覧)の3つを見て、2つ以上で裏付けが
+//     取れた場合だけ自動で確定する。
+//     ・証券コード: その証券コードに、その会社名が対応している情報源が2つ以上
+//     ・公募価格: 同じ金額が載っている情報源が2つ以上(松井証券の一覧の値も1票として数える)
+//     (2026/9/25: 3つ目の情報源を、本番で毎回取得失敗していたみんかぶから取引所の公式一覧に変更)
 //  3. 裏付けが取れない場合は自動では埋めず、管理者にメールで知らせる(新しい管理画面ボタンは作らない)。
 //  4. 証券コードが後から埋まった上場済み銘柄は、上場日からの株価履歴(100万円シミュレーション用)と
 //     上場日終値をさかのぼって補完する。
@@ -131,7 +134,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "証券コード・公募価格が未入力の銘柄なし", updated: 0 });
   }
 
-  const matsuiRows = await fetchMatsuiIpoList(today);
+  const [matsuiRows, exchangeListings] = await Promise.all([
+    fetchMatsuiIpoList(today),
+    fetchExchangeListings(today),
+  ]);
+  const exchangeRows = [...exchangeListings.values()];
 
   const inNotifyWindow = (c: any) => {
     if (!c.listing_date) return false;
@@ -151,6 +158,14 @@ export async function GET(req: NextRequest) {
     // 証券コードの候補(既に入っていればそれを使う)
     let code: string | null = company.ticker ?? row?.code ?? null;
     let codeSource = company.ticker ? "登録済み" : row ? "松井証券の一覧" : "";
+    if (!code && !ambiguous) {
+      // 松井証券の一覧に無い場合は、取引所の新規上場一覧から会社名で探す
+      const ex = findMatsuiRow(company.name, listingStr, exchangeRows);
+      if (ex.row) {
+        code = ex.row.code;
+        codeSource = "取引所の新規上場一覧";
+      }
+    }
     if (!code && !ambiguous) {
       // 松井証券の一覧で見つからない場合のみ、予備としてYahoo!ファイナンス検索を試す(上場後のみ)
       if (listingStr && listingStr <= today && inNotifyWindow(company)) {
@@ -176,7 +191,7 @@ export async function GET(req: NextRequest) {
     }
     verifiedCount++;
 
-    const checks = await checkSources(code, company.name);
+    const checks = await checkSources(code, company.name, exchangeListings);
     const detail = describeChecks(checks);
     debug.push({ name: company.name, code, codeSource, matsuiRow: row, checks });
 
@@ -199,7 +214,8 @@ export async function GET(req: NextRequest) {
       }
       update.ticker = code;
       tickerJustSet = true;
-      if (!listingStr && row?.listingDate) update.listing_date = row.listingDate;
+      const knownListingDate = (row && row.code === code ? row.listingDate : null) ?? exchangeListings.get(code)?.listingDate ?? null;
+      if (!listingStr && knownListingDate) update.listing_date = knownListingDate;
     }
 
     // --- 公募価格 ---
@@ -226,7 +242,7 @@ export async function GET(req: NextRequest) {
         continue;
       }
       if (update.ticker) filled.push(`✅ ${company.name} → 証券コード ${code}(${codeSource}、${detail})`);
-      if (update.listing_date) filled.push(`   上場日も松井証券の一覧から設定: ${update.listing_date}`);
+      if (update.listing_date) filled.push(`   上場日も一覧から設定: ${update.listing_date}`);
     }
 
     if (priceSet != null) {
@@ -298,6 +314,7 @@ export async function GET(req: NextRequest) {
     success: true,
     targets: targets.length,
     matsui_rows: matsuiRows.length,
+    exchange_rows: exchangeListings.size,
     filled,
     needsManual,
     debug,

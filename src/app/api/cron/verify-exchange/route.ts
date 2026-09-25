@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { fetchExchangeListings, type ExchangeListing } from "@/lib/ipo-facts";
 
 // 2026/9/22新設: 上場市場(exchange)を複数の情報源で突き合わせて確認する仕組み。
 // 過去にedinet-scanが上場市場を「グロース」固定で誤登録していたバグの再発防止策。
 // 証券コード(ticker)が判明していて上場市場がまだ「未確認」のままの銘柄について、
-// 松井証券・株探・みんかぶの3つの独立したIPO情報ページを読みに行き、
+// 松井証券・株探・取引所(東証/名証の公式の新規上場一覧)の3つの独立した情報源を読みに行き、
 // 3つのうち2つ以上で同じ市場区分が確認できた場合だけ自動で確定・保存する。
 // 一致しない/十分な情報が集まらない場合は自動確定せず、管理者にメールで知らせる
 // (既存のnotifyAdmin経由、新しい管理画面ボタンは追加しない)。
@@ -58,11 +59,13 @@ async function fromKabutan(ticker: string): Promise<string | null> {
   return extractMarket(html.slice(0, 6000));
 }
 
-// 情報源3: みんかぶのIPO情報ページ
-async function fromMinkabu(ticker: string): Promise<string | null> {
-  const html = await fetchText(`https://minkabu.jp/stock/${ticker}/ipo`);
-  if (!html) return null;
-  return extractMarket(html.slice(0, 6000));
+// 情報源3: 取引所の公式の新規上場一覧(東証=JPX、名証)。
+// 2026/9/25変更: 以前はみんかぶのIPOページを読んでいたが、本番環境からは毎回取得失敗だった
+// (アクセスを受け付けてもらえない)ため、市場を運営する取引所自身の公表情報に切り替えた。
+function fromExchange(ticker: string, listings: Map<string, ExchangeListing>): string | null {
+  const row = listings.get(ticker);
+  if (!row || !row.market) return null;
+  return extractMarket(row.market);
 }
 
 export async function GET(req: NextRequest) {
@@ -89,18 +92,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "確認待ちの銘柄なし", confirmed: 0 });
   }
 
+  const exchangeListings = await fetchExchangeListings(
+    new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })
+  );
+
   const confirmed: string[] = [];
   const needsManual: string[] = [];
-  const debug: { name: string; ticker: string; matsui: string | null; kabutan: string | null; minkabu: string | null }[] = [];
+  const debug: { name: string; ticker: string; matsui: string | null; kabutan: string | null; exchange: string | null }[] = [];
 
   for (const company of targets) {
-    const [m1, m2, m3] = await Promise.all([
+    const [m1, m2] = await Promise.all([
       fromMatsui(company.ticker),
       fromKabutan(company.ticker),
-      fromMinkabu(company.ticker),
     ]);
+    const m3 = fromExchange(company.ticker, exchangeListings);
 
-    debug.push({ name: company.name, ticker: company.ticker, matsui: m1, kabutan: m2, minkabu: m3 });
+    debug.push({ name: company.name, ticker: company.ticker, matsui: m1, kabutan: m2, exchange: m3 });
 
     const results = [m1, m2, m3].filter((v): v is string => Boolean(v));
     const counts: Record<string, number> = {};
@@ -117,7 +124,7 @@ export async function GET(req: NextRequest) {
       if (!updateError) {
         confirmed.push(
           "✅ " + company.name + "(" + company.ticker + ") → " + best[0] +
-          "(" + best[1] + "/3ソース一致: 松井=" + (m1 ?? "-") + " 株探=" + (m2 ?? "-") + " みんかぶ=" + (m3 ?? "-") + ")"
+          "(" + best[1] + "/3ソース一致: 松井=" + (m1 ?? "-") + " 株探=" + (m2 ?? "-") + " 取引所=" + (m3 ?? "-") + ")"
         );
         continue;
       }
@@ -125,7 +132,7 @@ export async function GET(req: NextRequest) {
 
     needsManual.push(
       "・" + company.name + "(" + company.ticker + "): 松井=" + (m1 ?? "不明") +
-      " / 株探=" + (m2 ?? "不明") + " / みんかぶ=" + (m3 ?? "不明")
+      " / 株探=" + (m2 ?? "不明") + " / 取引所=" + (m3 ?? "不明")
     );
   }
 
