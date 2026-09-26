@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { fetchDailyBars } from "@/lib/yahoo-price";
 
 // 2026/9/6新設: 「100万円投資シミュレーション」機能用の日次株価取得バッチ。
 // 上場済み銘柄(ticker設定済み)の株価をYahoo Financeから毎日取得し、
@@ -14,27 +15,10 @@ const getSupabase = () => createClient(
 );
 
 // Yahoo Financeから直近の株価を取得(直近5営業日のうち最新の終値)
+// 2026/9/26: 取得処理は共通処理(src/lib/yahoo-price.ts)に切り替えた(動作は従来と同じ)。
 async function fetchStockPrice(ticker: string): Promise<number | null> {
-  const symbol = ticker + ".T";
-  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=5d";
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result) return null;
-    const closes = result?.indicators?.quote?.[0]?.close;
-    if (!closes || closes.length === 0) return null;
-    const validCloses = closes.filter((v: any) => v != null);
-    if (validCloses.length === 0) return null;
-    // 直近5日レンジの中で最も新しい終値(=配列の最後)を採用する
-    return Math.round(validCloses[validCloses.length - 1]);
-  } catch {
-    return null;
-  }
+  const bars = await fetchDailyBars(ticker, "5d");
+  return bars.length > 0 ? bars[bars.length - 1].close : null;
 }
 
 export async function GET(req: NextRequest) {

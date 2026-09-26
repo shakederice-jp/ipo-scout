@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { fetchDailyBars, changeRatePct } from "@/lib/yahoo-price";
 import {
   fetchMatsuiIpoList,
   fetchExchangeListings,
@@ -31,6 +32,14 @@ import {
 //  4. 証券コードが後から埋まった上場済み銘柄は、上場日からの株価履歴(100万円シミュレーション用)と
 //     上場日終値をさかのぼって補完する。
 // 上場前の銘柄も対象にしているため、上場日を迎える前に証券コード・公募価格が揃うようになる。
+//
+// 2026/9/26追加(トップページの「100万円買っていたら現在」が一部銘柄にしか出ない件):
+//  5. すでに公募価格が入っている銘柄も、松井証券の一覧と東証の一覧の両方に同じ公募価格が載っていて、
+//     それがDBの値と違う場合は、2つの情報源の値に自動で直して管理者に知らせる。
+//     (KOMPEITOが1,560円(正しくは1,600円)、エブリーが220円(正しくは230円)と、仮条件の下限などが
+//     入ったままになっていて、100万円シミュレーションや騰落率がずれていたため)
+//  6. 公募価格を入れた(直した)ときは、上場日終値が入っていれば騰落率も計算し直す
+//     (公募価格の保存APIの側で計算する。APIが使えなかった場合はここで直接計算する)。
 export const maxDuration = 60;
 
 const getSupabase = () => createClient(
@@ -74,28 +83,6 @@ async function searchTickerOnYahoo(companyName: string): Promise<string | null> 
     return hits.length === 1 ? hits[0].symbol!.replace(".T", "") : null;
   } catch {
     return null;
-  }
-}
-
-// Yahoo Financeの日足(直近1年)を取得
-async function fetchDailyCloses(ticker: string): Promise<{ date: string; close: number }[]> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.T?interval=1d&range=1y`;
-  try {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    const ts: number[] = result?.timestamp ?? [];
-    const closes: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? [];
-    const out: { date: string; close: number }[] = [];
-    for (let i = 0; i < ts.length; i++) {
-      if (closes[i] == null) continue;
-      const date = new Date(ts[i] * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-      out.push({ date, close: Math.round(closes[i]!) });
-    }
-    return out;
-  } catch {
-    return [];
   }
 }
 
@@ -150,6 +137,48 @@ export async function GET(req: NextRequest) {
   const needsManual: string[] = [];
   const debug: any[] = [];
   let verifiedCount = 0;
+
+  // 公募価格の保存は、管理画面の公募価格入力と同じAPIを通す(時価総額などの表示用データと騰落率も
+  // 一緒に更新されるため)。APIが使えなかった場合は、公募価格と騰落率だけ直接保存する。
+  const savePrice = async (company: any, price: number): Promise<boolean> => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/set-ipo-price`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: company.id, ipo_price: price }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) return true;
+    } catch {
+      // 下の直接保存に進む
+    }
+    const upd: Record<string, any> = { ipo_price: price };
+    if (company.initial_price != null) upd.price_change_rate = changeRatePct(Number(company.initial_price), price);
+    const { error: pe } = await supabase.from("ipo_companies").update(upd).eq("id", company.id);
+    return !pe;
+  };
+
+  // --- 登録済みの公募価格の答え合わせ(松井証券の一覧と東証の一覧が同じ金額で、DBと違う場合だけ直す) ---
+  // どちらも今回すでに読み込んだ一覧なので、各社サイトへの追加の問い合わせは発生しない。
+  const { data: priced } = await supabase
+    .from("ipo_companies")
+    .select("id, name, ticker, ipo_price, listing_date, initial_price")
+    .not("ipo_price", "is", null)
+    .not("ticker", "is", null)
+    .gte("listing_date", since);
+  for (const c of (priced ?? []) as any[]) {
+    const matsuiPrices = matsuiRows.filter((r) => r.code === c.ticker && r.ipoPrice != null).map((r) => r.ipoPrice as number);
+    const jpxPrice = exchangeListings.get(c.ticker)?.ipoPrice ?? null;
+    if (matsuiPrices.length === 0 || jpxPrice == null) continue;
+    if (!matsuiPrices.every((p) => p === jpxPrice)) continue; // 2つの情報源で食い違う場合は触らない
+    if (Number(c.ipo_price) === jpxPrice) continue; // 一致していれば問題なし
+    const ok = await savePrice(c, jpxPrice);
+    if (ok) {
+      filled.push(`🔧 ${c.name}(${c.ticker}) → 公募価格を ${Number(c.ipo_price).toLocaleString()}円 から ${jpxPrice.toLocaleString()}円 に修正(松井証券・東証の一覧が一致)`);
+    } else {
+      needsManual.push(`・${c.name}: 公募価格の修正(${c.ipo_price}円→${jpxPrice}円)の保存に失敗`);
+    }
+  }
 
   for (const company of targets as any[]) {
     const listingStr = company.listing_date ? String(company.listing_date).slice(0, 10) : null;
@@ -246,23 +275,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (priceSet != null) {
-      // 公募価格の保存は、管理画面の公募価格入力と同じAPIを通す(時価総額などの表示用データも一緒に更新されるため)
-      let ok = false;
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/set-ipo-price`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ company_id: company.id, ipo_price: priceSet }),
-          signal: AbortSignal.timeout(15000),
-        });
-        ok = res.ok;
-      } catch {
-        ok = false;
-      }
-      if (!ok) {
-        const { error: pe } = await supabase.from("ipo_companies").update({ ipo_price: priceSet }).eq("id", company.id);
-        ok = !pe;
-      }
+      const ok = await savePrice(company, priceSet);
       if (ok) filled.push(`💰 ${company.name}(${code}) → 公募価格 ${priceSet}円(2サイト以上で一致)`);
       else needsManual.push(`・${company.name}: 公募価格${priceSet}円の保存に失敗`);
     }
@@ -270,7 +283,7 @@ export async function GET(req: NextRequest) {
     // --- 証券コードが後から埋まった上場済み銘柄: 株価履歴・上場日終値をさかのぼって補完 ---
     const effectiveListing = listingStr ?? update.listing_date ?? null;
     if (tickerJustSet && effectiveListing && effectiveListing <= today) {
-      const bars = (await fetchDailyCloses(code)).filter((b) => b.date >= effectiveListing);
+      const bars = (await fetchDailyBars(code)).filter((b) => b.date >= effectiveListing);
       if (bars.length > 0) {
         const { error: histError } = await supabase.from("stock_price_history").upsert(
           bars.map((b) => ({ company_id: company.id, price_date: b.date, price: b.close, fetched_at: new Date().toISOString() })),
@@ -281,7 +294,7 @@ export async function GET(req: NextRequest) {
         if (company.initial_price == null) {
           const ipoPrice = priceSet ?? company.ipo_price ?? null;
           const first = bars[0];
-          const changeRate = ipoPrice ? Math.round(((first.close - ipoPrice) / ipoPrice) * 1000) / 10 : null;
+          const changeRate = changeRatePct(first.close, ipoPrice);
           const { error: ipError } = await supabase
             .from("ipo_companies")
             .update({ initial_price: first.close, price_change_rate: changeRate, status: "上場済", updated_at: new Date().toISOString() })

@@ -58,9 +58,12 @@ export async function GET(req: Request) {
     }
   }
 
+  // 2026/9/26修正: 株価履歴がまだ1件も無い銘柄で、公募価格そのものを「現在の株価」として
+  // 使っていたため、「100万円買っていたら現在 ¥1,000,000(+0%)」という事実と違う表示になる
+  // ことがあった。株価履歴が無い間は表示しない(null)。
   const withLatestPrice = (data ?? []).map((c: any) => ({
     ...c,
-    latest_price: c.ipo_price ? (latestPrices[c.id] ?? c.ipo_price) : null,
+    latest_price: c.ipo_price ? (latestPrices[c.id] ?? null) : null,
   }));
 
   return NextResponse.json(withLatestPrice);

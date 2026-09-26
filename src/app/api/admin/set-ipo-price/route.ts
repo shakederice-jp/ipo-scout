@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { changeRatePct } from "@/lib/yahoo-price";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +22,20 @@ export async function POST(req: NextRequest) {
       .eq("id", company_id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // 2026/9/26追加: 上場日終値(initial_price)が先に入っている銘柄は、公募価格を入れた(直した)
+    // 時点で騰落率(price_change_rate)も計算し直す。以前は公募価格が後から埋まると騰落率が
+    // 空欄のまま残り、トップページの「▲+◯%」表示などが出なかった。
+    {
+      const { data: row } = await supabase.from("ipo_companies").select("initial_price").eq("id", company_id).single();
+      const initial = row?.initial_price != null ? Number(row.initial_price) : null;
+      if (initial != null) {
+        await supabase
+          .from("ipo_companies")
+          .update({ price_change_rate: changeRatePct(initial, price) })
+          .eq("id", company_id);
+      }
+    }
 
     // 公募価格がある場合はvisualization_dataも自動更新
     if (price) {

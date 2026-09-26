@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { fetchDailyBars } from "@/lib/yahoo-price";
 
 export const maxDuration = 60;
 
@@ -9,27 +10,13 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Yahoo Financeから株価を取得
-async function fetchStockPrice(ticker: string): Promise<number | null> {
-  const symbol = ticker + ".T";
-  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=5d";
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result) return null;
-    const closes = result?.indicators?.quote?.[0]?.close;
-    if (!closes || closes.length === 0) return null;
-    const validCloses = closes.filter((v: any) => v != null);
-    if (validCloses.length === 0) return null;
-    return Math.round(validCloses[0]);
-  } catch {
-    return null;
-  }
+// Yahoo Financeから上場日の終値を取得
+// 2026/9/26修正: 以前は「直近5営業日の日足の最初の終値」を使っていたため、上場から数日たって
+// 実行されると上場日ではない日の終値を「上場日終値」として保存してしまうことがあった。
+// 上場日以降で最初の日足(=上場日の終値)を採用する。
+async function fetchListingDayClose(ticker: string, listingDate: string): Promise<number | null> {
+  const bars = (await fetchDailyBars(ticker, "3mo")).filter((b) => b.date >= listingDate);
+  return bars.length > 0 ? bars[0].close : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -66,7 +53,7 @@ export async function GET(req: NextRequest) {
   let updatedCount = 0;
 
   for (const company of targets) {
-    const price = await fetchStockPrice(company.ticker);
+    const price = await fetchListingDayClose(company.ticker, String(company.listing_date).slice(0, 10));
     if (!price) {
       results.push("⚠️ " + company.name + "(" + company.ticker + "): 株価取得失敗");
       continue;
