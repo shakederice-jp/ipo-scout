@@ -2,6 +2,7 @@ import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, cre
 export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
+import { toClientCompany } from "@/lib/client-company";
 import { notFound } from "next/navigation";
 
 async function fetchCompany(id: string) {
@@ -135,9 +136,10 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
   // ①長期の強み・差別化(STEP8 long_term_strength)は有料限定のため、無料ユーザーには
   // このキーだけ取り除いたcompanyを渡す。②実際に有料コンテンツへアクセスできたケースを
   // paid_access_logsに記録し、スクレイピングの早期検知(/api/cron/detect-scraping)に使う。
-  const companyForClient = hasAccess || !co.analysis_deep_dive
-    ? company
-    : { ...co, analysis_deep_dive: { ...co.analysis_deep_dive, long_term_strength: undefined } };
+  // 2026/9/26変更: 画面で使う項目だけに絞って渡す(有料コンテンツや目論見書本文がページの
+  // データに含まれてしまっていた問題の修正。詳細は src/lib/client-company.ts)。
+  // long_term_strength を無料ユーザーに送らない従来の処理もこの中に含めている。
+  const companyForClient = toClientCompany(co, hasAccess);
 
   if (hasAccess && !isFreeCompany && userId) {
     try {

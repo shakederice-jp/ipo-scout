@@ -235,6 +235,9 @@ export function findMatsuiRow<T extends ListingRow>(
 export type ExchangeListing = ListingRow & {
   market: string | null; // "グロース" "スタンダード" "プライム" "名証ネクスト" "名証メイン" "名証プレミア" など
   exchange: "東証" | "名証";
+  // 2026/9/26追加: 仮条件(円)。東証の一覧にのみ載っている。公募価格が仮条件のどこで決まったか
+  // (=機関投資家などの需要の強さ)をナインクロス独自集計のコンセンサス指標で使う。
+  kari?: { min: number; max: number } | null;
 };
 
 // 日本取引所グループ「新規上場銘柄一覧(株式)」。1社が2行組の表になっている
@@ -256,6 +259,10 @@ function parseJpxList(html: string): ExchangeListing[] {
     const dateM = (a[0] ?? "").match(/(20\d\d)\/(\d{1,2})\/(\d{1,2})/);
     const name = (a[1] ?? "").replace(/代表者インタビュー/g, "").replace(/\*/g, "").trim();
     if (!name) continue;
+    // 1行目の6列目が「仮条件(円)」。例:「610～650」。未定は「-」
+    const kariM = (a[5] ?? "").normalize("NFKC").match(/([0-9][0-9,]*)\s*[~〜～\-－]\s*([0-9][0-9,]*)/);
+    const kariMin = kariM ? parseInt(kariM[1].replace(/,/g, ""), 10) : NaN;
+    const kariMax = kariM ? parseInt(kariM[2].replace(/,/g, ""), 10) : NaN;
     out.push({
       code: idM[1],
       name,
@@ -263,6 +270,7 @@ function parseJpxList(html: string): ExchangeListing[] {
       market: b[0] ? b[0].trim() || null : null,
       ipoPrice: parseYen(b[3]),
       exchange: "東証",
+      kari: Number.isFinite(kariMin) && Number.isFinite(kariMax) && kariMin > 0 && kariMax >= kariMin ? { min: kariMin, max: kariMax } : null,
     });
   }
   return out;

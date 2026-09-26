@@ -8,6 +8,8 @@ import {
 } from "@/components/VizTables";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { NineCrossCard, AxisBadge } from "@/components/NineCross";
+import type { NineCrossBadge } from "@/lib/value-growth";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
 
 interface AxisItem { id:string;title:string;score:number;index:string;why_matters:string;description:string;verdict:string;doc_guide:string;grade?:string;label?:string; }
@@ -460,7 +462,7 @@ function InsightCard({ins,idx,level="expert"}:{ins:Insight;idx:number;level?:"ex
   );
 }
 
-function DeepDiveCard({item,accentColor,level="expert"}:{item:AxisItem;accentColor:string;level?:"expert"|"beginner"}) {
+function DeepDiveCard({item,accentColor,level="expert",badge}:{item:AxisItem;accentColor:string;level?:"expert"|"beginner";badge?:NineCrossBadge}) {
   const [open,setOpen]=useState(false);
   const sc=Math.max(0,Math.min(100,item.score||0));
   const grade=item.grade||(sc>=80?"A":sc>=65?"B":sc>=50?"C":sc>=35?"D":"E");
@@ -492,6 +494,8 @@ function DeepDiveCard({item,accentColor,level="expert"}:{item:AxisItem;accentCol
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:900,fontSize:10,color:accentColor,letterSpacing:"0.05em"}}>{item.id}</div>
           <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{item.label||item.title||item.id}</div>
+          {/* 2026/9/26追加: 独自AIナインクロスの数値バッジ(解除株価・売出比率・社長保有・市場浸透率)。有料会員のみ */}
+          <AxisBadge badge={badge}/>
           {!open&&parsed?.summary&&(
             <p style={{fontSize:11,color:"#64748b",lineHeight:1.6,margin:"4px 0 0",
               display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
@@ -910,6 +914,9 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
   const score=analysis.total_score||65;
   const grade=analysis.grade||"B";
   const axes=analysis.axes||{ultra_short:[],short:[],long:[]};
+  // 2026/9/26追加: 独自AIナインクロスの独自試算(毎日のcron /api/cron/nine-cross で計算・保存)。
+  // analysis_market(=market_data)の中にあり、有料会員でない場合はpage.tsxでそもそも送られない。
+  const nineCross=(analysis as any).market_data?.nine_cross??null;
   const insights=analysis.insights||[];
   const scenarios_short=(analysis as any).scenarios_short||(analysis as any).scenarios||[];
   const scenarios_long=(analysis as any).scenarios_long||[];
@@ -1652,9 +1659,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                     </div>
                   </div>
                   <div>
+                    {g.key==="long" && <NineCrossCard data={nineCross}/>}
                     {items.map((item:AxisItem)=>(
                       <div key={item.id} style={{borderBottom:"1px solid #f8fafc"}}>
-                        <DeepDiveCard item={item} accentColor={g.color} level={level}/>
+                        <DeepDiveCard item={item} accentColor={g.color} level={level} badge={nineCross?.badges?.[item.id]}/>
                       </div>
                     ))}
                     {g.key==="long" && (

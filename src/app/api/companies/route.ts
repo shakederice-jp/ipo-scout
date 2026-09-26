@@ -22,9 +22,13 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // 2026/9/26修正: 以前は select("*") で全列を返していたため、この公開APIから誰でも
+  // 目論見書本文(raw_prospectus)や9軸の詳細レポート・シナリオなど有料会員限定の内容まで
+  // 取得できてしまっていた。カレンダー(CalendarClient)と管理画面の初値入力欄
+  // (InitialPriceForm)が実際に使う列だけに絞る。
   const { data, error } = await supabase
     .from("ipo_companies")
-    .select("*")
+    .select("id, ticker, name, exchange, sector, biz_type, price_range_min, price_range_max, listing_date, listing_date_confirmed, apply_start_date, bb_start_date, lockup_90_date, lockup_180_date, status, highlight, ai_score, ai_summary, ipo_price, initial_price, price_change_rate, created_at, updated_at")
     .order("listing_date", { ascending: true });
 
   if (error) {
