@@ -694,7 +694,7 @@ export default function AdminPage() {
                 <p style={{ fontSize:11, color:"#94a3b8", margin:0 }}>読み込み中...</p>
               )}
               <p style={{ fontSize:10, color:"#94a3b8", margin:"10px 0 0" }}>
-                ※「特典成立数」は紹介コードが正しく適用され、紹介した人・された人の両方に2ヶ月無料が付与された件数です。
+                ※「特典成立数」は紹介コードが正しく適用され、紹介した人・された人の両方に「有料分析2ヶ月読み放題」が付与された件数です。
               </p>
             </div>
 

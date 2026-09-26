@@ -1298,10 +1298,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               料金プランを見る →
             </a>
             {/* 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 有料の壁にぶつかった
-                まさにその瞬間に、課金以外の選択肢(友達紹介で2ヶ月無料)も併せて案内する。
+                まさにその瞬間に、課金以外の選択肢(友達紹介で有料分析2ヶ月読み放題)も併せて案内する。
                 離脱してしまう前にもう1つの導線を見せる狙い。 */}
             <div style={{marginTop:10,fontSize:11,color:"#a0d4d6"}}>
-              または<a href="/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、2ヶ月無料でご利用いただけます🎁
+              または<a href="/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、有料分析が2ヶ月間読み放題になります🎁
             </div>
           </div>
         )}

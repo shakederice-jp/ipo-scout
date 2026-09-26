@@ -65,7 +65,7 @@ export default function AuthPage() {
             const res = await fetch("/api/referral", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ referral_code: pendingCode }) });
             const json = await res.json().catch(() => ({} as any));
             referralNote = res.ok && json?.success
-              ? " 🎉紹介特典を適用しました（あなたと紹介者様に2ヶ月無料が付与されました）。"
+              ? " 🎉紹介特典を適用しました（あなたと紹介者様の有料分析が2ヶ月間読み放題になりました）。"
               : json?.error === "invalid code" ? " 紹介コードが見つかりませんでした（登録自体は完了しています）。"
               : json?.error === "self referral" ? " ご自身の紹介コードは利用できません（登録自体は完了しています）。"
               : json?.error === "already referred" ? " このアカウントは既に紹介特典を利用済みです。"
@@ -74,7 +74,7 @@ export default function AuthPage() {
             referralNote = " 紹介コードの適用中に通信エラーが発生しました（登録自体は完了しています）。";
           }
         } else {
-          referralNote = " 紹介コードを受け付けました。メール内のリンクから登録を完了すると、あなたと紹介者様に2ヶ月無料が付与されます。";
+          referralNote = " 紹介コードを受け付けました。メール内のリンクから登録を完了すると、あなたと紹介者様の有料分析が2ヶ月間読み放題になります。";
         }
       }
       setMessage(`確認メールを送信しました。メールをご確認ください。${referralNote}`);
@@ -136,7 +136,7 @@ export default function AuthPage() {
               style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}
             />
             <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
-              紹介コードを入力して登録すると、あなたと紹介者の両方に2ヶ月間無料特典が付与されます
+              紹介コードを入力して登録すると、あなたと紹介者の両方が有料分析を2ヶ月間読み放題になります
             </p>
           </div>
         )}

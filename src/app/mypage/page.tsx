@@ -198,7 +198,7 @@ export default function MyPage() {
       <div style={{ textAlign: "center", maxWidth: 320, padding: "0 16px" }}>
         <p style={{ color: "#64748b", marginBottom: 8, fontWeight: 700 }}>ログインが必要です</p>
         <p style={{ color: "#94a3b8", fontSize: 12, lineHeight: 1.8, marginBottom: 20 }}>
-          無料会員登録（メールアドレスのみ・課金不要）だけで、お気に入り銘柄の登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（2ヶ月無料）がご利用いただけます。
+          無料会員登録（メールアドレスのみ・課金不要）だけで、お気に入り銘柄の登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（有料分析が2ヶ月間読み放題）がご利用いただけます。
         </p>
         <a href="/auth" style={{ padding: "10px 24px", backgroundColor: PRIMARY, color: "white", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>ログイン / 無料会員登録</a>
       </div>
@@ -217,16 +217,16 @@ export default function MyPage() {
   const inviteMessage =
     `📊 IPOの目論見書をAIが読み込んで分析してくれる「IPO企業情報AI分析レポート」を使っています。\n` +
     `初心者向け・中上級者向けどちらの分析も見られて、毎月最初の2社ぶんは無料。公募価格で100万円投資していたら今いくらか、というシミュレーションも見られて面白いです。\n\n` +
-    `このリンクから登録すると、お互いにプレミアムプラン2ヶ月無料になります🎁（先着100名限定）\n${referralUrl}`;
+    `このリンクから登録すると、お互いに有料分析が2ヶ月間読み放題になります🎁（先着100名限定）\n${referralUrl}`;
   const inviteMessageX =
     `📊 目論見書をAIが解析して初心者にも分かりやすく教えてくれる「IPO企業情報AI分析レポート」を使ってます。毎月2社は無料、100万円投資シミュレーションも面白い。\n` +
-    `このリンクから登録で、お互いプレミアム2ヶ月無料🎁（先着100名限定）\n${referralUrl}\n#IPO投資`;
+    `このリンクから登録で、お互い有料分析が2ヶ月読み放題🎁（先着100名限定）\n${referralUrl}\n#IPO投資`;
   const inviteSubjectEmail = `「IPO企業情報AI分析レポート」のご紹介`;
   const inviteBodyEmail =
     `いつもお世話になっております。\n\n` +
     `IPO(新規上場株)の投資判断に役立つ「IPO企業情報AI分析レポート」というサービスを使っているのでご紹介します。\n\n` +
     `企業が金融庁に提出する目論見書をAIが読み込み、財務状況やリスクを初心者にも分かりやすくまとめてくれるサービスです。毎月最初の2社は無料で読めます。「公募価格で100万円投資していたら今いくらになっているか」を自動で計算してくれる機能もあり、なかなか面白いです。\n\n` +
-    `以下の招待リンクから登録いただくと、お互いにプレミアムプラン2ヶ月無料の特典が付きます（先着100名限定）。よろしければ試してみてください。\n\n${referralUrl}`;
+    `以下の招待リンクから登録いただくと、お互いに有料分析が2ヶ月間読み放題になる特典が付きます（先着100名限定）。よろしければ試してみてください。\n\n${referralUrl}`;
 
   const handleShareX = () => {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(inviteMessageX)}`, "_blank", "noopener,noreferrer");
@@ -324,7 +324,7 @@ export default function MyPage() {
             <InfoRow label="次回更新日" value={new Date(profile.subscription_end_at).toLocaleDateString("ja-JP")} />
           )}
           {profile.free_until && new Date(profile.free_until) > new Date() && (
-            <InfoRow label="無料期間終了日" value={
+            <InfoRow label="有料分析 読み放題の終了日" value={
               <span style={{ color: "#15803d", fontWeight: 700 }}>
                 {new Date(profile.free_until).toLocaleDateString("ja-JP")}（紹介特典）
               </span>
@@ -476,9 +476,9 @@ export default function MyPage() {
 
           <InfoRow label="招待コード" value={<span style={{ fontFamily: "monospace", letterSpacing: 2 }}>{profile.referral_code ?? "-"}</span>} />
           <InfoRow label="招待済み人数" value={`${completedReferrals}名`} />
-          <InfoRow label="獲得した無料月数" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
+          <InfoRow label="獲得した読み放題期間" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
-            💡 友達が登録すると、あなたと友達の両方に<strong>2ヶ月無料</strong>が付与されます（<strong>先着100名限定</strong>・予告なく終了する場合があります）
+            💡 友達が登録すると、あなたと友達の両方が<strong>有料分析を2ヶ月間読み放題</strong>になります（<strong>先着100名限定</strong>・予告なく終了する場合があります）
           </div>
         </Section>
 

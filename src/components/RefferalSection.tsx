@@ -15,7 +15,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
   };
 
   const tweetText = encodeURIComponent(
-    `📊 IPOのAI深度分析を無料体験！\nこのリンクから登録するとプレミアムプランが2ヶ月無料（今だけ・期間限定）👇\n${referralUrl}\n#大手町調査室九課 #IPO投資`
+    `📊 IPOのAI深度分析を無料体験！\nこのリンクから登録すると有料分析が2ヶ月間読み放題（今だけ・期間限定）👇\n${referralUrl}\n#大手町調査室九課 #IPO投資`
   );
 
   return (
@@ -37,16 +37,16 @@ export default function ReferralSection({ userId }: { userId: string }) {
           <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
             <div className="font-black text-sm" style={{ color: "#15803d" }}>招待した人</div>
             <div className="font-bold mt-1" style={{ fontSize: "11px", color: "#166534" }}>
-              プレミアム<br/>
-              <span className="text-base font-black">2ヶ月無料</span>
+              有料分析<br/>
+              <span className="text-base font-black">2ヶ月読み放題</span>
             </div>
             <div style={{ fontSize: "9px", color: "#15803d", marginTop: "2px" }}>※登録月含む</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}>
             <div className="font-black text-sm" style={{ color: "#1d4ed8" }}>招待された人</div>
             <div className="font-bold mt-1" style={{ fontSize: "11px", color: "#1e40af" }}>
-              プレミアム<br/>
-              <span className="text-base font-black">2ヶ月無料</span>
+              有料分析<br/>
+              <span className="text-base font-black">2ヶ月読み放題</span>
             </div>
             <div style={{ fontSize: "9px", color: "#1d4ed8", marginTop: "2px" }}>※登録月含む</div>
           </div>
