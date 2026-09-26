@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { createInfographic } from "@/lib/infographic";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest) {
-    const auth = req.headers.get("x-admin-password");
-    if (auth !== process.env.ADMIN_PASSWORD && auth !== "otemachi9") {
+    // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

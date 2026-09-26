@@ -2,11 +2,16 @@
 import { useState, useEffect } from "react";
 import InitialPriceForm from "@/components/InitialPriceForm";
 
-const ADMIN_PASSWORD = "otemachi9";
+// 2026/9/26: 以前はここにパスワードを直書きし、ブラウザ内だけでログイン判定していた(開発者ツールで
+// 誰でもパスワードを読めた)。現在はサーバー側で判定する(src/lib/admin-auth.ts・src/proxy.ts 参照)。
+// パスワードはVercelの環境変数 ADMIN_PASSWORD に設定する。
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [masterOpen, setMasterOpen] = useState(false);
 
@@ -74,6 +79,29 @@ export default function AdminPage() {
   const [econResult, setEconResult] = useState<string | null>(null);
   const [referralStats, setReferralStats] = useState<{ completed: number; cap: number; remaining: number } | null>(null);
 
+  // 2026/9/26追加: ページを開いたとき、すでにログイン済み(有効なログイン状態のクッキーあり)かをサーバーに確認する
+  useEffect(() => {
+    fetch("/api/admin/session", { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setAuthed(!!d?.authed))
+      .catch(() => {})
+      .finally(() => setAuthChecking(false));
+  }, []);
+
+  const handleLogin = async () => {
+    if (!password || loginLoading) return;
+    setLoginLoading(true); setLoginError(null);
+    try {
+      const res = await fetch("/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ password }) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success) { setPassword(""); setAuthed(true); }
+      else setLoginError(data?.error ?? "ログインに失敗しました");
+    } catch (e) {
+      setLoginError("通信エラー: " + String(e));
+    }
+    setLoginLoading(false);
+  };
+
   useEffect(() => {
     if (!authed) return;
     fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
@@ -81,7 +109,7 @@ export default function AdminPage() {
       if (Array.isArray(data)) setEconEvents(data);
     }).catch(() => {});
     // 2026/9/6追加: 紹介プログラムの成立件数を管理画面を開くたびに自動取得(手動ボタンは増やさない方針)
-    fetch("/api/admin/referral-stats", { headers: { "x-admin-password": "otemachi9" } })
+    fetch("/api/admin/referral-stats")
       .then(r => r.json()).then(data => { if (!data.error) setReferralStats(data); }).catch(() => {});
   }, [authed]);
 
@@ -421,7 +449,7 @@ export default function AdminPage() {
   const handleHealthCheck = async () => {
     setHealthLoading(true); setHealthResult(null);
     try {
-      const res = await fetch("/api/admin/health", { headers:{"x-admin-password":"otemachi9"} });
+      const res = await fetch("/api/admin/health");
       setHealthResult(await res.json());
     } catch(e) { setHealthResult({ ok:false, error:String(e) }); }
     setHealthLoading(false);
@@ -430,7 +458,7 @@ export default function AdminPage() {
   const handleInfographicBackfill = async () => {
     setInfoBackfillLoading(true); setInfoBackfillResult(null);
     try {
-      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9","Content-Type":"application/json"}, body: JSON.stringify({}) });
+      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({}) });
       setInfoBackfillResult(await res.json());
     } catch(e) { setInfoBackfillResult({ error:String(e) }); }
     setInfoBackfillLoading(false);
@@ -439,7 +467,7 @@ export default function AdminPage() {
   const handleInfographicForceRegen = async () => {
     setInfoForceLoading(true); setInfoForceResult(null);
     try {
-      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"x-admin-password":"otemachi9","Content-Type":"application/json"}, body: JSON.stringify({ force:true, offset:infoForceOffset }) });
+      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ force:true, offset:infoForceOffset }) });
       const data = await res.json();
       setInfoForceResult(data);
       if (typeof data.nextOffset === "number") setInfoForceOffset(data.nextOffset);
@@ -450,7 +478,7 @@ export default function AdminPage() {
   const handleDbCheck = async () => {
     setDbCheckLoading(true); setDbCheckResult(null);
     try {
-      const res = await fetch("/api/cron/db-check", { headers:{authorization:"Bearer otemachi9cron"} });
+      const res = await fetch("/api/cron/db-check");
       setDbCheckResult(await res.json());
     } catch(e) { setDbCheckResult({ ok:false, error:String(e) }); }
     setDbCheckLoading(false);
@@ -459,7 +487,7 @@ export default function AdminPage() {
   const handleMarketSnapshot = async () => {
     setMarketSnapshotLoading(true); setMarketSnapshotResult(null);
     try {
-      const res = await fetch("/api/cron/market-snapshot", { headers:{"x-admin-password":"otemachi9"} });
+      const res = await fetch("/api/cron/market-snapshot");
       setMarketSnapshotResult(await res.json());
     } catch(e) { setMarketSnapshotResult({ error:String(e) }); }
     setMarketSnapshotLoading(false);
@@ -505,7 +533,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/add-company", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": "otemachi9" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: manualAddName.trim(),
           ticker: manualAddTicker.trim() || null,
@@ -546,7 +574,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/delete-company", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": "otemachi9" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company_id: deleteCompanyId, confirm_name: target.name }),
       });
       const data = await res.json();
@@ -589,15 +617,22 @@ export default function AdminPage() {
 
   if (!authed) return (
     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh", backgroundColor:"#f4fbfc" }}>
-      <div style={{ background:"white", padding:"32px", borderRadius:"16px", border:"1px solid #b3e8ea", minWidth:"300px" }}>
+      <div style={{ background:"white", padding:"32px", borderRadius:"16px", border:"1px solid #b3e8ea", minWidth:"300px", maxWidth:"360px" }}>
         <h2 style={{ margin:"0 0 16px", fontSize:"16px", color:"#082b2e" }}>⚙️ 管理画面</h2>
-        <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&(password===ADMIN_PASSWORD?setAuthed(true):alert("パスワードが違います"))}
-          placeholder="パスワードを入力" style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", marginBottom:"12px", boxSizing:"border-box" }}/>
-        <button onClick={()=>password===ADMIN_PASSWORD?setAuthed(true):alert("パスワードが違います")}
-          style={{ width:"100%", padding:"10px", backgroundColor:"#66c3c6", color:"white", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:"700" }}>
-          ログイン
-        </button>
+        {authChecking ? (
+          <div style={{ fontSize:"12px", color:"#64748b" }}>⏳ ログイン状態を確認中...</div>
+        ) : (
+          <>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+              onKeyDown={e=>{ if (e.key==="Enter") handleLogin(); }}
+              placeholder="パスワードを入力" autoComplete="current-password" style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", marginBottom:"12px", boxSizing:"border-box" }}/>
+            <button onClick={handleLogin} disabled={loginLoading}
+              style={{ width:"100%", padding:"10px", backgroundColor:"#66c3c6", color:"white", border:"none", borderRadius:"8px", cursor:loginLoading?"default":"pointer", fontWeight:"700", opacity:loginLoading?0.6:1 }}>
+              {loginLoading ? "⏳ 確認中..." : "ログイン"}
+            </button>
+            {loginError && <div style={{ marginTop:"10px", fontSize:"12px", lineHeight:1.6, color:"#dc2626" }}>{loginError}</div>}
+          </>
+        )}
       </div>
     </div>
   );

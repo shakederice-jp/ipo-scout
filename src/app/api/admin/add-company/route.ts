@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 // 2026/8/31追記: Skyfall(625A)がEDINET自動検出のスキャン窓(直近5日)を過ぎて
 // 見落とされたまま二度と自動登録されない不具合が発覚したことを受けて新設。
@@ -16,8 +17,8 @@ import { createClient } from "@supabase/supabase-js";
 // このエンドポイントの重複チェックを「完全一致」から、EDINET連携側(isNameMatch)と
 // 同じ「株式会社等の法人格表記や空白を除いて比較する」方式に強化し、
 // 「Skyfall」と「株式会社Skyfall」のような表記ゆれでも重複と判定できるようにした。
-// あわせて、admin画面のログインパスワードのチェックも追加した
-// (他の管理者操作(ヘルスチェック等)と同様、x-admin-passwordヘッダを要求する)。
+// あわせて、admin画面のログインチェックも追加した
+// (2026/9/26から、管理画面のログイン状態をサーバー側で確認する方式。src/lib/admin-auth.ts 参照)。
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,8 +34,8 @@ function normalizeCompanyName(s: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const adminPw = req.headers.get("x-admin-password");
-    if (adminPw !== process.env.ADMIN_PASSWORD && adminPw !== "otemachi9") {
+    // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

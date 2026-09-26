@@ -4,6 +4,7 @@ import { createInfographic } from "@/lib/infographic";
 import { buildRevenueChartData } from "@/lib/ipo-revenue-chart";
 import { buildIpoIntroText } from "@/lib/ipo-intro-text";
 import { computeAxisGroupScores, computeIndividualAxisScores } from "@/lib/ipo-axis-scores";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export const maxDuration = 90;
 
@@ -20,8 +21,8 @@ export const maxDuration = 90;
 // デザインを刷新した際(2026/8/29)などに、既存画像・記事を新デザインで作り直すために使う。
 // offsetは呼び出し側(管理画面)が3件ずつ進める。
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("x-admin-password");
-  if (auth !== process.env.ADMIN_PASSWORD && auth !== "otemachi9") {
+  // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一
+  if (!isAdminRequest(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

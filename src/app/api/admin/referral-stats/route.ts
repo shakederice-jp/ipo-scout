@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 // 2026/9/6新設: 紹介プログラムの実績を管理画面で見えるようにするための集計API。
 // これまで「何人がリンクを踏んで、何人が登録し、何人に特典が付いたか」を確認する
@@ -9,8 +10,8 @@ export const dynamic = "force-dynamic";
 const CAP = 100; // Xのプロフィールで案内している「先着100名限定」の人数
 
 export async function GET(req: NextRequest) {
-  const pw = req.headers.get("x-admin-password");
-  if (pw !== "otemachi9") {
+  // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一
+  if (!isAdminRequest(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

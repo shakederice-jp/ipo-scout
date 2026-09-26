@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { fetchDailyBars, changeRatePct } from "@/lib/yahoo-price";
+import { internalAuthHeaders } from "@/lib/admin-auth";
 import {
   fetchMatsuiIpoList,
   fetchExchangeListings,
@@ -144,7 +145,8 @@ export async function GET(req: NextRequest) {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/set-ipo-price`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // 2026/9/26: 管理用APIは認証必須になったため、内部呼び出し用の合言葉を付ける
+        headers: { "Content-Type": "application/json", ...internalAuthHeaders() },
         body: JSON.stringify({ company_id: company.id, ipo_price: price }),
         signal: AbortSignal.timeout(15000),
       });

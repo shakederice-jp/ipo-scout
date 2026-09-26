@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 // 2026/9/1新設。「その時期その時期に大化けするIPOテーマ」と「新興・グロース市場、
 // 日経平均、世界的な株式市場の地合い」をAI Web検索で毎週月曜に調査し、
@@ -11,7 +12,7 @@ import { notifyAdmin } from "@/lib/notify-admin";
 // (src/lib/market-snapshot.ts 参照)。
 //
 // vercel.jsonのcronから毎週月曜朝に自動実行されるほか、admin画面の
-// 「🛠 手動実行ツール」からいつでも手動実行できる(x-admin-passwordヘッダ)。
+// 「🛠 手動実行ツール」からいつでも手動実行できる(管理画面のログイン状態で認証)。
 
 export const maxDuration = 90;
 
@@ -31,9 +32,8 @@ function getJstMonday(): string {
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const adminPw = req.headers.get("x-admin-password");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && adminPw !== "otemachi9") {
+  // 2026/9/26: パスワードの直書きをやめ、定期実行の合言葉か管理画面のログイン状態で判定(src/lib/admin-auth.ts)
+  if (!isAdminRequest(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

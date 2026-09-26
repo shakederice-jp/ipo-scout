@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 // 2026/8/31追記: 「かがやきホールディングス」が重複登録された事故の後始末として新設。
 // 誤って登録された銘柄(空の重複行や、テスト登録等)を管理者がadmin画面から
@@ -14,8 +15,8 @@ const getSupabase = () => createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const adminPw = req.headers.get("x-admin-password");
-    if (adminPw !== process.env.ADMIN_PASSWORD && adminPw !== "otemachi9") {
+    // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

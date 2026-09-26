@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { postToX } from "@/lib/post-to-x";
 import Anthropic from "@anthropic-ai/sdk";
+import { internalAuthHeaders } from "@/lib/admin-auth";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -291,7 +292,8 @@ for (const date of dates) {
     try {
       const priceRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/detect-ipo-price`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // 2026/9/26: 管理用APIは認証必須になったため、内部呼び出し用の合言葉を付ける
+        headers: { "Content-Type": "application/json", ...internalAuthHeaders() },
         body: JSON.stringify({ doc_id: doc.docID }),
       });
       const priceData = await priceRes.json();
