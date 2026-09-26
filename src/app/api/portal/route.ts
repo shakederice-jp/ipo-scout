@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
     if (!routeClient) {
       return NextResponse.json({ error: "認証クライアントの初期化に失敗しました" }, { status: 500 });
     }
-    const { data: { session } } = await routeClient.auth.getSession();
+    // 2026/9/26: getSession()はブラウザのクッキーを検証せずに返すため、なりすまし防止のため
+    // 認証サーバーで確認する getUser() に変更(以降の処理は従来どおり session.user を使う)
+    const { data: { user: verifiedUser } } = await routeClient.auth.getUser();
+    const session = verifiedUser ? { user: verifiedUser } : null;
     if (!session) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }

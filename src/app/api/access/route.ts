@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { canReadPaidAnalysis, PAID_ANALYSIS_PLANS } from "@/lib/member-auth";
 
 export async function GET(req: NextRequest) {
   const stockId  = req.nextUrl.searchParams.get("stock_id") ?? "";
@@ -35,12 +36,15 @@ export async function GET(req: NextRequest) {
   // サブスクプランを確認
   const { data: profile } = await supabase
     .from("user_profiles")
-    .select("plan")
+    .select("plan, free_until")
     .eq("id", user.id)
     .single();
 
-  if (profile?.plan && profile.plan !== "free") {
-    return NextResponse.json({ access: true, reason: "subscription" });
+  // 2026/9/26修正: 分析ページ本体(src/app/analysis/[id]/page.tsx)と判定をそろえた。以前は「free以外の
+  // プランなら閲覧可」としていたため、分析レポートを含まない通知プラン(notify)でも閲覧可と判定していた。
+  // あわせて紹介特典の無料期間中も閲覧可とする(src/lib/member-auth.ts 参照)。
+  if (canReadPaidAnalysis(profile)) {
+    return NextResponse.json({ access: true, reason: profile?.plan && PAID_ANALYSIS_PLANS.includes(profile.plan) ? "subscription" : "referral_free" });
   }
 
   // 単品購入を確認

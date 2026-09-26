@@ -26,7 +26,13 @@ async function requireLoggedInUser(): Promise<
     return { error: NextResponse.json({ error: "auth_unavailable" }, { status: 401 }) };
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // 2026/9/26: getSession()はブラウザのクッキーを検証せずに返すため、なりすまし防止のため
+
+  // 認証サーバーで確認する getUser() に変更(以降の処理は従来どおり session.user を使う)
+
+  const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+
+  const session = verifiedUser ? { user: verifiedUser } : null;
   if (!session) {
     return { error: NextResponse.json({ error: "not_logged_in" }, { status: 401 }) };
   }

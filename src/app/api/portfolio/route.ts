@@ -17,7 +17,13 @@ export async function POST(req: NextRequest) {
   const supabase = await createSupabaseRouteClient();
   if (!supabase) return NextResponse.json({ error: "認証エラー" }, { status: 401 });
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // 2026/9/26: getSession()はブラウザのクッキーを検証せずに返すため、なりすまし防止のため
+
+  // 認証サーバーで確認する getUser() に変更(以降の処理は従来どおり session.user を使う)
+
+  const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+
+  const session = verifiedUser ? { user: verifiedUser } : null;
   if (!session) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
 
   const userId = session.user.id;
@@ -78,7 +84,13 @@ export async function DELETE(req: NextRequest) {
   const supabase = await createSupabaseRouteClient();
   if (!supabase) return NextResponse.json({ error: "認証エラー" }, { status: 401 });
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // 2026/9/26: getSession()はブラウザのクッキーを検証せずに返すため、なりすまし防止のため
+
+  // 認証サーバーで確認する getUser() に変更(以降の処理は従来どおり session.user を使う)
+
+  const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+
+  const session = verifiedUser ? { user: verifiedUser } : null;
   if (!session) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
 
   const userId = session.user.id;

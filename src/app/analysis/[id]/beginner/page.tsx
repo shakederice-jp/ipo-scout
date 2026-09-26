@@ -2,6 +2,7 @@ import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, cre
 export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
+import { getVerifiedUser, getServiceSupabase, canReadPaidAnalysis } from "@/lib/member-auth";
 import { toClientCompany } from "@/lib/client-company";
 import { notFound } from "next/navigation";
 
@@ -26,32 +27,29 @@ async function fetchCompany(id: string) {
 async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<{ hasAccess: boolean; userId: string | null }> {
   if (isFreeCompany) return { hasAccess: true, userId: null };
 
-  const routeClient = await createSupabaseRouteClient();
-  if (!routeClient) return { hasAccess: false, userId: null };
-  const { data: { session } } = await routeClient.auth.getSession();
-  if (!session) return { hasAccess: false, userId: null };
+  // 2026/9/26改修: 本人確認を getSession()(クッキーを検証しない)から getUser()(認証サーバーで確認)に変更し、
+  // 紹介特典の無料期間中(free_until)も有料分析を読めるようにした(判定は src/lib/member-auth.ts に共通化)。
+  const user = await getVerifiedUser();
+  if (!user) return { hasAccess: false, userId: null };
 
-  const serviceSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const serviceSupabase = getServiceSupabase();
 
   const { data: profile } = await serviceSupabase
     .from("user_profiles")
-    .select("plan")
-    .eq("id", session.user.id)
+    .select("plan, free_until")
+    .eq("id", user.id)
     .single();
 
-  if (profile?.plan && ["report", "complete"].includes(profile.plan)) return { hasAccess: true, userId: session.user.id };
+  if (canReadPaidAnalysis(profile)) return { hasAccess: true, userId: user.id };
 
   const { data: purchase } = await serviceSupabase
     .from("purchased_stocks")
     .select("id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("company_id", companyId)
     .maybeSingle();
 
-  return { hasAccess: !!purchase, userId: session.user.id };
+  return { hasAccess: !!purchase, userId: user.id };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
