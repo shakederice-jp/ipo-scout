@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractExtraFacts, EXTRA_FACTS_VERSION } from "@/lib/extra-facts";
 import { computeNineCross } from "@/lib/value-growth";
-import { fetchExchangeListings } from "@/lib/ipo-facts";
+import { fetchExchangeListings, fetchMatsuiNewShares, agreeNewShares, type ExchangeListing } from "@/lib/ipo-facts";
 
 // 2026/9/26新設: 独自AIナインクロスの独自試算(バリュー×グロース・マップ、軸バッジ、
 // コンセンサス指標)を毎日まとめて計算し、各銘柄の analysis_market.nine_cross に保存するバッチ。
@@ -28,6 +28,7 @@ export const maxDuration = 120;
 const EXTRACT_PARALLEL = 3; // 同時に読み取る社数
 const EXTRACT_BATCHES = 2; // 1回の実行で最大 3社×2回=6社
 const EXTRACT_TIME_BUDGET_MS = 60_000;
+const WEB_SHARES_MAX = 8; // 1回の実行で松井証券に問い合わせる銘柄数の上限
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -81,12 +82,43 @@ export async function GET(req: NextRequest) {
 
   // --- 2. 仮条件(東証の新規上場一覧)を取得して、全銘柄の試算を計算・保存 ---
   const kariByTicker = new Map<string, { min: number; max: number }>();
+  let listings = new Map<string, ExchangeListing>();
   try {
-    const listings = await fetchExchangeListings(today);
+    listings = await fetchExchangeListings(today);
     for (const [code, row] of listings) if (row.kari) kariByTicker.set(code, row.kari);
   } catch {
     // 取得できなくても他の指標は計算できるので続行
   }
+
+  // --- 2026/9/29追加: 公募株数をネット情報(松井証券の銘柄ページ+東証の一覧)で確認する ---
+  // 時価総額(トップページの銘柄カード・このバッチの試算)に使う公募株数を、目論見書の読み取りだけに
+  // 頼らないようにする。松井証券と東証の一覧の株数が一致した場合だけ採用し、目論見書から読んだ値と
+  // 食い違う場合はネット情報の値で上書きする(食い違いは返り値の webShares に記録)。
+  // 一度確認できた銘柄は、以後は松井証券への問い合わせをしない(new_shares_web_checked)。
+  const webShares: string[] = [];
+  const webTargets = (companies as any[])
+    .filter((c) => c.ticker && c.structured_data?.extra_facts && !c.structured_data.extra_facts.new_shares_web_checked)
+    .filter((c) => listings.get(c.ticker)?.exchange === "東証" && listings.get(c.ticker)?.newSharesK != null)
+    .slice(0, WEB_SHARES_MAX);
+  await Promise.all(
+    webTargets.map(async (c: any) => {
+      try {
+        const matsui = await fetchMatsuiNewShares(c.ticker);
+        const agreed = agreeNewShares(matsui, listings.get(c.ticker)?.newSharesK);
+        if (agreed == null) return;
+        const ef = c.structured_data.extra_facts;
+        const before = ef.new_shares;
+        const newEf = { ...ef, new_shares: agreed, new_shares_web_checked: true, new_shares_source: "松井証券・東証の一覧" };
+        const newStructured = { ...c.structured_data, extra_facts: newEf };
+        const { error: e } = await supabase.from("ipo_companies").update({ structured_data: newStructured }).eq("id", c.id);
+        if (e) return;
+        c.structured_data = newStructured;
+        if (before !== agreed) webShares.push(`${c.name}: 公募株数 ${before ?? "不明"} → ${agreed}`);
+      } catch {
+        // 取得できなければ翌日に再試行
+      }
+    })
+  );
 
   // 一度取れた仮条件は、東証の一覧から消えた後も使えるよう前回の保存値から補う
   for (const c of companies as any[]) {
@@ -113,6 +145,7 @@ export async function GET(req: NextRequest) {
     saved,
     extracted,
     remaining_to_extract: Math.max(0, needExtract.length - extracted.length),
+    web_shares: webShares,
     errors: [...extractErrors, ...saveErrors],
     elapsed_ms: Date.now() - started,
   });

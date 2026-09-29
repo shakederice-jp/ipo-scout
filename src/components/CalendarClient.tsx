@@ -20,7 +20,29 @@ type Company = {
   price_change_rate?: number | null;
   ipo_price?: number | null;
   latest_price?: number | null;
+  listing_shares?: number | null; // 上場時の発行済株式数(上場前+公募)。/api/companies で計算
 };
+
+// 2026/9/29追加: 銘柄カードの時価総額表示。
+// ・上場前(または上場後でも株価データがまだ無い間): 公募価格 × 上場時の発行済株式数
+// ・上場後: 直近の株価 × 上場時の発行済株式数(オーバーアロットメントの第三者割当や株式分割など
+//   上場後の株数の変化は反映しない概算)
+// 公募価格が未定、または株数が目論見書との照合で確認できていない銘柄は表示しない。
+function marketCapInfo(company: Company, listed: boolean, lang: string): { text: string; basis: string } | null {
+  const shares = company.listing_shares;
+  if (!shares || !company.ipo_price) return null;
+  const useLatest = listed && !!company.latest_price;
+  const price = useLatest ? company.latest_price! : company.ipo_price;
+  const oku = (price * shares) / 1e8;
+  if (!Number.isFinite(oku) || oku <= 0) return null;
+  if (lang === "ja") {
+    const text = oku >= 100 ? `約${Math.round(oku).toLocaleString()}億円` : `約${(Math.round(oku * 10) / 10).toFixed(1)}億円`;
+    return { text, basis: useLatest ? "（直近株価ベース）" : "（公募価格ベース）" };
+  }
+  const bn = oku / 10; // 1億円 = ¥0.1B
+  const text = bn >= 1 ? `approx. ¥${(Math.round(bn * 10) / 10).toFixed(1)}B` : `approx. ¥${Math.round(oku * 100).toLocaleString()}M`;
+  return { text, basis: useLatest ? " (at latest price)" : " (at IPO price)" };
+}
 
 type CalendarNote = {
   id?: string;
@@ -507,6 +529,18 @@ export default function CalendarClient() {
                     </div>
                   </div>
                   <div style={{ fontSize:11, color:C.muted, marginTop:3, marginLeft:32 }}>{[company.exchange, company.sector, company.ticker].filter(Boolean).join("・")}</div>
+                  {(() => {
+                    const t0 = new Date(); t0.setHours(0,0,0,0);
+                    const l0 = new Date(company.listing_date); l0.setHours(0,0,0,0);
+                    const mc = marketCapInfo(company, l0.getTime() < t0.getTime(), lang);
+                    if (!mc) return null;
+                    return (
+                      <div style={{ fontSize:11, color:C.text, marginTop:3, marginLeft:32 }}>
+                        {lang === "ja" ? "時価総額" : "Market cap"} <strong>{mc.text}</strong>
+                        <span style={{ fontSize:10, color:C.muted }}>{mc.basis}</span>
+                      </div>
+                    );
+                  })()}
 
                   {(() => {
                     const today2 = new Date(); today2.setHours(0,0,0,0);

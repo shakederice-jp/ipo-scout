@@ -238,6 +238,9 @@ export type ExchangeListing = ListingRow & {
   // 2026/9/26追加: 仮条件(円)。東証の一覧にのみ載っている。公募価格が仮条件のどこで決まったか
   // (=機関投資家などの需要の強さ)をナインクロス独自集計のコンセンサス指標で使う。
   kari?: { min: number; max: number } | null;
+  // 2026/9/29追加: 公募(新株発行)の株数(千株単位)。東証の一覧にのみ載っている。「-」(公募なし)は0。
+  // 時価総額の計算に使う「公募株数」を、松井証券の銘柄ページの値と照らし合わせて確定するために使う。
+  newSharesK?: number | null;
 };
 
 // 日本取引所グループ「新規上場銘柄一覧(株式)」。1社が2行組の表になっている
@@ -263,6 +266,10 @@ function parseJpxList(html: string): ExchangeListing[] {
     const kariM = (a[5] ?? "").normalize("NFKC").match(/([0-9][0-9,]*)\s*[~〜～\-－]\s*([0-9][0-9,]*)/);
     const kariMin = kariM ? parseInt(kariM[1].replace(/,/g, ""), 10) : NaN;
     const kariMax = kariM ? parseInt(kariM[2].replace(/,/g, ""), 10) : NaN;
+    // 1行目の7列目が「公募(千株)」。例:「1,100」「74,100.8」。公募なしは「-」
+    const nsRaw = (a[6] ?? "").normalize("NFKC").trim();
+    const nsM = nsRaw.match(/^([0-9][0-9,]*(?:\.[0-9]+)?)$/);
+    const newSharesK = /^[-－ー―]$/.test(nsRaw) ? 0 : nsM ? parseFloat(nsM[1].replace(/,/g, "")) : null;
     out.push({
       code: idM[1],
       name,
@@ -271,6 +278,7 @@ function parseJpxList(html: string): ExchangeListing[] {
       ipoPrice: parseYen(b[3]),
       exchange: "東証",
       kari: Number.isFinite(kariMin) && Number.isFinite(kariMax) && kariMin > 0 && kariMax >= kariMin ? { min: kariMin, max: kariMax } : null,
+      newSharesK,
     });
   }
   return out;
@@ -406,4 +414,28 @@ export function describeChecks(checks: SourceCheck[]): string {
       (c.prices.length ? `(公募価格表記: ${c.prices.join("/")}円)` : "")
     )
     .join(" / ");
+}
+
+// ===== 公募株数(新株発行の株数)のネット情報による確認(2026/9/29追加) =====
+// 時価総額(公募価格 × 上場時の発行済株式数)の計算に使う公募株数を、目論見書からの読み取りだけに
+// 頼らず、松井証券の銘柄ページと東証の新規上場一覧(千株単位)の2つで確認する。
+// 例: オリバーは目論見書の読み取りで公募株数が「未記載」になっていたが、実際は公募なし(0株)。
+
+// 松井証券の銘柄ページ(https://finance.matsui.co.jp/ipo/コード/index)の「公募(株式数) ◯株」を読む
+export function parseMatsuiNewShares(html: string): number | null {
+  const text = htmlToText(html);
+  const m = text.match(/公募(?:株式数)?\s*[:：]?\s*([0-9][0-9,]*)\s*株/);
+  return m ? parseInt(m[1].replace(/,/g, ""), 10) : null;
+}
+
+export async function fetchMatsuiNewShares(code: string): Promise<number | null> {
+  const html = await fetchText(`https://finance.matsui.co.jp/ipo/${code}/index`);
+  return html ? parseMatsuiNewShares(html) : null;
+}
+
+// 松井証券の株数と東証の一覧(千株単位・小数1桁まで)が一致していれば、その株数を返す
+export function agreeNewShares(matsui: number | null, jpxK: number | null | undefined): number | null {
+  if (matsui == null || jpxK == null) return null;
+  if (matsui === 0 && jpxK === 0) return 0;
+  return Math.abs(matsui / 1000 - jpxK) < 0.051 ? matsui : null;
 }
