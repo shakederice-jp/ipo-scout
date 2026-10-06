@@ -1,67 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { searchNewStockRegistration } from "@/lib/edinet";
 
-const EDINET_KEY = process.env.EDINET_API_KEY!;
-
-function normalize(s: string): string {
-  return s
-    .replace(/株式会社|㈱|\(株\)|（株）|合同会社|有限会社/g, "")
-    .replace(/[　\s]/g, "")
-    .trim();
-}
-
-function isMatch(filerName: string, companyName: string): boolean {
-  const a = normalize(filerName);
-  const b = normalize(companyName);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  if (a.includes(b) && b.length >= 4) return true;
-  if (b.includes(a) && a.length >= 4) return true;
-  return false;
-}
-
-function isProspectus(doc: any): boolean {
-  const desc = doc.docDescription || "";
-  return desc.includes("有価証券届出書") && !desc.includes("訂正");
-}
-
-async function searchEdinetDoc(companyName: string): Promise<{docId: string; filerName: string} | null> {
-  const today = new Date();
-  for (let i = 0; i < 180; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
-    try {
-      const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const docs = json?.results || [];
-      const exact = docs.find((doc: any) =>
-        isProspectus(doc) && normalize(doc.filerName) === normalize(companyName)
-      );
-      if (exact) return { docId: exact.docID, filerName: exact.filerName };
-      const partial = docs.find((doc: any) =>
-        isProspectus(doc) && isMatch(doc.filerName ?? "", companyName)
-      );
-      if (partial) return { docId: partial.docID, filerName: partial.filerName };
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
+// 管理画面の「EDINET書類ID(空白で自動検索)」の🔍ボタンから呼ばれる。
+// 2026/10/5改修: 会社名の照合を src/lib/edinet.ts に一本化した。
+//  ・EDINET側の会社名は英数字が全角(例:「株式会社ｅｓｔｉｅ」)のため、半角の銘柄名(「estie」)と
+//    一致せず、英字社名の会社は書類が実在しても「見つかりませんでした」になっていた不具合を修正。
+//  ・180日分を1日ずつ順番に問い合わせていたのを、10日分ずつまとめて問い合わせるようにした。
+//  ・EDINETのAPIがエラーを返した場合は、「見つからない」ではなくエラーの内容を表示する。
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
     const { company_name } = await req.json();
     if (!company_name) return NextResponse.json({ error: "company_name required" }, { status: 400 });
-    const result = await searchEdinetDoc(company_name);
-    if (!result) return NextResponse.json({
-      error: `「${company_name}」の目論見書が直近180日のEDINETに見つかりませんでした`
+
+    const { found, daysSearched, apiErrors } = await searchNewStockRegistration(company_name, { days: 180 });
+    if (found) {
+      return NextResponse.json({
+        success: true,
+        doc_id: found.docId,
+        filer_name: found.filerName,
+        submit_date: found.submitDate,
+      });
+    }
+
+    // 問い合わせた日の多くでEDINETがエラーを返していた場合は、検索自体ができていない
+    if (apiErrors.length > 0 && apiErrors.length >= daysSearched / 2) {
+      return NextResponse.json({
+        error: `EDINETへの問い合わせでエラーが続いたため、検索できませんでした(${apiErrors[0].error})。時間をおいて再度お試しください。続く場合はEDINETのAPIキーの有効期限をご確認ください。`,
+      }, { status: 502 });
+    }
+    return NextResponse.json({
+      error: `「${company_name}」の有価証券届出書が直近${daysSearched}日のEDINETに見つかりませんでした` +
+        (apiErrors.length ? `(うち${apiErrors.length}日分は問い合わせエラー)` : "") +
+        `。社名の表記が大きく異なる可能性があります。EDINETで検索した書類ID(S100から始まる8文字)を手入力してください。`,
     }, { status: 404 });
-    return NextResponse.json({ success: true, doc_id: result.docId, filer_name: result.filerName });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

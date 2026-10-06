@@ -4,6 +4,7 @@ import { notifyAdmin } from "@/lib/notify-admin";
 import { postToX } from "@/lib/post-to-x";
 import Anthropic from "@anthropic-ai/sdk";
 import { internalAuthHeaders } from "@/lib/admin-auth";
+import { isSameCompanyName } from "@/lib/edinet";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,14 +55,12 @@ function isCorrectedProspectus(doc: any): boolean {
 }
 
 // 会社名の類似度チェック(部分一致・正規化)
+// 2026/10/5修正: EDINETの社名は英数字が全角(「株式会社ｅｓｔｉｅ」等)のため、半角の銘柄名と一致せず、
+// 書類IDの自動設定や訂正届出書からの公募価格の取得が漏れていた。比較用の正規化(全角→半角・大文字小文字・
+// 空白・ハイフン)を src/lib/edinet.ts に一本化した。あわせて、正規化後に空になる名前(「株式会社」だけ等)が
+// どの会社名にも「含まれる」と判定されて、新規IPOを既上場企業と誤判定する危険も防いだ。
 function isNameMatch(edinetName: string, ipoName: string): boolean {
-  const normalize = (s: string) => s
-    .replace(/株式会社|㈱|（株）|\(株\)/g, "")
-    .replace(/\s+/g, "")
-    .trim();
-  const a = normalize(edinetName);
-  const b = normalize(ipoName);
-  return a === b || a.includes(b) || b.includes(a);
+  return isSameCompanyName(edinetName, ipoName);
 }
 
 export async function GET(req: NextRequest) {
@@ -73,9 +72,9 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase();
   const results: string[] = [];
 
-  // 直近5日分をスキャン
+  // 直近7日分をスキャン(2026/10/5: 5日→7日。土日や一時的なエラーで取りこぼした書類も拾えるように)
   const dates: string[] = [];
-  for (let i = 0; i <= 4; i++) {
+  for (let i = 0; i <= 6; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     dates.push(d.toISOString().slice(0, 10));

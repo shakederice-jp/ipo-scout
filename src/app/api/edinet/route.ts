@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
+import { searchNewStockRegistration, normalizeCompanyName, isSameCompanyName } from "@/lib/edinet";
 
 export const maxDuration = 60;
 
@@ -11,27 +12,10 @@ const getSupabase = () => createClient(
 
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
+// 2026/10/5改修: 会社名の照合を src/lib/edinet.ts に一本化した(全角英数字の社名に一致しなかった不具合の修正)。
 async function searchEdinetDoc(companyName: string): Promise<string | null> {
-  const today = new Date();
-  for (let i = 0; i < 180; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
-    try {
-      const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${dateStr}&type=2&Subscription-Key=${EDINET_KEY}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const docs = json?.results || [];
-      const exact = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName === companyName);
-      if (exact) return exact.docID;
-      const partial = docs.find((doc: any) => doc.formCode === "030000" && doc.filerName?.includes(companyName));
-      if (partial) return partial.docID;
-    } catch {
-      continue;
-    }
-  }
-  return null;
+  const { found } = await searchNewStockRegistration(companyName, { days: 180, deadlineMs: 25_000 });
+  return found?.docId ?? null;
 }
 
 function cleanText(text: string): string {
@@ -261,10 +245,14 @@ export async function POST(req: NextRequest) {
 
     // 🛡 安全チェック：表紙の【会社名】が、指定企業名と一致するか検証
     if (sectionCount > 0 && company_name) {
-      const nameCore = toHalfWidth(company_name.replace(/株式会社|㈱/g, "").trim());
+      // 2026/10/5修正: 全角の空白・ハイフン(例:「Ａｌｌｇａｎｉｚｅ　Ｈｏｌｄｉｎｇｓ」「ＬＴＶ－Ｘ」)が
+      // 半角に変換されず、正しい書類でも「会社名が一致しない」と保存を止めていたため、
+      // 比較用の正規化(src/lib/edinet.ts)を使うようにした。
+      const nameCore = normalizeCompanyName(company_name);
       if (coverCompanyName) {
         // 表紙情報が取れた場合は、これを最優先で照合(全角/半角の違いを無視して比較)
-        if (nameCore && !toHalfWidth(coverCompanyName).includes(nameCore)) {
+        // 表紙の【会社名】の後ろには【英訳名】などが続くため、「含まれているか」で判定する
+        if (nameCore && !normalizeCompanyName(coverCompanyName).includes(nameCore) && !isSameCompanyName(coverCompanyName, company_name)) {
           return NextResponse.json({
             error: `取得した書類（docID: ${docId}）の表紙に記載された会社名「${coverCompanyName}」が、指定企業「${company_name}」と一致しません。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。`,
             doc_id: docId,
@@ -272,7 +260,7 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // 表紙情報が取れなかった場合のみ、本文全体からの照合にフォールバック
-        const allText = toHalfWidth(Object.values(sections).join(" "));
+        const allText = normalizeCompanyName(Object.values(sections).join(" "));
         if (nameCore && !allText.includes(nameCore)) {
           return NextResponse.json({
             error: `取得した書類（docID: ${docId}）の本文に企業名「${company_name}」が見つかりませんでした。異なる企業の書類を誤って取得した可能性があるため、保存を中止しました。書類IDを確認のうえ、手動で正しいdocIDを入力してください。`,
