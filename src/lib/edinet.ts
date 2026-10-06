@@ -49,15 +49,19 @@ export function isSameCompanyName(a: string | null | undefined, b: string | null
 }
 
 // 新規上場時などの株式の有価証券届出書(訂正・投資信託等を除く)
+// 2026/10/6修正: 様式コード(formCode)が "030000" のものだけに絞っていたが、新規公開時の届出書が
+// 別の様式コードで登録されている可能性があるため、書類種別コード(docTypeCode "030" =有価証券届出書)
+// または書類名で判定するように緩めた(訂正・投資信託等は引き続き除外)。
 export function isNewStockRegistration(doc: any): boolean {
   const desc: string = doc?.docDescription ?? "";
+  const typeOk = doc?.docTypeCode === "030" || desc.includes("有価証券届出書");
   return (
-    doc?.formCode === "030000" &&
+    typeOk &&
     (doc?.ordinanceCode == null || doc.ordinanceCode === "010") &&
-    desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投資信託")
+    !desc.includes("投資信託") &&
+    !desc.includes("投資法人")
   );
 }
 
@@ -124,9 +128,11 @@ export async function listEdinetDocs(date: string, timeoutMs = 10000): Promise<E
 }
 
 export type ProspectusSearchResult = {
-  found: { docId: string; filerName: string; submitDate: string } | null;
+  found: { docId: string; filerName: string; submitDate: string; matchedBy: "secCode" | "name" } | null;
   daysSearched: number;
   apiErrors: { date: string; error: string }[];
+  // 見つからなかったときの原因調査用: 検索期間中に見かけた有価証券届出書(新しい順に最大12件)
+  seen: { date: string; docId: string; filerName: string; desc: string; formCode: string; secCode: string }[];
 };
 
 // 会社名から、新規上場時の有価証券届出書を新しい日付から順に探す。
@@ -136,7 +142,7 @@ export type ProspectusSearchResult = {
 // 新規上場の有価証券届出書は上場承認日(上場日の約1か月前)に提出されるため、この範囲で足りる。
 export async function searchNewStockRegistration(
   companyName: string,
-  opts: { days?: number; parallel?: number; deadlineMs?: number; listingDate?: string | null } = {}
+  opts: { days?: number; parallel?: number; deadlineMs?: number; listingDate?: string | null; ticker?: string | null } = {}
 ): Promise<ProspectusSearchResult> {
   const parallel = opts.parallel ?? 2;
   const deadline = Date.now() + (opts.deadlineMs ?? 50_000);
@@ -151,7 +157,11 @@ export async function searchNewStockRegistration(
     days = Math.max(1, Math.min(days, span));
   }
   const apiErrors: { date: string; error: string }[] = [];
+  const seen: ProspectusSearchResult["seen"] = [];
   let searched = 0;
+  // 2026/10/6追加: 証券コードが分かっていれば、書類の証券コード(secCode。例:「653A0」)でも照合する。
+  // 上場承認で証券コードが付いた後に届出書が提出されるため、社名の表記に左右されず確実に一致させられる。
+  const ticker = (opts.ticker ?? "").normalize("NFKC").trim().toUpperCase();
 
   for (let start = 0; start < days; start += parallel) {
     if (Date.now() > deadline) break;
@@ -166,16 +176,23 @@ export async function searchNewStockRegistration(
         continue;
       }
       const candidates = docs.filter(isNewStockRegistration);
+      for (const d of candidates) {
+        if (seen.length < 12) {
+          seen.push({ date: dates[k], docId: d.docID, filerName: d.filerName ?? "", desc: d.docDescription ?? "", formCode: d.formCode ?? "", secCode: d.secCode ?? "" });
+        }
+      }
+      const bySec = ticker.length === 4 ? candidates.find((d: any) => String(d.secCode ?? "").toUpperCase().startsWith(ticker)) : undefined;
       const exact = candidates.find((d: any) => normalizeCompanyName(d.filerName) === normalizeCompanyName(companyName));
-      const hit = exact ?? candidates.find((d: any) => isSameCompanyName(d.filerName, companyName));
+      const hit = bySec ?? exact ?? candidates.find((d: any) => isSameCompanyName(d.filerName, companyName));
       if (hit) {
         return {
-          found: { docId: hit.docID, filerName: hit.filerName, submitDate: String(hit.submitDateTime ?? dates[k]).slice(0, 10) },
+          found: { docId: hit.docID, filerName: hit.filerName, submitDate: String(hit.submitDateTime ?? dates[k]).slice(0, 10), matchedBy: hit === bySec ? "secCode" : "name" },
           daysSearched: searched,
           apiErrors,
+          seen,
         };
       }
     }
   }
-  return { found: null, daysSearched: searched, apiErrors };
+  return { found: null, daysSearched: searched, apiErrors, seen };
 }

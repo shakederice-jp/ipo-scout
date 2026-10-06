@@ -18,25 +18,26 @@ export async function POST(req: NextRequest) {
     const { company_name, listing_date } = await req.json();
     if (!company_name) return NextResponse.json({ error: "company_name required" }, { status: 400 });
 
-    // 上場日(画面から渡されなければDBから調べる)
+    // 上場日・証券コード(DBから調べる。上場日は画面から渡されればそれを使う)
     let listingDate: string | null = listing_date ?? null;
-    if (!listingDate) {
-      try {
-        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-        const { data } = await supabase.from("ipo_companies").select("listing_date").eq("name", company_name).limit(1);
-        listingDate = data?.[0]?.listing_date ?? null;
-      } catch {
-        // 調べられなければ直近180日を探す
-      }
+    let ticker: string | null = null;
+    try {
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      const { data } = await supabase.from("ipo_companies").select("listing_date, ticker").eq("name", company_name).limit(1);
+      listingDate = listingDate ?? data?.[0]?.listing_date ?? null;
+      ticker = data?.[0]?.ticker ?? null;
+    } catch {
+      // 調べられなければ直近180日を社名だけで探す
     }
 
-    const { found, daysSearched, apiErrors } = await searchNewStockRegistration(company_name, { days: 180, listingDate });
+    const { found, daysSearched, apiErrors, seen } = await searchNewStockRegistration(company_name, { days: 180, listingDate, ticker });
     if (found) {
       return NextResponse.json({
         success: true,
         doc_id: found.docId,
         filer_name: found.filerName,
         submit_date: found.submitDate,
+        matched_by: found.matchedBy,
       });
     }
 
@@ -49,7 +50,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: `「${company_name}」の有価証券届出書が直近${daysSearched}日のEDINETに見つかりませんでした` +
         (apiErrors.length ? `(うち${apiErrors.length}日分は問い合わせエラー)` : "") +
-        `。社名の表記が大きく異なる可能性があります。EDINETで検索した書類ID(S100から始まる8文字)を手入力してください。`,
+        `。社名の表記が大きく異なる可能性があります。EDINETで検索した書類ID(S100から始まる8文字)を手入力してください。` +
+        // 原因調査用: 検索期間中に見かけた有価証券届出書(最大5件)を添える
+        (seen.length
+          ? `【参考: 期間中の有価証券届出書】` + seen.slice(0, 5).map((d) => `${d.date} ${d.filerName}(${d.docId}・${d.secCode || "コードなし"})`).join(" / ")
+          : `【参考: 期間中に有価証券届出書は1件も見つかりませんでした】`),
+      seen,
     }, { status: 404 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

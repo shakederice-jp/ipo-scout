@@ -354,6 +354,8 @@ export default function AdminPage() {
 
   const handleBulkEdinetSearch = async () => {
     setBulkEdinetLoading(true); setBulkEdinetResult(null);
+    // 2026/10/6修正: 銘柄一覧の読み込み前に押すと「全銘柄の書類IDが設定済み」と誤って表示されていたため区別する
+    if (companies.length===0) { setBulkEdinetResult("⏳ 銘柄一覧を読み込み中です。数秒後にもう一度押してください"); setBulkEdinetLoading(false); return; }
     const targets = companies.filter(c => !c.edinet_doc_id);
     if (targets.length===0) { setBulkEdinetResult("✅ 全銘柄の書類IDが設定済みです"); setBulkEdinetLoading(false); return; }
     const results: string[] = [];
