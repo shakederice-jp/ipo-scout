@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { searchNewStockRegistration } from "@/lib/edinet";
 
 // 管理画面の「EDINET書類ID(空白で自動検索)」の🔍ボタンから呼ばれる。
@@ -7,14 +8,29 @@ import { searchNewStockRegistration } from "@/lib/edinet";
 //    一致せず、英字社名の会社は書類が実在しても「見つかりませんでした」になっていた不具合を修正。
 //  ・180日分を1日ずつ順番に問い合わせていたのを、10日分ずつまとめて問い合わせるようにした。
 //  ・EDINETのAPIがエラーを返した場合は、「見つからない」ではなくエラーの内容を表示する。
+// 2026/10/6改修: 10日分を同時に問い合わせるとEDINETの回数制限(429)にかかったため、同時問い合わせを
+//  2日分までに減らし、回数制限時は待って再試行する。さらに、銘柄の上場日をDBから調べ、
+//  「上場日の75日前〜上場日」だけを探すようにした(問い合わせ回数を大幅に減らすため)。
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { company_name } = await req.json();
+    const { company_name, listing_date } = await req.json();
     if (!company_name) return NextResponse.json({ error: "company_name required" }, { status: 400 });
 
-    const { found, daysSearched, apiErrors } = await searchNewStockRegistration(company_name, { days: 180 });
+    // 上場日(画面から渡されなければDBから調べる)
+    let listingDate: string | null = listing_date ?? null;
+    if (!listingDate) {
+      try {
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        const { data } = await supabase.from("ipo_companies").select("listing_date").eq("name", company_name).limit(1);
+        listingDate = data?.[0]?.listing_date ?? null;
+      } catch {
+        // 調べられなければ直近180日を探す
+      }
+    }
+
+    const { found, daysSearched, apiErrors } = await searchNewStockRegistration(company_name, { days: 180, listingDate });
     if (found) {
       return NextResponse.json({
         success: true,

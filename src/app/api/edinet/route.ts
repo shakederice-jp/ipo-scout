@@ -13,8 +13,8 @@ const getSupabase = () => createClient(
 const EDINET_KEY = process.env.EDINET_API_KEY!;
 
 // 2026/10/5改修: 会社名の照合を src/lib/edinet.ts に一本化した(全角英数字の社名に一致しなかった不具合の修正)。
-async function searchEdinetDoc(companyName: string): Promise<string | null> {
-  const { found } = await searchNewStockRegistration(companyName, { days: 180, deadlineMs: 25_000 });
+async function searchEdinetDoc(companyName: string, listingDate: string | null): Promise<string | null> {
+  const { found } = await searchNewStockRegistration(companyName, { days: 180, deadlineMs: 25_000, listingDate });
   return found?.docId ?? null;
 }
 
@@ -231,7 +231,9 @@ export async function POST(req: NextRequest) {
 
     let docId = edinet_doc_id;
     if (!docId) {
-      docId = await searchEdinetDoc(company_name);
+      // 上場日が分かれば、その前75日間だけを探す(EDINETへの問い合わせ回数を減らすため)
+      const { data: co } = await supabase.from("ipo_companies").select("listing_date").eq("id", company_id).maybeSingle();
+      docId = await searchEdinetDoc(company_name, (co as any)?.listing_date ?? null);
       if (!docId) {
         return NextResponse.json({
           error: "EDINETに書類が見つかりませんでした。書類IDを手動で入力してください。"

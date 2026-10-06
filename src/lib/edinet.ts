@@ -73,25 +73,54 @@ function addDays(dateStr: string, days: number): string {
 
 export type EdinetListResult = { docs: any[]; error: string | null };
 
-// 指定日の提出書類一覧。APIがエラーを返した場合は error に理由を入れる(「書類なし」と区別するため)
-export async function listEdinetDocs(date: string, timeoutMs = 10000): Promise<EdinetListResult> {
-  if (!EDINET_KEY) return { docs: [], error: "環境変数 EDINET_API_KEY が設定されていません" };
+// 2026/10/6追加: 同じ日の書類一覧を何度も問い合わせないための一時保存(同じサーバー内でのみ有効)。
+// 過去の日付の一覧は後から変わらないので6時間、今日の分は10分だけ使い回す。
+// 一括検索で4社を続けて探すと、同じ日付の一覧を4回ずつ問い合わせてEDINETの回数制限(429)に
+// かかっていたため。
+const listCache = new Map<string, { at: number; docs: any[] }>();
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchListOnce(date: string, timeoutMs: number): Promise<EdinetListResult & { rateLimited?: boolean }> {
   const url = `https://api.edinet-fsa.go.jp/api/v2/documents.json?date=${date}&type=2&Subscription-Key=${EDINET_KEY}`;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (res.status === 429) return { docs: [], error: "EDINET API エラー(429): Too Many Requests", rateLimited: true };
     if (!res.ok) return { docs: [], error: `HTTP ${res.status}` };
     const json: any = await res.json().catch(() => null);
     if (!json) return { docs: [], error: "応答がJSONではありません" };
-    // 正常時は metadata.status が "200"。APIキー不正などのときは StatusCode/message だけが返る
-    const status = String(json?.metadata?.status ?? json?.StatusCode ?? "");
+    // 正常時は metadata.status が "200"。APIキー不正・回数制限などのときは StatusCode/message が返る
+    const status = String(json?.metadata?.status ?? json?.StatusCode ?? json?.statusCode ?? "");
     if (status !== "200") {
       const msg = json?.metadata?.message ?? json?.message ?? "不明なエラー";
-      return { docs: [], error: `EDINET API エラー(${status || "?"}): ${msg}` };
+      return { docs: [], error: `EDINET API エラー(${status || "?"}): ${msg}`, rateLimited: status === "429" };
     }
     return { docs: Array.isArray(json.results) ? json.results : [], error: null };
   } catch (e: any) {
     return { docs: [], error: e?.name === "TimeoutError" ? "タイムアウト" : String(e?.message ?? e) };
   }
+}
+
+// 指定日の提出書類一覧。APIがエラーを返した場合は error に理由を入れる(「書類なし」と区別するため)。
+// 回数制限(429)のときは、少し待ってから最大3回まで問い合わせ直す。
+export async function listEdinetDocs(date: string, timeoutMs = 10000): Promise<EdinetListResult> {
+  if (!EDINET_KEY) return { docs: [], error: "環境変数 EDINET_API_KEY が設定されていません" };
+  const ttl = date >= jstDateString() ? 10 * 60_000 : 6 * 3600_000;
+  const cached = listCache.get(date);
+  if (cached && Date.now() - cached.at < ttl) return { docs: cached.docs, error: null };
+
+  let last: EdinetListResult = { docs: [], error: "未実行" };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const r = await fetchListOnce(date, timeoutMs);
+    if (!r.error) {
+      listCache.set(date, { at: Date.now(), docs: r.docs });
+      return { docs: r.docs, error: null };
+    }
+    last = { docs: [], error: r.error };
+    if (!r.rateLimited) break;
+    await sleep(1500 * (attempt + 1)); // 1.5秒→3秒→4.5秒と間隔を空けて再試行
+  }
+  return last;
 }
 
 export type ProspectusSearchResult = {
@@ -101,22 +130,32 @@ export type ProspectusSearchResult = {
 };
 
 // 会社名から、新規上場時の有価証券届出書を新しい日付から順に探す。
-// 1日ずつ順番に問い合わせると180日分で数分かかり、途中で打ち切られる恐れがあるため、
-// 10日分ずつまとめて問い合わせる。完全一致を優先し、なければ部分一致を採用する。
+// 2026/10/6改修: 10日分を同時に問い合わせるとEDINETの回数制限(429 Too Many Requests)にかかったため、
+// 同時に問い合わせるのは2日分までにし、回数制限時は待ってから再試行する(listEdinetDocs)。
+// また、上場日が分かっている場合は「上場日の75日前〜上場日(今日より後なら今日)」だけを探す。
+// 新規上場の有価証券届出書は上場承認日(上場日の約1か月前)に提出されるため、この範囲で足りる。
 export async function searchNewStockRegistration(
   companyName: string,
-  opts: { days?: number; parallel?: number; deadlineMs?: number } = {}
+  opts: { days?: number; parallel?: number; deadlineMs?: number; listingDate?: string | null } = {}
 ): Promise<ProspectusSearchResult> {
-  const days = opts.days ?? 180;
-  const parallel = opts.parallel ?? 10;
+  const parallel = opts.parallel ?? 2;
   const deadline = Date.now() + (opts.deadlineMs ?? 50_000);
   const today = jstDateString();
+  let newest = today;
+  let days = opts.days ?? 180;
+  const ld = opts.listingDate ? String(opts.listingDate).slice(0, 10) : null;
+  if (ld && /^\d{4}-\d{2}-\d{2}$/.test(ld)) {
+    newest = ld < today ? ld : today;
+    const oldest = addDays(ld, -75);
+    const span = Math.round((Date.parse(newest) - Date.parse(oldest)) / 86400000) + 1;
+    days = Math.max(1, Math.min(days, span));
+  }
   const apiErrors: { date: string; error: string }[] = [];
   let searched = 0;
 
   for (let start = 0; start < days; start += parallel) {
     if (Date.now() > deadline) break;
-    const dates = Array.from({ length: Math.min(parallel, days - start) }, (_, k) => addDays(today, -(start + k)));
+    const dates = Array.from({ length: Math.min(parallel, days - start) }, (_, k) => addDays(newest, -(start + k)));
     const lists = await Promise.all(dates.map((d) => listEdinetDocs(d)));
     searched += dates.length;
     // 新しい日付から順に確認する
