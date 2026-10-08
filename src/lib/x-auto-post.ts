@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateWithGemini } from "./gemini";
 import { postToX } from "./post-to-x";
+import { notifyAdmin } from "./notify-admin";
 
 // ===== 2026/9/19追加: X自動投稿(3回/日・本実装) =====
 // これまでの「generate-x-drafts」cron(1日1回・06:00 JST)は market_trends に下書き記事を
@@ -16,13 +17,19 @@ import { postToX } from "./post-to-x";
 //  Tier D: それも無ければ、最も古い未投稿の下書き記事で穴埋めする(「他のテーマで埋める」)
 //
 // 週次金曜18時の既存ツイート(cron/notify)とは完全に独立しており、このファイルは一切触れない。
+//
+// 2026/10/8改修(読まれる時間帯への変更): 投稿時刻を 平日7:30(朝)/平日11:30(昼)/日〜木21:00(夜)
+// に変更。あわせて、GitHub Actionsの定時実行が遅延して枠の時間帯を大きく過ぎてから実行された
+// 場合は投稿せずスキップするガードを追加した(遅れて実行されても夜中に投稿されてしまわないように。
+// スキップした回の記事在庫は消費されず、次の枠に回る)。スロット名も時刻に合わせて
+// morning/evening1/evening2 → morning/noon/evening に変更。
 
 const supabaseForAutoPost = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export type AutoPostSlot = "morning" | "evening1" | "evening2";
+export type AutoPostSlot = "morning" | "noon" | "evening";
 
 export interface AutoPostOutcome {
   posted: boolean;
@@ -30,6 +37,32 @@ export interface AutoPostOutcome {
   tweetId?: string;
   sourceTitle?: string;
   charLength?: number;
+  skippedByWindow?: boolean;
+}
+
+// 各枠の「投稿してよい時間帯」(JST)。この時間帯の外で実行された場合は投稿しない。
+const SLOT_WINDOW: Record<AutoPostSlot, { label: string; startMin: number; endMin: number }> = {
+  morning: { label: "朝枠(7:30)", startMin: 7 * 60 + 30, endMin: 8 * 60 + 45 },
+  noon: { label: "昼枠(11:30)", startMin: 11 * 60 + 30, endMin: 12 * 60 + 45 },
+  evening: { label: "夜枠(21:00)", startMin: 21 * 60, endMin: 22 * 60 + 30 },
+};
+
+function nowMinutesJst(): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return h * 60 + m;
+}
+
+function isWithinSlotWindow(slot: AutoPostSlot): boolean {
+  const w = SLOT_WINDOW[slot];
+  const now = nowMinutesJst();
+  return now >= w.startMin && now <= w.endMin;
 }
 
 interface MarketTrendRow {
@@ -54,7 +87,7 @@ const CLIFFHANGER_CTA = "🔜 続きはまた後日";
 
 function pickCta(slot: AutoPostSlot): string {
   const dayOfMonth = new Date().getDate();
-  const slotOffset = slot === "morning" ? 0 : slot === "evening1" ? 1 : 2;
+  const slotOffset = slot === "morning" ? 0 : slot === "noon" ? 1 : 2;
   return CTA_VARIANTS[(dayOfMonth + slotOffset) % CTA_VARIANTS.length];
 }
 
@@ -343,16 +376,34 @@ async function postSeriesPart(marketTrendId: string, part: number, slot: AutoPos
   return { posted: true, tweetId: postResult.id, sourceTitle: `${row.title}(${part}/3)`, charLength: finalText.length };
 }
 
-export async function runAutoPost(slot: AutoPostSlot): Promise<AutoPostOutcome> {
+// スロットごとの優先テーマ。朝=直近の新情報(前日夜〜当日分)、昼=答え合わせ、夜=直近の新情報。
+// 2026/10/8改修: 以前は朝=答え合わせ・夜=直近の新情報だったが、投稿時刻の変更(朝7:30/昼11:30/
+// 夜21:00)にあわせて、朝(出社前)と夜(帰宅後)に新情報、昼(前場の引け・昼休み)に答え合わせを
+// 割り当てる方が時間帯の意味に合うため入れ替えた。
+const PRIORITY_PREFIX: Record<AutoPostSlot, string> = {
+  morning: RECENT_NEWS_TITLE_PREFIX,
+  noon: PRICE_CHECKPOINT_TITLE_PREFIX,
+  evening: RECENT_NEWS_TITLE_PREFIX,
+};
+
+export async function runAutoPost(slot: AutoPostSlot, opts: { force?: boolean } = {}): Promise<AutoPostOutcome> {
+  // 時間帯ガード: 遅れて実行され、枠の時間帯を過ぎてしまった場合は投稿せずスキップする
+  // (GitHub Actionsの定時実行の遅延で夜中に投稿されてしまっていた問題への対策)。
+  // 管理画面からの手動実行(force)はこのガードの対象外。
+  if (!opts.force && !isWithinSlotWindow(slot)) {
+    const reason = `${SLOT_WINDOW[slot].label}の投稿可能時間帯を過ぎて実行されたため、今回は投稿をスキップしました(在庫は消費していません。次の枠で改めて投稿されます)。`;
+    await notifyAdmin("X自動投稿スキップ(時間帯外)", reason, "warn").catch(() => {});
+    return { posted: false, reason, skippedByWindow: true };
+  }
+
   // Tier A: 深掘り3部作の連載が進行中なら、時間帯を問わず最優先で続きを投稿する
   const inProgress = await findInProgressSeries();
   if (inProgress) {
     return await postSeriesPart(inProgress.marketTrendId, inProgress.nextPart, slot, inProgress.progressId);
   }
 
-  // Tier B: スロットごとの優先テーマ(朝=答え合わせ、夜=直近の新情報)
-  const priorityPrefix = slot === "morning" ? PRICE_CHECKPOINT_TITLE_PREFIX : RECENT_NEWS_TITLE_PREFIX;
-  const priorityRow = await findFreshRowByPrefix(priorityPrefix);
+  // Tier B: スロットごとの優先テーマ
+  const priorityRow = await findFreshRowByPrefix(PRIORITY_PREFIX[slot]);
   if (priorityRow) {
     return await postPlainRow(priorityRow, slot);
   }

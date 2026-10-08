@@ -17,6 +17,7 @@ import {
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
+import { serializeForX, renderSeriesForEmail } from "@/lib/x-serialize";
 
 // テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる。
 // 2026/9/8: テーマ数が増えるにつれ直列実行の合計時間が伸び、この上限に達して
@@ -117,9 +118,13 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (ipoDrafts && ipoDrafts.length > 0) {
-      const ipoBody = ipoDrafts.map(d =>
-        d.content + (d.image_url ? `\n\n🖼 画像: ${d.image_url}` : "")
-      ).join("\n\n" + "─".repeat(20) + "\n\n");
+      // 2026/10/8改修(X連載化+投稿ボタン): 原稿が800字を超える場合は3〜4回の連載に分け、
+      // 各回に「この原稿で投稿する」ボタン(Xの投稿画面を原稿入力済みで開くリンク)を付ける。
+      // 画像URLはリンクのtextパラメータには含められない(X側の仕様)ため、従来どおり別行で表示する。
+      const ipoBody = ipoDrafts.map(d => {
+        const imageLine = d.image_url ? `🖼 画像: ${d.image_url}\n\n` : "";
+        return imageLine + renderSeriesForEmail(serializeForX(d.content));
+      }).join("\n\n" + "─".repeat(20) + "\n\n");
 
       await notifyAdmin(
         `🆕 新規IPO承認ドラフト(${ipoDrafts.length}件)`,
@@ -434,7 +439,9 @@ export async function GET(request: Request) {
         // X/Threadsより厳しく、このテキストがそれより長い場合に「そのまま使える」と案内すると
         // 誤解を招くため、「そのまま」はX・Threadsのみに限定し、Blueskyは要約が必要な旨を明記した
         // (新たな文章生成・AI呼び出しは追加していない)。
-        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮してご利用ください)\n${"=".repeat(30)}\n\n${lockupPreRecapText}`;
+        // 2026/10/8改修: 800字を超える場合は3〜4回の連載に分け、各回に投稿ボタンを付ける
+        // (src/lib/x-serialize.ts)。800字以下ならそのまま1回分として表示される。
+        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮してご利用ください)\n${"=".repeat(30)}\n\n${renderSeriesForEmail(serializeForX(lockupPreRecapText))}`;
       }
 
       if (ipoRepostCount > 0) {
@@ -447,7 +454,10 @@ export async function GET(request: Request) {
           .limit(ipoRepostCount);
 
         if (repostDrafts && repostDrafts.length > 0) {
-          const repostBody = repostDrafts.map(d => d.content).join("\n\n" + "─".repeat(20) + "\n\n");
+          // 2026/10/8改修: 他の2箇所と同じく、長文の場合だけ連載化+投稿ボタンを付ける。
+          const repostBody = repostDrafts
+            .map(d => renderSeriesForEmail(serializeForX(d.content)))
+            .join("\n\n" + "─".repeat(20) + "\n\n");
           emailBody += `\n\n${"=".repeat(30)}\n📌 IPO再掲ドラフト(${ipoRepostCount}件・X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮)\n${"=".repeat(30)}\n\n${repostBody}`;
         }
       }
