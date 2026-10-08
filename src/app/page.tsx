@@ -3,6 +3,7 @@ import CalendarClient from "@/components/CalendarClient";
 import InstallPwaButton from "@/components/InstallPwaButton";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCompanies } from "@/lib/get-companies";
 import { Zap, Crown, AlertCircle, User } from "lucide-react";
 
 // 2026/9/14改修(追記⑩ロングテールキーワード対応): 「IPOカレンダー」「IPOスケジュール」を
@@ -47,6 +48,12 @@ export default async function Home({
     ? await supabase.auth.getSession()
     : { data: { session: null } };
   const userId = session?.user?.id ?? null;
+
+  // 2026/10/7追加(GEO対応): 銘柄一覧は、以前はブラウザの中であとから取得していたため、
+  // AIの検索・引用ボット(ほとんどがJavaScriptを実行しない)には「読み込み中...」の
+  // 空のページにしか見えていなかった。最初のHTMLに実データを含めるため、サーバー側で
+  // 先に取得して CalendarClient に渡す(ブラウザ側は従来どおり表示後に再取得して最新化する)。
+  const initialCompanies = await getCompanies().catch(() => []);
 
   return (
     <div style={{ backgroundColor:"#f4fbfc", minHeight:"100vh", fontFamily:"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif" }}>
@@ -96,7 +103,7 @@ export default async function Home({
 
         {/* 左：カレンダー＋IPO一覧 */}
         <div style={{ flex:"1 1 560px", minWidth:0 }}>
-          <CalendarClient />
+          <CalendarClient initialCompanies={initialCompanies} />
         </div>
 
         {/* 右：サイドバー */}

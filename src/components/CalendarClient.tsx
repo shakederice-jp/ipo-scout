@@ -7,12 +7,12 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 type Company = {
   id: string;
   name: string;
-  ticker?: string;
-  sector?: string;
-  exchange?: string;
+  ticker?: string | null;
+  sector?: string | null;
+  exchange?: string | null;
   listing_date: string;
-  listing_date_confirmed?: boolean;
-  ai_summary?: string;
+  listing_date_confirmed?: boolean | null;
+  ai_summary?: string | null;
   is_free?: boolean;
   lockup_90_date?: string | null;
   lockup_180_date?: string | null;
@@ -79,13 +79,19 @@ const C = {
   white:  "#ffffff",
 };
 
-export default function CalendarClient() {
+// 2026/10/7追加(GEO対応): トップページ(src/app/page.tsx)がサーバー側で先に取得した
+// 銘柄一覧を受け取る。渡されていれば、ブラウザでの再取得が終わる前から実データを表示できる
+// (= 最初のHTMLにすでに実データが入っている状態になり、JavaScriptを実行しないAIの
+// 検索・引用ボットにも中身が見えるようになる)。
+type CalendarClientProps = { initialCompanies?: Company[] };
+
+export default function CalendarClient({ initialCompanies = [] }: CalendarClientProps) {
   const today = new Date();
   const { lang, level } = useApp();
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>(initialCompanies);
+  const [loading, setLoading] = useState(initialCompanies.length === 0);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
