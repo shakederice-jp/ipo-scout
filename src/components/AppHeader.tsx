@@ -35,6 +35,10 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
 
   return (
     <header style={{ backgroundColor: C.nav, position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <style>{`
+        .hdr-buy-short { display: none; }
+        @media (max-width: 560px) { .hdr-buy-long { display: none; } .hdr-buy-short { display: inline; } }
+      `}</style>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 44 }}>
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>📊</span>
@@ -75,6 +79,14 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
               }}>A</button>
             ))}
           </div>
+          <Link href="/plans" style={{
+            fontSize: 11, fontWeight: 800, color: "#ffffff", whiteSpace: "nowrap",
+            backgroundColor: "#f59e0b", border: "1px solid #d97706",
+            borderRadius: 6, padding: "3px 8px", cursor: "pointer", textDecoration: "none",
+          }}>
+            <span className="hdr-buy-long">💳 料金・購入</span>
+            <span className="hdr-buy-short">💳 購入</span>
+          </Link>
           <Link href="/trends" style={{
             fontSize: 11, fontWeight: 600, color: "#66c3c6",
             backgroundColor: "rgba(102,195,198,0.15)", border: "1px solid rgba(102,195,198,0.3)",

@@ -1,7 +1,8 @@
 "use client";
 
 import { CreditCard, Crown, Bell, BookOpen, Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { PlanButton } from "@/components/PlanButton";
 
 type Plan = "notify" | "report" | "complete" | "single";
 
@@ -51,41 +52,18 @@ export function CheckoutButton({
   stockId?: string;
   availablePlans?: Plan[];
 }) {
-  const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(defaultPlan);
-  const [message, setMessage] = useState<string | null>(null);
   const visiblePlans = availablePlans ? PLANS.filter((p) => availablePlans.includes(p.id)) : PLANS;
 
-  async function handleClick() {
-    setMessage(null);
-    setLoading(true);
+  // ログイン後に ?buy=プラン名 付きで戻ってきたら、そのプランを選んだ状態にする
+  // （実際の決済画面への移動は PlanButton が自動で行う）
+  useEffect(() => {
     try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: selectedPlan,
-          stockId: stockId ?? null,
-        }),
-      });
-
-      const body = (await res.json()) as { url?: string; error?: string };
-
-      if (!res.ok) {
-        setMessage(body.error ?? "決済セッションの開始に失敗しました。");
-        return;
-      }
-      if (body.url) {
-        window.location.href = body.url;
-        return;
-      }
-      setMessage("リダイレクト URL が返りませんでした。");
-    } catch {
-      setMessage("通信エラーが発生しました。");
-    } finally {
-      setLoading(false);
-    }
-  }
+      const buy = new URLSearchParams(window.location.search).get("buy");
+      if (buy && visiblePlans.some((p) => p.id === buy)) setSelectedPlan(buy as Plan);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const current = visiblePlans.find((p) => p.id === selectedPlan) ?? visiblePlans[0];
 
@@ -101,8 +79,8 @@ export function CheckoutButton({
             className={[
               "flex flex-col items-start gap-0.5 rounded border px-2.5 py-2 text-left text-xs transition",
               selectedPlan === plan.id
-                ? "border-[#D4AF37]/60 bg-[#D4AF37]/15 text-[#D4AF37]"
-                : "border-[#D4AF37]/20 bg-transparent text-[#c4c0b8]/70 hover:border-[#D4AF37]/35",
+                ? "border-[#66c3c6] bg-[#66c3c6]/20 text-[#0d4f52]"
+                : "border-slate-300 bg-white text-slate-600 hover:border-[#66c3c6]",
             ].join(" ")}
           >
             <span className="flex items-center gap-1 font-semibold">
@@ -115,27 +93,19 @@ export function CheckoutButton({
       </div>
 
       {/* 選択中プランの説明 */}
-      <p className="text-xs text-[#c4c0b8]/70 leading-relaxed">
+      <p className="text-xs text-slate-600 leading-relaxed">
         {current.description}
       </p>
 
-      {/* 購入ボタン */}
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={loading}
-        className="inline-flex items-center justify-center gap-2 rounded border border-[#D4AF37]/60 bg-[#D4AF37]/10 px-5 py-3 text-sm font-semibold tracking-wide text-[#D4AF37] transition hover:bg-[#D4AF37]/20 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <CreditCard className="h-4 w-4" aria-hidden />
-        {loading ? "接続中…" : `${current.label}を購入（${current.price}）`}
-      </button>
-
-      {/* エラーメッセージ */}
-      {message ? (
-        <p className="text-center text-xs text-red-300/90" role="alert">
-          {message}
-        </p>
-      ) : null}
+      {/* 購入ボタン（ログイン済みなら決済画面へ直行／未ログインならログイン画面へ案内） */}
+      <PlanButton
+        key={current.id}
+        plan={current.id}
+        stockId={stockId}
+        icon={<CreditCard className="h-4 w-4" aria-hidden />}
+        label={`${current.label}を購入（${current.price}）`}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3.5 text-sm font-extrabold tracking-wide shadow-md transition bg-[#66c3c6] text-[#082b2e] hover:bg-[#55b4b7] disabled:cursor-not-allowed disabled:opacity-60"
+      />
     </div>
   );
 }

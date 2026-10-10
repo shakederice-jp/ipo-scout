@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PlanButton, type PlanKey } from "@/components/PlanButton";
 
 export const metadata: Metadata = {
   title: "料金プラン｜大手町調査室九課",
@@ -111,6 +112,9 @@ const plans = [
   },
 ];
 
+// 料金ページのプランID → 決済用のプラン名
+const PLAN_KEY: Record<string, PlanKey> = { notify: "notify", unlimited: "report", complete: "complete" };
+
 const faqs = [
   { q: "いつでも解約できますか？", a: "はい。マイページからいつでもキャンセル可能です。解約後は当月末まで引き続きご利用いただけます。" },
   // 2026/9/12改修: 「登録不要でずっと無料」という従来の回答は、「無料会員登録(ログイン)」と
@@ -177,12 +181,42 @@ export default function PlansPage() {
                     <span style={{ fontSize: 11, fontWeight: 700, color: f.ok ? plan.color : "#cbd5e1" }}>{f.ok ? "✅" : "❌"} {f.value}</span>
                   </div>
                 ))}
-                <a href="/" style={{ display: "block", marginTop: 16, padding: "10px", backgroundColor: plan.badge ? C.teal : plan.bg, color: plan.badge ? C.dark : plan.color, borderRadius: 10, fontWeight: 900, fontSize: 13, textDecoration: "none", textAlign: "center", border: `1px solid ${plan.border}` }}>
-                  {plan.id === "free" ? "無料で始める →" : "このプランを選ぶ →"}
-                </a>
+                {plan.id === "free" ? (
+                  <a href="/" style={{ display: "block", marginTop: 16, padding: "10px", backgroundColor: plan.bg, color: plan.color, borderRadius: 10, fontWeight: 900, fontSize: 13, textDecoration: "none", textAlign: "center", border: `1px solid ${plan.border}` }}>
+                    無料で始める →
+                  </a>
+                ) : (
+                  <>
+                    <PlanButton
+                      plan={PLAN_KEY[plan.id]}
+                      label="このプランを申し込む →"
+                      style={{ display: "block", width: "100%", marginTop: 16, padding: "12px 10px", backgroundColor: plan.color, color: "#ffffff", borderRadius: 10, fontWeight: 900, fontSize: 13, textAlign: "center", border: "none" }}
+                    />
+                    <p style={{ fontSize: 10, color: "#64748b", textAlign: "center", margin: "8px 0 0", lineHeight: 1.6 }}>
+                      クレジットカードで今すぐお支払い（Stripeで安全決済）
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           ))}
+        </div>
+
+        {/* お申し込みの流れ */}
+        <div style={{ marginTop: 24, backgroundColor: "white", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px" }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: C.dark, marginBottom: 10 }}>お申し込みの流れ（約2分）</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+            {[
+              { n: "①", t: "上のプランの「このプランを申し込む」を押す" },
+              { n: "②", t: "会員登録（無料・初回のみ）またはログイン" },
+              { n: "③", t: "カード情報を入力して完了（すぐに使えます）" },
+            ].map((st) => (
+              <div key={st.n} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#475569", lineHeight: 1.7 }}>
+                <span style={{ fontWeight: 900, color: C.nav }}>{st.n}</span>
+                <span>{st.t}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 比較表 */}
@@ -238,7 +272,8 @@ export default function PlansPage() {
             </div>
             <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.9, margin: 0 }}>
               「この銘柄だけ読みたい」という方向け。サブスク不要で、気になる1銘柄だけを購入できます。<br/>
-              無料枠（月2銘柄）を使い切った後でも、特定の銘柄だけピックアップしてお読みいただけます。
+              無料枠（月2銘柄）を使い切った後でも、特定の銘柄だけピックアップしてお読みいただけます。<br/>
+              お申し込みは、各銘柄の分析ページにある「この銘柄だけ読む」ボタンから行えます。
             </p>
           </div>
         </div>

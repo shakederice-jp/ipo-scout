@@ -109,6 +109,32 @@ export default async function Home({
         {/* 右：サイドバー */}
         <aside className="top-sidebar" style={{ flex:"0 0 300px", minWidth:280, display:"flex", flexDirection:"column", gap:12 }}>
 
+          {/* 料金プランページへのリンク */}
+          <a href="/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>📋 料金プランを見る</div>
+              <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥2,490/月・4プラン比較</div>
+            </div>
+            <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
+          </a>
+
+          {/* 購入パネル */}
+          <div style={cardStyle}>
+            <div style={{ padding:"12px 16px", backgroundColor:"#66c3c6", display:"flex", alignItems:"center", gap:8 }}>
+              <Crown size={16} color="#082b2e" />
+              <div>
+                <div style={{ fontWeight:900, fontSize:13, color:"#082b2e" }}>有料プランのお申込み</div>
+                <div style={{ fontSize:10, color:"#0d4f52" }}>Stripeで安全決済 🔒</div>
+              </div>
+            </div>
+            <div style={{ padding:16, backgroundColor:"white" }}>
+              <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
+              <p style={{ fontSize:10, color:"#64748b", marginTop:10, lineHeight:1.6 }}>
+                💡 各IPOレポートの単一購入は、各銘柄の分析ページからお申込みいただけます。
+              </p>
+            </div>
+          </div>
+
           {/* トレンドページへのリンク */}
           <a href="/trends" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#0d4f52", border:"2px solid #0d4f52", textDecoration:"none" }}>
             <div>
@@ -154,32 +180,6 @@ export default async function Home({
             <p style={{ fontSize:10, color:"#2a7a7e", lineHeight:1.8, margin:0 }}>
               本サービスは、IPO銘柄が金融庁に提出する目論見書をAIが解析・要約し、投資判断に役立つ情報を抽出することを目的としています。目論見書に記載のない情報は「不明」「データ不足」と表示されます。AIによる試算・評価であり、投資勧誘ではありません。
             </p>
-          </div>
-
-          {/* 料金プランページへのリンク */}
-          <a href="/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
-            <div>
-              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>📋 料金プランを見る</div>
-              <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥2,490/月・4プラン比較</div>
-            </div>
-            <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
-          </a>
-
-          {/* 購入パネル */}
-          <div style={cardStyle}>
-            <div style={{ padding:"12px 16px", backgroundColor:"#66c3c6", display:"flex", alignItems:"center", gap:8 }}>
-              <Crown size={16} color="#082b2e" />
-              <div>
-                <div style={{ fontWeight:900, fontSize:13, color:"#082b2e" }}>有料プランのお申込み</div>
-                <div style={{ fontSize:10, color:"#0d4f52" }}>Stripeで安全決済 🔒</div>
-              </div>
-            </div>
-            <div style={{ padding:16, backgroundColor:"white" }}>
-              <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
-              <p style={{ fontSize:10, color:"#64748b", marginTop:10, lineHeight:1.6 }}>
-                💡 各IPOレポートの単一購入は、各銘柄の分析ページからお申込みいただけます。
-              </p>
-            </div>
           </div>
 
           {/* 通知案内 */}

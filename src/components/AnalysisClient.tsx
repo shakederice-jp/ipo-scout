@@ -8,6 +8,7 @@ import {
 } from "@/components/VizTables";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PlanButton } from "@/components/PlanButton";
 import { NineCrossCard, AxisBadge } from "@/components/NineCross";
 import type { NineCrossBadge } from "@/lib/value-growth";
 import { Zap, TrendingUp, Users, Shield, BarChart2, Star, ArrowUpRight, ArrowDownRight, Minus, Info, Clock, Calendar, ChevronRight, AlertTriangle } from "lucide-react";
@@ -1294,9 +1295,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <p style={{fontSize:12,color:"#a0d4d6",margin:"0 0 14px",lineHeight:1.7}}>
             軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、レポート無制限プラン以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
             </p>
-            <a href="/plans" style={{display:"inline-block",padding:"10px 24px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:8,fontWeight:800,fontSize:13,textDecoration:"none"}}>
-              料金プランを見る →
-            </a>
+            <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:380,margin:"0 auto"}}>
+              <PlanButton plan="single" stockId={company.id} label={"この銘柄だけ読む（¥500・買い切り）"}
+                style={{display:"block",width:"100%",padding:"13px 16px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:10,fontWeight:900,fontSize:14,border:"none"}} messageStyle={{color:"#fecaca"}} />
+              <PlanButton plan="report" label={"全銘柄が読み放題（レポート無制限 ¥1,890/月）"}
+                style={{display:"block",width:"100%",padding:"12px 16px",backgroundColor:"transparent",color:"#ffffff",borderRadius:10,fontWeight:800,fontSize:13,border:"1.5px solid #66c3c6"}} messageStyle={{color:"#fecaca"}} />
+              <a href="/plans" style={{fontSize:12,color:"#a0d4d6",textDecoration:"underline"}}>
+                通知プラン・コンプリートパックなど、全プランを比較する →
+              </a>
+            </div>
             {/* 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 有料の壁にぶつかった
                 まさにその瞬間に、課金以外の選択肢(友達紹介で有料分析2ヶ月読み放題)も併せて案内する。
                 離脱してしまう前にもう1つの導線を見せる狙い。 */}
