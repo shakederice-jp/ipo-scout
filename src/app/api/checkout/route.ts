@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { OWN_APP, syncPlanForUser } from "@/lib/plan-sync";
+import { OWN_APP, isPaidPlan, syncPlanForUser } from "@/lib/plan-sync";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     // 日本版・米国版は共通のプラン。他方のサイトで加入済みなら、ここで二重加入を止める
     if (plan !== "single") {
       const current = await syncPlanForUser(user, { force: true });
-      if (current && current !== "free") {
+      if (isPaidPlan(current)) {
         return NextResponse.json({
           error: "すでに有料プランにご加入中です（日本版・米国版共通のプランです）。プランの変更・解約はマイページの「契約の確認・変更」から行えます。",
         }, { status: 409 });

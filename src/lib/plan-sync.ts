@@ -17,6 +17,9 @@ import { createClient } from "@supabase/supabase-js";
 export const OWN_APP: "jp" | "us" = "jp";
 
 export type PaidPlan = "notify" | "report" | "complete";
+// 有料プランの名前。これ以外（"free" や、データベースの初期値 "standard" など）はすべて無料会員として扱う。
+export const PAID_PLANS: readonly string[] = ["notify", "report", "complete"];
+export const isPaidPlan = (p: string | null | undefined): boolean => !!p && PAID_PLANS.includes(p);
 const RANK: Record<PaidPlan, number> = { notify: 1, report: 2, complete: 3 };
 const VALID_STATUS = new Set(["active", "trialing", "past_due"]);
 
@@ -50,24 +53,33 @@ export async function bestPlanForCustomer(stripe: Stripe, customerId: string): P
   return best;
 }
 
-/** user_profiles に反映する（列が無い環境でも落ちないよう、subscription_id は失敗したら外して再試行） */
+/**
+ * user_profiles に反映する。
+ *  ・列が無い環境でも落ちないよう、subscription_id は失敗したら外して再試行する。
+ *  ・「無料に戻す」ときは "free" で書き、データベースの制約などで書けなければ初期値の "standard" で書き直す。
+ */
 export async function applyPlan(
   userId: string,
   info: { plan: string; customerId?: string | null; subscriptionId?: string | null },
 ) {
   const admin = getAdmin();
-  const base: Record<string, unknown> = {
-    id: userId,
-    plan: info.plan,
-    updated_at: new Date().toISOString(),
-  };
-  if (info.customerId) base.stripe_customer_id = info.customerId;
-  const withSub = { ...base, stripe_subscription_id: info.subscriptionId ?? null };
-  const r1 = await admin.from("user_profiles").upsert(withSub, { onConflict: "id" });
-  if (r1.error) {
+  const planNames = info.plan === "free" ? ["free", "standard"] : [info.plan];
+  let lastError = "";
+  for (const planName of planNames) {
+    const base: Record<string, unknown> = {
+      id: userId,
+      plan: planName,
+      updated_at: new Date().toISOString(),
+    };
+    if (info.customerId) base.stripe_customer_id = info.customerId;
+    const withSub = { ...base, stripe_subscription_id: info.subscriptionId ?? null };
+    const r1 = await admin.from("user_profiles").upsert(withSub, { onConflict: "id" });
+    if (!r1.error) return;
     const r2 = await admin.from("user_profiles").upsert(base, { onConflict: "id" });
-    if (r2.error) console.error("plan-sync: user_profiles更新エラー", r2.error.message);
+    if (!r2.error) return;
+    lastError = r2.error.message;
   }
+  console.error("plan-sync: user_profiles更新エラー", lastError);
 }
 
 // 負荷対策: 同じ会員について短時間に何度もStripeへ問い合わせない（無料は短め、有料は長め）
@@ -89,7 +101,7 @@ export async function syncPlanForUser(
     const admin = getAdmin();
     const { data: profile } = await admin.from("user_profiles").select("*").eq("id", user.id).maybeSingle();
     const currentPlan: string = (profile as any)?.plan ?? "free";
-    const isPaid = currentPlan !== "free";
+    const isPaid = isPaidPlan(currentPlan);
 
     const memo = lastChecked.get(user.id);
     const ttl = isPaid ? PAID_TTL_MS : FREE_TTL_MS;
