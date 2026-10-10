@@ -63,27 +63,46 @@ function buildBusinessContext(structured: any): string {
   ].join("\n").slice(0, 3500);
 }
 
+// Claude Sonnet 5.5(Sonnet 4.5の後継。Sonnet 4.5は2026/11/30に提供終了予定)。
+// 何も指定しないと「思考」が自動で動き、出力枠と料金を使うため thinking を between_tools(=最小)に固定する。
+// 同じ文章でもトークン数が約3割増えるため、出力上限は1.4倍にしている。
+// (万一 thinking の指定が拒否された場合は、以後 thinking を付けずに再実行する)
+let deepDiveThinkingControl = true;
+
 async function callClaude(prompt: string, maxTokens = 2000): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-5",
-      max_tokens: maxTokens,
+  const attempts = deepDiveThinkingControl ? [true, false] : [false];
+  let lastErr = "";
+  for (const withThinkingControl of attempts) {
+    const body: any = {
+      model: "claude-sonnet-5-5",
+      max_tokens: Math.ceil(maxTokens * 1.4),
       messages: [{ role: "user", content: prompt }],
-    }),
-    signal: AbortSignal.timeout(50000),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Claude API error: ${err.slice(0, 200)}`);
+    };
+    if (withThinkingControl) body.thinking = { type: "between_tools" };
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(50000),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      lastErr = err.slice(0, 200);
+      if (withThinkingControl && /thinking/i.test(err)) {
+        deepDiveThinkingControl = false;
+        continue;
+      }
+      throw new Error(`Claude API error: ${lastErr}`);
+    }
+    const data = await res.json();
+    const blocks: any[] = Array.isArray(data?.content) ? data.content : [];
+    return blocks.filter((b) => b?.type === "text").map((b) => b.text ?? "").join("").trim();
   }
-  const data = await res.json();
-  return (data?.content?.[0]?.text ?? "").trim();
+  throw new Error(`Claude API error: ${lastErr}`);
 }
 
 function parseJson(raw: string): any {

@@ -26,26 +26,48 @@ async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Claude Sonnet 5.5(Sonnet 4.5の後継。Sonnet 4.5は2026/11/30に提供終了予定)。
+// ・assistantの先頭文字を指定する「プレフィル」は5.5では使えないため、プロンプトでJSON出力を指示する
+// ・何も指定しないと「思考」が自動で動き、出力枠と料金を使うため thinking を between_tools(=最小)に固定する
+//   (万一この指定が拒否された場合は、以後thinkingを付けずに再実行する)
+// (出力上限の経緯: 2026/8/29に「まずここに注目」へ600〜800字のappeal_narrativeを追加した際、2000トークンでは途中で打ち切られる恐れがあり4000に引き上げた。
+//  Sonnet 5.5は同じ文章でもトークン数が約3割増えるため、4000→5500に引き上げている)
+const SONNET_MODEL = "claude-sonnet-5-5";
+const JSON_ONLY_NOTE = "\n\n【出力形式】前置き・説明文・コードブロックは一切付けず、{ で始まるJSONオブジェクトだけを出力してください。";
+let thinkingControlWorks = true;
+
+function buildSonnetParams(prompt: string, maxTokens: number): any {
+  const params: any = {
+    model: SONNET_MODEL,
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: prompt + JSON_ONLY_NOTE }],
+  };
+  if (thinkingControlWorks) params.thinking = { type: "between_tools" };
+  return params;
+}
+
+// 応答の中から text ブロックだけを取り出す(先頭が thinking ブロックでも壊れないようにする)
+function textOf(msg: any): string {
+  const blocks = Array.isArray(msg?.content) ? msg.content : [];
+  return blocks.filter((b: any) => b?.type === "text").map((b: any) => b.text ?? "").join("");
+}
+
+// 最初の { 以降を返す(コードブロックや前置きが付いても、JSON本体だけ取り出せるようにする)
+function fromFirstBrace(text: string): string {
+  const i = text.indexOf("{");
+  return i === -1 ? text : text.slice(i);
+}
+
 async function callClaudeWithRetry(prompt: string, maxRetries: number = 1): Promise<any> {
   let lastError: any;
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
-      const msg = await claude.messages.create({
-        model: "claude-sonnet-4-5",
-        // 2026/8/29、「まずここに注目」に600〜800字のappeal_narrative(トレンド記事用の
-        // 紹介文)を追加した際、既存の3インサイト分(title/body/detail)+tweet_summaryだけで
-        // 2000トークンの上限にほぼ達しており、追加分がトークン上限で強制的に途中で
-        // 打ち切られる(＝文が完結しないまま終わる)リスクがあったため、余裕を持たせて4000に引き上げた。
-        max_tokens: 4000,
-        messages: [
-          { role: "user", content: prompt },
-          { role: "assistant", content: '{' }
-        ]
-      });
+      const msg = await claude.messages.create(buildSonnetParams(prompt, 5500));
       return msg;
     } catch (e: any) {
       lastError = e;
       console.error(`Claude API attempt ${attempt} failed:`, e?.message);
+      if (/thinking/i.test(String(e?.message ?? ""))) thinkingControlWorks = false;
       if (attempt <= maxRetries) {
         await sleep(5000);
       }
@@ -513,19 +535,15 @@ export async function POST(req: NextRequest) {
       scorePrompt(co, dataNote, marketNote);
 
     const msg = await callClaudeWithRetry(prompt);
-    const raw2 = (msg.content[0] as any).text ?? "";
-    let parsed = repairJson('{' + raw2);
+    const raw2 = textOf(msg);
+    let parsed = repairJson(fromFirstBrace(raw2));
 
     if (!parsed) {
       console.warn(`analyze(${part}) parse failed, retrying once...`);
       await sleep(5000);
       try {
-        const retryMsg = await claude.messages.create({
-          model: "claude-sonnet-4-5",
-          max_tokens: 4000,
-          messages: [{ role: "user", content: prompt }, { role: "assistant", content: '{' }],
-        });
-        parsed = repairJson('{' + ((retryMsg.content[0] as any).text ?? ""));
+        const retryMsg = await claude.messages.create(buildSonnetParams(prompt, 5500));
+        parsed = repairJson(fromFirstBrace(textOf(retryMsg)));
       } catch (e) {
         console.error(`analyze(${part}) retry failed:`, e);
       }
