@@ -515,8 +515,7 @@ export async function POST(req: NextRequest) {
       const insights = body.insights ?? [];
       const prompt = insightsBeginnerPrompt(insights);
       const msg = await callClaudeWithRetry(prompt);
-      const raw2 = (msg.content[0] as any).text ?? "";
-      const parsed = repairJson('{' + raw2);
+      const parsed = repairJson(fromFirstBrace(textOf(msg)));
       if (!parsed) {
         return NextResponse.json({ error: "parse failed (insights_beginner)" }, { status: 500 });
       }
