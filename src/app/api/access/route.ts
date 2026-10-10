@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { canReadPaidAnalysis, PAID_ANALYSIS_PLANS } from "@/lib/member-auth";
+import { syncPlanForUser } from "@/lib/plan-sync";
 
 export async function GET(req: NextRequest) {
   const stockId  = req.nextUrl.searchParams.get("stock_id") ?? "";
@@ -34,11 +35,14 @@ export async function GET(req: NextRequest) {
   );
 
   // サブスクプランを確認
-  const { data: profile } = await supabase
+  const { data: profileRow } = await supabase
     .from("user_profiles")
     .select("plan, free_until")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+  // 2026/10/10: 日本版・米国版は共通のプラン。Stripeの契約に合わせてプランを最新にしてから判定する(src/lib/plan-sync.ts)
+  const synced = await syncPlanForUser(user);
+  const profile = synced ? { ...(profileRow ?? {}), plan: synced } : profileRow;
 
   // 2026/9/26修正: 分析ページ本体(src/app/analysis/[id]/page.tsx)と判定をそろえた。以前は「free以外の
   // プランなら閲覧可」としていたため、分析レポートを含まない通知プラン(notify)でも閲覧可と判定していた。
@@ -52,7 +56,7 @@ export async function GET(req: NextRequest) {
     .from("purchased_stocks")
     .select("id")
     .eq("user_id", user.id)
-    .eq("stock_id", stockId)
+    .eq("company_id", stockId)
     .single();
 
   if (purchased) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
+import { syncPlanForUser } from "@/lib/plan-sync";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,6 +27,9 @@ export async function GET() {
   const userId = session.user.id;
   const email = session.user.email;
   const serviceSupabase = getServiceSupabase();
+
+  // 2026/10/10: 日本版・米国版は共通のプラン。マイページを開いたときはStripeの契約に合わせて最新にする
+  await syncPlanForUser(session.user, { force: true });
 
   const { data: profile } = await serviceSupabase
     .from("user_profiles").select("*").eq("id", userId).single();

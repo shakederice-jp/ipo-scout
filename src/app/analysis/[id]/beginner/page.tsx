@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
 import { getVerifiedUser, getServiceSupabase, canReadPaidAnalysis } from "@/lib/member-auth";
+import { syncPlanForUser } from "@/lib/plan-sync";
 import { toClientCompany } from "@/lib/client-company";
 import { notFound } from "next/navigation";
 
@@ -34,11 +35,14 @@ async function checkAccess(companyId: string, isFreeCompany: boolean): Promise<{
 
   const serviceSupabase = getServiceSupabase();
 
-  const { data: profile } = await serviceSupabase
+  const { data: profileRow } = await serviceSupabase
     .from("user_profiles")
     .select("plan, free_until")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+  // 2026/10/10: 日本版・米国版は共通のプラン。Stripeの契約に合わせてプランを最新にしてから判定する(src/lib/plan-sync.ts)
+  const synced = await syncPlanForUser(user);
+  const profile = synced ? { ...(profileRow ?? {}), plan: synced } : profileRow;
 
   if (canReadPaidAnalysis(profile)) return { hasAccess: true, userId: user.id };
 
