@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (!adminPasswordConfigured()) {
     return NextResponse.json(
       {
-        error: `管理画面のパスワードがサーバーに設定されていません。Vercelの環境変数 ADMIN_PASSWORD に${ADMIN_PASSWORD_MIN_LENGTH}文字以上のパスワードを設定し、再デプロイしてください。`,
+        error: `管理画面のパスワードがサーバーに設定されていません。Vercelの環境変数 ADMIN_PASSWORD に${ADMIN_PASSWORD_MIN_LENGTH}文字以上(英字と数字の両方を含む)のパスワードを設定し、再デプロイしてください。`,
       },
       { status: 503 }
     );

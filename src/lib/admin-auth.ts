@@ -17,7 +17,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export const ADMIN_COOKIE = "admin_session";
 export const ADMIN_SESSION_MAX_AGE_SEC = 14 * 24 * 60 * 60; // ログイン状態の有効期間(14日)
-export const ADMIN_PASSWORD_MIN_LENGTH = 12;
+export const ADMIN_PASSWORD_MIN_LENGTH = 9; // 9文字以上で、英字と数字を両方含むこと
 
 type HeaderSource = { headers: Headers };
 
@@ -31,7 +31,7 @@ function safeEqual(a: string, b: string): boolean {
 // ADMIN_PASSWORD が正しく設定されているか(未設定・短すぎる場合は管理画面にログインできない)
 export function adminPasswordConfigured(): boolean {
   const pw = process.env.ADMIN_PASSWORD;
-  return !!pw && pw.length >= ADMIN_PASSWORD_MIN_LENGTH;
+  return !!pw && pw.length >= ADMIN_PASSWORD_MIN_LENGTH && /[A-Za-z]/.test(pw) && /[0-9]/.test(pw);
 }
 
 function signingKey(): string | null {
