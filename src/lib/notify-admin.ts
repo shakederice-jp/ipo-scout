@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { xPostLinkHtml } from './x-serialize';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const ADMIN_EMAIL = 'shakederice@gmail.com';
@@ -55,6 +56,13 @@ export async function notifyNoteArticleReady(
   articleText: string,
   analysisUrl: string
 ) {
+  // 2026/10/11追加: noteの記事を公開したあと、Xでも告知できるよう、告知文(下書き)と
+  // 「この原稿で投稿する」リンクを付ける。文面は定型で、分析ページのURLを入れている。
+  const xAnnounce =
+    `【新規IPO分析】${companyName}\n\n` +
+    `儲けの仕組み・上場までのストーリー・競合との違いをまとめました。\n\n` +
+    `詳しくはこちら👇\n${analysisUrl}\n\n#IPO #新規上場`;
+
   try {
     await resend.emails.send({
       from: FROM,
@@ -73,6 +81,10 @@ export async function notifyNoteArticleReady(
               下の本文をそのままnote.comにコピー&amp;ペーストしてください。マーケットトレンドの「新規IPO紹介」記事も、既にこの内容に差し替え済みです。
             </p>
             <pre style="font-size:12px;color:#374151;white-space:pre-wrap;background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">${escapeHtml(articleText)}</pre>
+            <p style="margin-top:16px;font-size:12px;color:#374151;font-weight:bold">Xでの告知用(下書き)</p>
+            <pre style="font-size:12px;color:#374151;white-space:pre-wrap;background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">${escapeHtml(xAnnounce)}
+
+${xPostLinkHtml(xAnnounce, 'この原稿で投稿する')}</pre>
             <p style="margin-top:16px;font-size:11px;color:#94a3b8">
               分析ページ: <a href="${analysisUrl}">${analysisUrl}</a><br/>
               © 大手町調査室九課 自動生成システム

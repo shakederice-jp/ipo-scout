@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { notifyAdmin } from '@/lib/notify-admin';
 import { postToX } from '@/lib/post-to-x';
+import { xPostLinkHtml } from '@/lib/x-serialize';
 
 export const maxDuration = 60;
 
@@ -97,7 +98,12 @@ export async function GET(req: NextRequest) {
     const xText = `📊【翌週のIPOスケジュール】\n${xLines.slice(0, 6).join("\n")}\n\n詳細はプロフィールのリンクから👇\n\n#IPO #新規上場 #IPO投資`;
     const xResult = await postToX(xText);
     if (!xResult.success) {
-      await notifyAdmin("X自動投稿失敗", `エラー: ${xResult.error}`, "warn");
+      // 2026/10/11追加: 失敗しても手動で投稿できるよう、投稿予定だった原稿と「この原稿で投稿する」リンクを添える
+      await notifyAdmin(
+        "X自動投稿失敗",
+        `エラー: ${xResult.error}\n\n▼ 投稿予定だった原稿\n\n${xText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}\n\n${xPostLinkHtml(xText)}`,
+        "warn"
+      );
     }
   }
 

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateWithGemini } from "./gemini";
 import { postToX } from "./post-to-x";
 import { notifyAdmin } from "./notify-admin";
+import { xPostLinkHtml } from "./x-serialize";
 
 // ===== 2026/9/19追加: X自動投稿(3回/日・本実装) =====
 // これまでの「generate-x-drafts」cron(1日1回・06:00 JST)は market_trends に下書き記事を
@@ -293,6 +294,17 @@ async function findGenericFallbackRow(): Promise<MarketTrendRow | null> {
   return (fresh[0] as MarketTrendRow) ?? null;
 }
 
+// 2026/10/11追加: 自動投稿に失敗したとき、投稿予定だった原稿と「この原稿で投稿する」リンクをメールで知らせる
+// (そのまま手動で投稿できる。メール送信に失敗しても、投稿処理の結果自体には影響させない)
+async function notifyPostFailure(reason: string, finalText: string): Promise<void> {
+  const escaped = finalText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  await notifyAdmin(
+    "X自動投稿失敗",
+    `エラー: ${reason}\n\n▼ 投稿予定だった原稿\n\n${escaped}\n\n${xPostLinkHtml(finalText)}`,
+    "warn"
+  ).catch(() => {});
+}
+
 async function postPlainRow(row: MarketTrendRow, slot: AutoPostSlot): Promise<AutoPostOutcome> {
   const rawBody = stripFooter(row.content);
   let condensed: string;
@@ -307,6 +319,7 @@ async function postPlainRow(row: MarketTrendRow, slot: AutoPostSlot): Promise<Au
 
   const postResult = await postToX(finalText);
   if (!postResult.success) {
+    await notifyPostFailure(postResult.error || "X投稿に失敗しました", finalText);
     return { posted: false, reason: postResult.error || "X投稿に失敗しました" };
   }
 
@@ -353,6 +366,7 @@ async function postSeriesPart(marketTrendId: string, part: number, slot: AutoPos
 
   const postResult = await postToX(finalText);
   if (!postResult.success) {
+    await notifyPostFailure(postResult.error || "X投稿に失敗しました", finalText);
     return { posted: false, reason: postResult.error || "X投稿に失敗しました" };
   }
 

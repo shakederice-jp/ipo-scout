@@ -24,6 +24,18 @@ function buildPostUrl(text: string): string {
   return `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
 }
 
+// メール(HTML)に原稿を表示するときの文字の置き換え(< > & がそのまま入ると表示が崩れるため)
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// 2026/10/11追加: 管理者宛メールのどこにでも「この原稿で投稿する」リンクを付けられるようにする共通部品。
+// 長い原稿の連載分割は行わず、渡された文章そのままをXの投稿画面に入力済みで開くリンクを返す。
+// (ニュース速報・投稿失敗時の予備原稿など、そのまま1回で投稿する短〜中程度の原稿向け)
+export function xPostLinkHtml(text: string, label = "この原稿で投稿する"): string {
+  return `𝕏 ${label} → <a href="${buildPostUrl(text.trim())}">このリンクを開く</a>`;
+}
+
 // 空行区切りの段落を、1回あたりMAX_PART_CHARSに収まるようグループ化する。
 // 1段落だけでMAX_PART_CHARSを超える場合は、文の途中で無理に切らずその段落だけで1回分とする。
 function groupParagraphs(paragraphs: string[]): string[] {
@@ -72,7 +84,7 @@ export function renderSeriesForEmail(parts: SeriesPart[]): string {
   return parts
     .map((p) => {
       const label = p.total > 1 ? `(${p.index}/${p.total})` : "";
-      return `${p.text}\n\n𝕏 この原稿で投稿する${label} → <a href="${p.postUrl}">このリンクを開く</a>`;
+      return `${escapeHtml(p.text)}\n\n𝕏 この原稿で投稿する${label} → <a href="${p.postUrl}">このリンクを開く</a>`;
     })
     .join(`\n\n${"─".repeat(10)}\n\n`);
 }

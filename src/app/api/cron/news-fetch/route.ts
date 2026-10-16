@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { Resend } from "resend";
+import { xPostLinkHtml } from "@/lib/x-serialize";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -161,6 +162,7 @@ export async function GET(req: NextRequest) {
         + "<div style='font-size:10px;color:#a0d4d6;margin-bottom:6px;font-weight:700'>▼ X投稿用（そのままコピペ）</div>"
         + "<div style='font-size:13px;color:white;line-height:1.7;white-space:pre-wrap;'>" + item.tweet + "</div>"
         + "</div>"
+        + "<div style='margin-top:10px;font-size:13px;color:#082b2e'>" + xPostLinkHtml(item.tweet) + "</div>"
         + "<div style='margin-top:8px;font-size:11px;color:#94a3b8'>🔗 元記事: <a href='" + item.shortUrl + "' style='color:#66c3c6'>" + item.shortUrl + "</a></div>"
         + "</div>";
     }).join("");

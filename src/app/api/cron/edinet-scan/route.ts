@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { postToX } from "@/lib/post-to-x";
+import { xPostLinkHtml } from "@/lib/x-serialize";
 import Anthropic from "@anthropic-ai/sdk";
 import { internalAuthHeaders } from "@/lib/admin-auth";
 import { isSameCompanyName } from "@/lib/edinet";
@@ -224,6 +225,10 @@ const { data: edinetCompanyList } = await supabase
               // 重複登録防止: 今登録した会社を、この実行内の一覧にも即座に反映する
               ipoList?.push({ id: "", name: companyName, edinet_doc_id: docId, raw_prospectus: null });
               results.push(`🆕 新規IPO候補として自動登録: ${companyName}（${docId}）`);
+              // 2026/10/11追加: X速報の原稿を先に作り、メールにも「この原稿で投稿する」リンクを付ける
+              // (自動投稿がオフ・失敗の場合でも、すぐ手動で投稿できる)
+              const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n詳しくはプロフィールのリンクから👆\n\n#IPO #新規上場`;
+              const tweetTextHtml = tweetText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
               await notifyAdmin(
                 `🆕 新規IPO発見: ${companyName}`,
                 `EDINETで新規上場候補を発見し、自動登録しました。\n\n` +
@@ -232,21 +237,21 @@ const { data: edinetCompanyList } = await supabase
                 `書類ID: ${docId}\n` +
                 `業種: ${analysis.sector}\n\n` +
                 `管理画面から①〜⑥のステップを実行して分析を完成させてください。\n` +
-                `https://ipo.finance-tower.com/admin`,
+                `https://ipo.finance-tower.com/admin\n\n` +
+                `▼ X速報の原稿(手動で投稿する場合)\n\n${tweetTextHtml}\n\n${xPostLinkHtml(tweetText)}`,
                 "info"
               );
 
               // X速報投稿
               if (process.env.X_AUTOPOST_ENABLED === "true") {
                 try {
-                  const tweetText = `【新規上場承認】${companyName}\n\n${analysis.biz_type ?? ""}\n\n目論見書が提出されました。詳細を分析していきます。\n\n詳しくはプロフィールのリンクから👆\n\n#IPO #新規上場`;
                   const postResult = await postToX(tweetText.slice(0, 140));
                   if (postResult.success) {
                     results.push(`🐦 X投稿完了: ${companyName}`);
                   } else {
                     await notifyAdmin(
                       `⚠️ X投稿失敗: ${companyName}`,
-                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}`,
+                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}\n\n▼ 投稿予定だった原稿\n\n${tweetTextHtml}\n\n${xPostLinkHtml(tweetText)}`,
                       "warn"
                     );
                   }
