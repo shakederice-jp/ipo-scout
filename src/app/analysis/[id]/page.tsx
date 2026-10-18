@@ -5,6 +5,7 @@ import AnalysisClient from "@/components/AnalysisClient";
 import { getVerifiedUser, getServiceSupabase, canReadPaidAnalysis } from "@/lib/member-auth";
 import { syncPlanForUser } from "@/lib/plan-sync";
 import { toClientCompany } from "@/lib/client-company";
+import { buildKeyFacts } from "@/lib/key-facts";
 import { notFound } from "next/navigation";
 
 async function fetchCompany(id: string) {
@@ -66,26 +67,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const grade = co.analysis_summary?.grade ?? "";
   const ticker = (data as any).ticker;
 
-  // 2026/9/12改修: 個別銘柄ページのSEO強化。「会社名 IPO」だけでなく「会社名 初値予想」
-  // 「会社名 上場日」という、実際に個人投資家が検索する語句にtitle/descriptionを合わせた。
-  // このページは1つの共通テンプレートのため、この変更だけで全銘柄(今後上場する銘柄も含む)
-  // に自動的に反映される。上場日は、目論見書以外の複数情報源で確認済み(listing_date_confirmed)
-  // の銘柄のみ実際の日付を出す(未確定の日付を断定表示しない、という既存のカウントダウン
-  // バッジと同じ方針を踏襲)。具体的な初値の予想数値は掲載していないため、「初値予想」という
-  // 検索語はtitleで受け止めつつ、description側では「初値シナリオ」という実態に即した言葉で
-  // 案内し、検索から来た人が期待と実態のズレで離脱しないようにしている。
-  const listingDateStr = co.listing_date_confirmed && data.listing_date
-    ? new Date(data.listing_date).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" })
-    : null;
-  const tickerPart = ticker ? `(${ticker})` : "";
-  const scheduleNote = listingDateStr ? `${listingDateStr}上場予定。` : "";
-  const description = (score
-    ? `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・総合スコア${score}/100（${grade}評価）を掲載。${summary}`
-    : `${data.name}${tickerPart}のIPO分析。${scheduleNote}目論見書をAIが解析し、上場日・初値シナリオ・9軸スコアを掲載。${summary}`
-  ).slice(0, 160);
-  // 2026/9/14改修(追記⑩ロングテールキーワード対応): 「銘柄名+証券コード」で検索する
-  // 投資家向けに、titleへ証券コードを追加。
-  const title = `${data.name}${tickerPart} IPO 上場日・初値シナリオ分析｜大手町調査室九課`;
+  // 2026/10/18改修(SEO・GEO対応): タイトルと説明文を、検索する人が実際に知りたい
+  // 「上場日・公募価格・初値・ロックアップ」に合わせた。説明文の先頭は、登録済みの情報から
+  // 自動で作る「結論1行」(src/lib/key-facts.ts)と同じ文にして、ページ本文との食い違いを防ぐ。
+  // 具体的な初値の予想数値は掲載していないため、タイトルでは「初値シナリオ」と書く。
+  const hasAnalysis = !!(co.analysis_summary || co.analysis_detail);
+  const kf = buildKeyFacts(co, {
+    underwriter: co.analysis_market?.lead_underwriter || null,
+    grade: grade || null,
+    score: score !== "" ? Number(score) : null,
+  });
+  const tickerPart = ticker ? `（${ticker}）` : "";
+  const description = (
+    `${kf.line}` +
+    (score !== "" ? `AI総合評価は${grade}ランク（${score}/100点）。` : "") +
+    `目論見書をAIが解析した分析レポートで、初値シナリオや9軸スコアも掲載しています。`
+  ).slice(0, 170);
+  const title = `${data.name}${tickerPart}のIPO｜上場日・公募価格・初値シナリオ｜大手町調査室九課`;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
   return {
@@ -105,6 +103,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       images: ["https://ipo.finance-tower.com/ogp.png"],
     },
     alternates: { canonical: url },
+    // 分析がまだ無い銘柄ページは中身が薄いため、検索結果に出さない(分析ができたら自動で解除される)
+    ...(hasAnalysis ? {} : { robots: { index: false, follow: true } }),
   };
 }
 
@@ -241,30 +241,23 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     ],
   };
 
-  // 2026/9/14追加(追記⑩ロングテールキーワード対応): AnalysisClient.tsx側に新設した
-  // 「よくある質問」の見た目のFAQと、内容(質問文・回答文)を一致させたFAQPage構造化データ。
-  // Googleのガイドラインに沿い、画面に表示されない内容をJSON-LDだけに含めることは避けている。
-  const listingDateStr = co.listing_date ?? null;
-  const faqAnswer1 = listingDateStr
-    ? `${co.listing_date_confirmed ? "" : "（現時点の目論見書ベースの予定であり、確定情報ではありません）"}${listingDateStr}が上場予定日です。`
-    : "現時点では上場日が確定していません。判明次第このページに反映されます。";
-  const faqGrade = analysisSummary?.grade ?? "B";
-  const faqScore = analysisSummary?.total_score ?? 65;
+  // 2026/10/18改修(SEO・GEO対応): FAQを「上場日・公募価格・初値・BB/申込・ロックアップ・主幹事・AI評価」
+  // に拡充。画面のFAQ・冒頭の「結論＋主要数値表」と同じ関数(src/lib/key-facts.ts)から作るので、
+  // 見た目とFAQPage構造化データの内容は必ず一致する(Googleのガイドラインに沿うため)。
+  const hasAnalysis = !!(analysisSummary || co.analysis_detail);
+  const keyFacts = buildKeyFacts(co, {
+    underwriter: co.analysis_market?.lead_underwriter || null,
+    grade: hasAnalysis ? (analysisSummary?.grade ?? co.analysis_detail?.grade ?? null) : null,
+    score: hasAnalysis ? (analysisSummary?.total_score ?? co.analysis_detail?.total_score ?? null) : null,
+  });
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": `${company.name}の上場日はいつですか？`,
-        "acceptedAnswer": { "@type": "Answer", "text": faqAnswer1 },
-      },
-      {
-        "@type": "Question",
-        "name": `${company.name}のAI分析評価は？`,
-        "acceptedAnswer": { "@type": "Answer", "text": `目論見書を当調査室の独自AI「ナインクロス」が解析した総合評価は${faqGrade}ランク（${faqScore}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。` },
-      },
-    ],
+    "mainEntity": keyFacts.faq.map((f) => ({
+      "@type": "Question",
+      "name": f.q,
+      "acceptedAnswer": { "@type": "Answer", "text": f.a },
+    })),
   };
 
   return (
@@ -278,6 +271,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
         visualizationData={hasAccess ? visualizationData : null}
         allCompanies={allCompanies as any[]}
         hasAccess={hasAccess}
+        keyFacts={keyFacts}
       />
     </>
   );

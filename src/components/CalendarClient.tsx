@@ -451,7 +451,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                 const dd = new Date(a.date);
                 const near = a.days <= 30;
                 return (
-                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.id}/beginner` : `/analysis/${a.company.id}`} style={{
+                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.ticker || a.company.id}/beginner` : `/analysis/${a.company.ticker || a.company.id}`} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
                     padding:"10px 12px", borderRadius:10, textDecoration:"none",
                     backgroundColor: near ? "#fef2f2" : "#f8fafc",
@@ -619,10 +619,10 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                     </p>
                   )}
                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, flexWrap:"wrap" }}>
-                    <a href={`/analysis/${company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
+                    <a href={`/analysis/${company.ticker || company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
                       {lang === "ja" ? "📖 初心者向け分析" : "📖 Beginner"}
                     </a>
-                    <a href={`/analysis/${company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
+                    <a href={`/analysis/${company.ticker || company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
                       {lang === "ja" ? "🎓 中・上級者向け分析" : "🎓 Expert"}
                     </a>
                   </div>

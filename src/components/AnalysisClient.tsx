@@ -1,4 +1,6 @@
 "use client";
+import KeyFacts from "@/components/KeyFacts";
+import type { KeyFactsData } from "@/lib/key-facts";
 import {
   RevenueChart, KeyMetricsTable, ShareholdersChart,
   ValuationTable, ShareStructureChart, RecentIpoChart,
@@ -881,7 +883,7 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert"}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner"}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert",keyFacts}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner";keyFacts?:KeyFactsData}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -906,8 +908,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
       <div style={{textAlign:"center",padding:24}}>
         <AlertTriangle size={32} color="#f59e0b" style={{margin:"0 auto 12px"}}/>
         <p style={{fontWeight:700,color:"#475569"}}>分析データを取得できませんでした</p>
-        <a href="/calendar" style={{display:"inline-block",marginTop:16,padding:"8px 16px",borderRadius:10,
-          backgroundColor:PRIMARY,color:"white",fontWeight:700,fontSize:13,textDecoration:"none"}}>← カレンダーへ戻る</a>
+        <a href="/" style={{display:"inline-block",marginTop:16,padding:"8px 16px",borderRadius:10,
+          backgroundColor:PRIMARY,color:"white",fontWeight:700,fontSize:13,textDecoration:"none"}}>← トップへ戻る</a>
       </div>
     </div>
   );
@@ -1091,7 +1093,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             style={{fontSize:12,padding:"6px 8px",borderRadius:8,border:"1px solid #b3e8ea",color:"#0d4f52",backgroundColor:"white",cursor:"pointer",flex:"1 1 140px",minWidth:0}}>
             <option value="">他の銘柄を選ぶ</option>
             {allCompanies.map((c:any) => (
-              <option key={c.id} value={c.id} selected={c.id===company.id}>{c.name}</option>
+              <option key={c.id} value={c.ticker||c.id} selected={c.id===company.id}>{c.name}</option>
             ))}
           </select>
         )}
@@ -1185,31 +1187,29 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </div>
         </div>
 
-        {/* 2026/9/14新設(追記⑩ロングテールキーワード対応): 「{会社名}の上場日は？」
-            「{会社名}の評価は？」という、投資家が実際に検索しそうな質問形式の小さなFAQ欄。
-            対応するFAQPage構造化データは、company/analysisの値をこの画面と共有しているpage.tsx
-            (サーバーコンポーネント)側で生成し、見た目と構造化データの内容を一致させている。 */}
-        <div style={{borderRadius:12,padding:"12px 14px",backgroundColor:"white",border:`1px solid ${BORDER}`}}>
-          <div style={{fontWeight:900,fontSize:12,color:DARK,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
-            <span>❓</span><span>よくある質問</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {company.name}の上場日はいつですか？</div>
-              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>
-                A. {(company as any).listing_date
-                  ? `${(company as any).listing_date_confirmed ? "" : "（現時点の目論見書ベースの予定であり、確定情報ではありません）"}${(company as any).listing_date}が上場予定日です。`
-                  : "現時点では上場日が確定していません。判明次第このページに反映されます。"}
-              </div>
+        {/* 2026/10/18新設(SEO・GEO対応): 分析ページの冒頭に「結論1行＋主要数値表」を置く。
+            登録済みの情報から自動で作る(src/lib/key-facts.ts)。サーバー側で最初のHTMLに入るので、
+            検索エンジンや生成AIが上場日・公募価格などをそのまま文字として読み取れる。 */}
+        {keyFacts&&<KeyFacts data={keyFacts}/>}
+
+        {/* 「よくある質問」。2026/9/14に2問で新設、2026/10/18に上場日・公募価格・初値・BB/申込・
+            ロックアップ・主幹事・AI評価へ拡充。対応するFAQPage構造化データは、同じ関数
+            (src/lib/key-facts.ts)から作っており、見た目と中身が必ず一致する。 */}
+        {keyFacts&&keyFacts.faq.length>0&&(
+          <div style={{borderRadius:12,padding:"12px 14px",backgroundColor:"white",border:`1px solid ${BORDER}`}}>
+            <div style={{fontWeight:900,fontSize:12,color:DARK,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+              <span>❓</span><span>よくある質問</span>
             </div>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {company.name}のAI分析評価は？</div>
-              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>
-                A. 目論見書を当調査室の独自AI「ナインクロス」が解析した総合評価は{grade}ランク（{score}点/100点）です。詳しい根拠は下記の詳細分析・9軸スコアでご確認いただけます。
-              </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {keyFacts.faq.map((f,i)=>(
+                <div key={i}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#475569"}}>Q. {f.q}</div>
+                  <div style={{fontSize:11,color:"#64748b",lineHeight:1.7,marginTop:2}}>A. {f.a}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         {/* このレポートの読み方（総論→各論→参考資料という設計思想の案内） */}
         <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",borderRadius:10,
@@ -1758,13 +1758,13 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           const next=idx<sorted.length-1?sorted[idx+1]:null;
           return (
             <div style={{display:"flex",gap:8,justifyContent:"space-between"}}>
-              <a href={prev?`/analysis/${prev.id}`:undefined as any}
+              <a href={prev?`/analysis/${prev.ticker||prev.id}`:undefined as any}
                 style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:prev?"white":"#f1f5f9",border:`1px solid ${prev?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",opacity:prev?1:0.4,pointerEvents:prev?"auto":"none"}}>
                 <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>← 前の銘柄</div>
                 <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{prev?.name??""}</div>
                 <div style={{fontSize:10,color:"#66c3c6"}}>{prev?.listing_date??""}</div>
               </a>
-              <a href={next?`/analysis/${next.id}`:undefined as any}
+              <a href={next?`/analysis/${next.ticker||next.id}`:undefined as any}
                 style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:next?"white":"#f1f5f9",border:`1px solid ${next?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",textAlign:"right",opacity:next?1:0.4,pointerEvents:next?"auto":"none"}}>
                 <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>次の銘柄 →</div>
                 <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{next?.name??""}</div>

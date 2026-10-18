@@ -23,6 +23,13 @@ export default function Footer() {
         <a href="/plans" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>料金プラン</a>
         <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>トレンド記事</a>
         <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
+        {/* 2026/10/18新設(SEO対応): 新設ページへの内部リンク。全ページ共通のフッターに置くことで、
+            どのページからでも1クリックで到達でき、検索エンジンにも各ページの存在が伝わりやすくなる。 */}
+        <a href="/schedule" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>上場スケジュール</a>
+        <a href="/results" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>初値の結果</a>
+        <a href="/lockup" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ロックアップ解除</a>
+        <a href="/how-to-apply" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPOの申込方法</a>
+        <a href="/glossary" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPO用語集</a>
         {/* 2026/9/14新設: E-E-A-T対策として新設した「運営者について・分析手法について」ページへの
             導線。法的表記の行(下)ではなく、この主要リンク行に置くことで信頼性シグナルとしての
             露出を優先した。 */}

@@ -9,11 +9,14 @@ import { AppProvider } from "@/contexts/AppContext";
 
 export const metadata: Metadata = {
   title: {
-    default: "IPO Scout | AI駆動のIPO分析・投資判断支援サービス",
-    template: "%s | IPO Scout",
+    // 2026/10/18修正(SEO対応): 以前は template が "%s | IPO Scout" で、各ページが自分で
+    // 「｜大手町調査室九課」まで付けたタイトルの後ろに、さらに「| IPO Scout」が付いて
+    // 二重になっていた(検索結果で長すぎて途中が切れる原因)。各ページのタイトルをそのまま使う。
+    default: "IPOスケジュール・新規上場企業のAI分析｜大手町調査室九課",
+    template: "%s",
   },
-  description: "AI分析で日本のIPO投資判断をサポート。初値予測・スコアリング・需給分析・財務分析を提供します。",
-  keywords: ["IPO", "新規上場", "投資", "分析", "初値予測", "日本株"],
+  description: "IPOスケジュール（新規上場一覧）と、目論見書をAIが解析した分析レポートを掲載。上場日・仮条件・申込日程・ロックアップ解除日、総合スコアと9軸の詳細分析が分かります。",
+  keywords: ["IPO", "IPOスケジュール", "新規上場", "初値", "ロックアップ", "目論見書", "日本株"],
   verification: {
     google: "zxV54LwwUEhL4EUHpiVivnO2KykbnhJ3CGS6w01bYH4",
   },
