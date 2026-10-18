@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchCompetitorFinancials } from "@/lib/competitor-financials";
 import Anthropic from "@anthropic-ai/sdk";
-import { notifyNoteArticleReady } from "@/lib/notify-admin";
-import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
 
 // 2026/9/4追加: 「ビジネスモデル(儲けの手法・からくり)」「上場までのストーリー」
 // 「競合企業との違い」の3要素を生成するSTEP(管理画面の表示上は「⑧ 深掘り3要素」)。
@@ -254,37 +252,9 @@ ${STYLE_NOTE}
   return { long_term_strength: String(parsed.long_term_strength ?? "").trim() };
 }
 
-// 2026/9/14追加: business_model・story・competitor_diffの3つが揃った時点で、
-// note.com向けの読み物記事を自動組み立てするためのテンプレート関数。
-// 2026/9/13にユーザーへ提示した見本記事(架空のクラウドキッチン社)と同じ構成
-// (儲けの仕組み→上場までの道のり→競合との違い→CTAリンク)。新たなWeb検索・AI呼び出しは
-// 一切行わず、STEP8で既に生成済みのテキストをそのまま流し込むだけなので、
-// タイムアウトリスクはゼロ(この関数自体は同期処理)。
-function buildNoteArticle(co: any, dd: Record<string, any>): string {
-  const name = co.name;
-  const tickerPart = co.ticker ? `(${co.ticker})` : "";
-  const url = `https://ipo.finance-tower.com/analysis/${co.ticker ?? co.id}`;
-  const listingDateStr = co.listing_date
-    ? new Date(co.listing_date).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" })
-    : null;
-  const lead = listingDateStr
-    ? `${listingDateStr}に上場を予定している「${name}」${tickerPart}。目論見書の情報から、この会社の「儲けの仕組み」「上場までの道のり」「競合との違い」を読み解いてみます。`
-    : `新規上場を予定している「${name}」${tickerPart}。目論見書の情報から、この会社の「儲けの仕組み」「上場までの道のり」「競合との違い」を読み解いてみます。`;
-
-  const parts = [
-    `# ${name}のIPOを読み解く`,
-    lead,
-    dd.business_model ? `## どうやって儲けているのか\n\n${dd.business_model}` : "",
-    dd.story ? `## なぜ「今」上場するのか\n\n${dd.story}` : "",
-    dd.competitor_diff ? `## 競合とどう違うのか\n\n${dd.competitor_diff}` : "",
-    `---\n\nもっと詳しく知りたい方は、目論見書をAIが分析した詳細レポートをこちらでご覧いただけます。\n👉 ${name} IPO分析レポート ${url}`,
-    // 2026/9/14追加: マーケットトレンド記事には必ずハッシュタグを入れてほしいとの要望により追記。
-    // 2026/9/13に見本記事として提示した構成(末尾に会社名を含むハッシュタグ)と同じ形式。
-    buildMarketTrendsHashtags(`新規IPO紹介(${name})`, co.sector, name),
-  ].filter(Boolean);
-
-  return parts.join("\n\n");
-}
+// 2026/10/18廃止: note.com向けの長文記事の自動組み立て(buildNoteArticle)と、その完成メールは、
+// note記事をやめたため削除した。「新規IPO紹介」記事(マーケットトレンド)は、STEP4(analyze)で作る
+// 短い版がそのまま残る(以前はここでnote用の長文に差し替えていた)。
 
 export async function POST(req: NextRequest) {
   try {
@@ -313,42 +283,6 @@ export async function POST(req: NextRequest) {
     }
 
     const merged: Record<string, any> = { ...existing, ...addition, updated_at: new Date().toISOString() };
-
-    // 2026/9/14追加: business_model・story・competitor_diffの3要素が揃った時点
-    // (どのpartの実行がきっかけで揃ったかは問わない)で、note.com向け記事を自動組み立てし、
-    // マーケットトレンドの「新規IPO紹介({会社名})」記事(src/app/api/analyze/route.tsが
-    // external_id="new-ipo-intro-{id}"で保存している記事)をこの内容に差し替え、
-    // マイケルさんにメールでお知らせする(2026/9/13の相談・承認内容)。
-    // note_article_generated_atフラグにより、同じ銘柄でSTEP8を後から再実行しても
-    // 二重に記事更新・メール送信が起きないようにしている(初回のみ発火)。
-    if (merged.business_model && merged.story && merged.competitor_diff && !merged.note_article_generated_at) {
-      try {
-        const articleText = buildNoteArticle(co, merged);
-        const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.ticker ?? co.id}`;
-
-        await supabaseAdmin.from("market_trends").upsert({
-          source: "IPO分析システム",
-          title: `新規IPO紹介(${co.name})`,
-          url: analysisUrl,
-          sector: co.sector || "その他",
-          sector_score: 8,
-          is_featured: true,
-          is_theme_article: true,
-          content: articleText,
-          source_links: [
-            { title: `${co.name}の詳細分析ページ`, url: analysisUrl, source: "自社分析" },
-          ],
-          fetched_at: new Date().toISOString(),
-          external_id: `new-ipo-intro-${co.id}`,
-        }, { onConflict: "external_id" });
-
-        await notifyNoteArticleReady(co.name, articleText, analysisUrl);
-
-        merged.note_article_generated_at = new Date().toISOString();
-      } catch (e: any) {
-        console.error("note記事の自動生成に失敗:", e?.message);
-      }
-    }
 
     await supabase.from("ipo_companies").update({ analysis_deep_dive: merged }).eq("id", company_id);
 

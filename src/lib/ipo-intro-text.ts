@@ -40,7 +40,10 @@ export function buildIpoIntroText(co: IpoIntroCompany, insightBody: string, titl
     { label: "コード", value: co.ticker || "" },
     { label: "主幹事", value: underwriter },
   ];
-  const factLines = facts.filter((f) => f.value).map((f) => `・${f.label}：${f.value}`);
+  // 2026/10/18追加: DBの値が「不明」「未定」という文字列で入っている場合(例: 市場=不明)も、
+  // 値が無いものとして行ごと省略する(「未定」「不明」は見せない方針)。
+  const isBlank = (v: string) => !v || v === "不明" || v === "未定";
+  const factLines = facts.filter((f) => !isBlank(f.value)).map((f) => `・${f.label}：${f.value}`);
 
   return `【${titleLabel}】\n${co.name}\n\n` +
     (factLines.length > 0 ? factLines.join("\n") + "\n\n" : "") +

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { notifyAdmin } from '@/lib/notify-admin';
+import { buildBlurbs } from '@/lib/email-blurb';
 
 export const maxDuration = 60;
 
@@ -81,11 +82,17 @@ export async function GET(req: NextRequest) {
   const emailMap: Record<string, string> = {};
   users.forEach((u: any) => { if (u.email) emailMap[u.id] = u.email; });
 
+  // 2026/10/18追加: 銘柄カードの紹介文を、ai_summary(120字以内)から300〜500字のメール用紹介文に変更。
+  // 同じ銘柄は全ユーザー共通なので、ユーザーのループの前に1回だけ作る(src/lib/email-blurb.ts)。
+  const blurbs = await buildBlurbs([...(bbList ?? []), ...(applyList ?? []), ...(listingList ?? [])]);
+  const escapeHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   const buildCard = (c: any, eventLabel: string, eventColor: string) => {
     const grade = c.analysis_summary?.grade ?? null;
     const ultraGrade = c.analysis_summary?.ultra_short_grade ?? null;
     const shortGrade = c.analysis_summary?.short_grade ?? null;
     const longGrade = c.analysis_summary?.long_grade ?? null;
+    const blurb = blurbs.get(c.id) ?? null;
     const aiSummary = c.ai_summary ?? null;
     const offerPrice = c.structured_data?.ipo_details?.offer_price
       ? `¥${Number(c.structured_data.ipo_details.offer_price).toLocaleString()}`
@@ -112,7 +119,9 @@ export async function GET(req: NextRequest) {
           ${ultraGrade ? `<span style="font-size:11px;color:#64748b;margin-left:8px">超短期:${ultraGrade} / 短期:${shortGrade ?? '-'} / 長期:${longGrade ?? '-'}</span>` : ''}
           <span style="display:block;margin-top:4px;font-size:10px;color:#94a3b8">※独自AIナインクロスによる評価</span>
         </div>` : ''}
-        ${aiSummary ? `<p style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.6">${aiSummary}</p>` : ''}
+        ${blurb
+          ? `<div style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.8;white-space:pre-line">${escapeHtml(blurb)}</div>`
+          : aiSummary ? `<p style="font-size:13px;color:#334155;background:#f8fafc;padding:12px;border-radius:8px;margin:0 0 12px;border-left:3px solid #66c3c6;line-height:1.6">${aiSummary}</p>` : ''}
         ${ticker ? `<a href="${analysisUrl}" style="display:inline-block;padding:8px 18px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">詳細レポートを見る →</a>
         <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${analysisUrl}</div>` : ''}
       </div>

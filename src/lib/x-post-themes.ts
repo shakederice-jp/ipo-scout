@@ -369,13 +369,12 @@ ${STYLE_GUIDE}
 // 最初の取引日を探す専用の関数として実装している(既存のfetchStockPrice()とは別物)。
 // 2026/9/25追記: 投稿時期を過ぎたチェックポイントの株価を「記録だけ」する際に、3ヶ月より
 // 前の株価も取れるよう取得期間(range)を指定できるようにした(既定値は従来通り3mo)。
-async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string, range: "3mo" | "1y" = "3mo"): Promise<{ price: number; date: string } | null> {
-  const symbol = `${ticker}.T`;
+async function fetchPriceOnOrAfterOneSymbol(symbol: string, targetDateStr: string, range: "3mo" | "1y", timeoutMs: number): Promise<{ price: number; date: string } | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`;
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -395,6 +394,20 @@ async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string, range:
   } catch {
     return null;
   }
+}
+
+// 2026/10/18追加: 東証(.T)で株価が取れない銘柄(かがやきホールディングス624Aなど)が、毎日
+// 「株価を取得できませんでした」の通知を出し続けていた。名古屋(.N)・札幌(.S)・福岡(.F)など、
+// 東証以外に上場している銘柄の可能性があるため、.Tで取れなければ順に試す。
+// (取れる場合は1回目で終わるので、通常時の問い合わせ回数は従来と同じ。最悪でも1銘柄あたり約19秒に収める)
+async function fetchPriceOnOrAfter(ticker: string, targetDateStr: string, range: "3mo" | "1y" = "3mo"): Promise<{ price: number; date: string } | null> {
+  const first = await fetchPriceOnOrAfterOneSymbol(`${ticker}.T`, targetDateStr, range, 10000);
+  if (first) return first;
+  for (const suffix of [".N", ".S", ".F"]) {
+    const alt = await fetchPriceOnOrAfterOneSymbol(`${ticker}${suffix}`, targetDateStr, range, 3000);
+    if (alt) return alt;
+  }
+  return null;
 }
 
 type CheckpointKey = "day2" | "day10" | "month1";
@@ -442,7 +455,7 @@ const CHECKPOINT_MAX_DELAY_DAYS: Record<CheckpointKey, number> = {
 };
 // 1回のcron実行で「記録だけ」処理する件数の上限(Yahoo Financeへの問い合わせでcron全体の
 // 実行時間を圧迫しないため。残りは翌日以降のcronで少しずつ片付く)
-const STALE_RECORD_LIMIT_PER_RUN = 6;
+const STALE_RECORD_LIMIT_PER_RUN = 4; // 2026/10/18: 予備の取引所(.N/.S/.F)も試すようになったため、6→4に減らした(cron全体の実行時間に収めるため。日ごとに処理位置をずらすので、残りは翌日以降に回る)
 
 // 2026/9/25追記: 日付計算の修正。以前は「上場日のJST0時」をDate型にしてsetDateした後
 // toISOString()(UTC)で日付文字列に戻していたため、1日前にずれ、「上場2日目」の期日が
@@ -563,14 +576,22 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
   }
 
   // --- 投稿時期を過ぎたものは、記事にせず株価の記録だけ行う ---
+  // 2026/10/18改修: 株価が取れない銘柄(例: 624A)が毎回リストの先頭に残って、他の銘柄の記録を妨げたうえ、
+  // 同じ内容の「スキップしました」通知が毎日届いていた(何も対応できず役に立たないとのご指摘)。
+  //  ・毎回同じ先頭から処理するのをやめ、日ごとに処理を始める位置をずらす(取れない銘柄が居座っても他が進む)
+  //  ・「記録のみ行った」ことの通知はやめる(対応が不要なため。ログにだけ残す)
+  //  ・「株価が取れず記録できなかった銘柄」の通知は、毎日ではなく毎週月曜(JST)だけ、要対応の内容として送る
   if (stale.length > 0) {
     const recorded: string[] = [];
     const notRecorded: string[] = [];
-    for (const st of stale.slice(0, STALE_RECORD_LIMIT_PER_RUN)) {
+    const dayIndex = Math.floor((Date.now() + 9 * 60 * 60 * 1000) / 86400000);
+    const start = dayIndex % stale.length;
+    const rotated = [...stale.slice(start), ...stale.slice(0, start)];
+    for (const st of rotated.slice(0, STALE_RECORD_LIMIT_PER_RUN)) {
       const priceData = await fetchPriceOnOrAfter(st.co.ticker, st.targetStr, "1y");
-      const label = `${st.co.name}(${st.co.ticker})・${CHECKPOINT_META[st.key].label}(期日${st.targetStr}、${st.lateDays}日経過)`;
+      const label = `${st.co.name}(${st.co.ticker})・${CHECKPOINT_META[st.key].label}(期日${st.targetStr})`;
       if (!priceData) {
-        notRecorded.push(`・${label}: 株価を取得できませんでした`);
+        notRecorded.push(`・${label}`);
         continue;
       }
       const rate = st.co.ipo_price
@@ -581,25 +602,31 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
         .update({ [`price_${st.key}`]: priceData.price, [`price_${st.key}_rate`]: rate })
         .eq("id", st.co.id);
       if (updateError) {
-        notRecorded.push(`・${label}: 保存エラー ${updateError.message}`);
+        notRecorded.push(`・${label}(保存エラー: ${updateError.message})`);
       } else {
-        recorded.push(`・${label}: ${priceData.price}円を記録のみ(記事化・X投稿はしていません)`);
+        recorded.push(`${label}: ${priceData.price}円`);
       }
     }
-    if (recorded.length > 0 || notRecorded.length > 0) {
-      const lines = [
-        "上場後の株価チェックポイントのうち、本来の投稿時期を過ぎてしまったものは、",
-        "「今ごろ出しても意味のない記事」になるため、答え合わせ記事の作成・X投稿をスキップしました。",
-        "株価の記録だけは行っているので、データ上の抜けはありません。",
-        "",
-      ];
-      if (recorded.length > 0) lines.push("【記録のみ行ったもの】", ...recorded);
-      if (notRecorded.length > 0) lines.push("", "【記録もできなかったもの(翌日以降に再試行します)】", ...notRecorded);
-      if (stale.length > STALE_RECORD_LIMIT_PER_RUN) {
-        lines.push("", `ほか${stale.length - STALE_RECORD_LIMIT_PER_RUN}件は翌日以降に順次処理します。`);
-      }
+    if (recorded.length > 0) {
+      console.log(`答え合わせ: 投稿時期を過ぎたチェックポイントの株価を記録のみ行いました(記事化・X投稿なし): ${recorded.join(" / ")}`);
+    }
+    // 株価が取れず記録できなかった銘柄: 全体の未記録分(stale)のうち、今回取れなかったものを毎週月曜だけ知らせる
+    const isMondayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCDay() === 1;
+    if (notRecorded.length > 0 && isMondayJst) {
       try {
-        await notifyAdmin("答え合わせ記事: 時期を過ぎたチェックポイントをスキップ", lines.join("\n"), "info");
+        await notifyAdmin(
+          "株価が取得できない銘柄があります(週1回のお知らせ)",
+          [
+            "上場後の株価チェックポイントのうち、株価を取得できず記録できなかった銘柄です。",
+            "東証以外(名古屋・札幌・福岡)も試しましたが取得できませんでした。",
+            "証券コードや上場市場が正しく登録されているか、管理画面で確認してください。",
+            "",
+            ...notRecorded,
+            "",
+            "※記事化・X投稿は、期日を大きく過ぎているため行いません。株価の記録のみが対象です。",
+          ].join("\n"),
+          "info"
+        );
       } catch (e) {
         console.error("答え合わせ: 管理者通知に失敗", e);
       }

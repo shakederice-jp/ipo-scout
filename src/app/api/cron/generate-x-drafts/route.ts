@@ -17,7 +17,6 @@ import {
 } from "@/lib/x-post-themes";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { buildMarketTrendsHashtags } from "@/lib/market-trends-hashtags";
-import { serializeForX, renderSeriesForEmail } from "@/lib/x-serialize";
 
 // テーマ生成のたびにGemini呼び出しが走るため、Vercelの関数タイムアウトに余裕を持たせる。
 // 2026/9/8: テーマ数が増えるにつれ直列実行の合計時間が伸び、この上限に達して
@@ -106,49 +105,12 @@ export async function GET(request: Request) {
   const results: { theme: number; status: string }[] = [];
   let trendsUpdated = false;
 
-  // 「新規IPO承認」ドラフト(画像URL付き)のうち、まだメールに載せていないものを先に処理して送信する。
-  // 時間のかかるテーマ記事生成より前に、独立した短い処理として先に済ませておく。
-  try {
-    const { data: ipoDrafts } = await supabase
-      .from("x_post_drafts")
-      .select("id, content, image_url, created_at")
-      .eq("theme_number", 0)
-      .eq("theme_label", "新規IPO承認")
-      .eq("included_in_digest", false)
-      .order("created_at", { ascending: false });
-
-    if (ipoDrafts && ipoDrafts.length > 0) {
-      // 2026/10/8改修(X連載化+投稿ボタン): 原稿が800字を超える場合は3〜4回の連載に分け、
-      // 各回に「この原稿で投稿する」ボタン(Xの投稿画面を原稿入力済みで開くリンク)を付ける。
-      // 画像URLはリンクのtextパラメータには含められない(X側の仕様)ため、従来どおり別行で表示する。
-      const ipoBody = ipoDrafts.map(d => {
-        const imageLine = d.image_url ? `🖼 画像: ${d.image_url}\n\n` : "";
-        return imageLine + renderSeriesForEmail(serializeForX(d.content));
-      }).join("\n\n" + "─".repeat(20) + "\n\n");
-
-      await notifyAdmin(
-        `🆕 新規IPO承認ドラフト(${ipoDrafts.length}件)`,
-        ipoBody,
-        "info"
-      );
-
-      // メール送信が成功した後で「送信済み」に更新する。
-      // (先に更新してしまうと、メール送信自体が失敗した場合に
-      //  ドラフトが送られないまま「送信済み」扱いになってしまうため)
-      const { error: markError } = await supabase
-        .from("x_post_drafts")
-        .update({ included_in_digest: true })
-        .in("id", ipoDrafts.map(d => d.id));
-      if (markError) {
-        console.error("新規IPOドラフトの送信済みフラグ更新に失敗:", markError.message);
-      }
-    }
-  } catch (err) {
-    console.error("新規IPOドラフトのメール送信に失敗:", err);
-  }
+  // 2026/10/18変更: 「新規IPO承認」ドラフト(x_post_drafts)のメール送信は、このcronでは行わなくなった。
+  // X投稿用のメールは、朝7時・夕17時の2回(src/lib/x-auto-post.ts)で、1件につき1通ずつ送る。
+  // ドラフトは included_in_digest=false のまま残り、次の便で送られる。
 
   try {
-    type ThemeOutcome = { theme: number; status: string; trendsUpdated: boolean; lockupPreRecapText?: string };
+    type ThemeOutcome = { theme: number; status: string; trendsUpdated: boolean };
 
     async function runTheme(
       themeNumber: number,
@@ -332,7 +294,6 @@ export async function GET(request: Request) {
             theme: 15,
             status: outcome === "saved" ? "success" : outcome === "skipped_duplicate" ? "skipped(既出)" : "skipped",
             trendsUpdated: outcome === "saved",
-            lockupPreRecapText: outcome === "saved" ? lockupPreRecapResult.result.content : undefined,
           };
         }
         return { theme: 15, status: "skipped(該当銘柄なし)", trendsUpdated: false };
@@ -386,11 +347,9 @@ export async function GET(request: Request) {
     ];
 
     const themeResults = await Promise.all(themeTasks);
-    let lockupPreRecapText: string | null = null;
     for (const r of themeResults) {
       results.push({ theme: r.theme, status: r.status });
       if (r.trendsUpdated) trendsUpdated = true;
-      if (r.lockupPreRecapText) lockupPreRecapText = r.lockupPreRecapText;
     }
 
     // テーマ⓪: 予約されているIPO再掲(2営業日後・4営業日後)をチェックして追加(こちらはX手動投稿用のまま)
@@ -422,53 +381,20 @@ export async function GET(request: Request) {
     // 失敗したテーマがあれば、メールで気づけるようにまとめておく
     const failedThemes = results.filter((r) => r.status === "failed");
 
-    // メール通知: マーケットトレンド更新の短い通知 + IPO再掲があればその文面
-    try {
-      let emailBody = trendsUpdated
-        ? `大手町発マーケットトレンドが更新されました。\n\n▼ 記事を見る\n${TRENDS_URL}`
-        : "本日はマーケットトレンドの更新対象がありませんでした。";
-
-      if (failedThemes.length > 0) {
-        emailBody += `\n\n${"=".repeat(30)}\n🚨 保存に失敗したテーマ(${failedThemes.length}件)\n${"=".repeat(30)}\n\nテーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`;
+    // 2026/10/18変更: 「マーケットトレンドが更新されました」だけの通知メールは廃止した
+    // (内容も本数も分からず役に立たないため)。新しい記事は、朝7時・夕17時の便(src/lib/x-auto-post.ts)で
+    // 1本につき1通、タイトル入り・投稿ボタン付きのメールで届く。IPO再掲ドラフトやロックアップ解除前の
+    // 振り返り記事も同じ便で個別に届く。ここでは、生成に失敗したテーマがあった場合だけ短く知らせる。
+    if (failedThemes.length > 0) {
+      try {
+        await notifyAdmin(
+          `マーケットトレンド記事の生成に失敗したテーマ(${failedThemes.length}件)`,
+          `テーマ番号: ${failedThemes.map((f) => f.theme).join(", ")}\n詳細はVercelのFunction Logsを確認してください。`,
+          trendsUpdated ? "warn" : "error"
+        );
+      } catch (e) {
+        console.error("失敗通知メール送信失敗:", e);
       }
-
-      if (lockupPreRecapText) {
-        // 2026/9/14改修(追記⑫-②、X投稿のThreads・Bluesky等への同時展開): 実際の投稿は
-        // 完全手動(X APIによる自動投稿は行っていない)と判明したため、同じコピペ用テキストを
-        // Threads・Blueskyにも使い回せる旨を案内に追加。ただしBlueskyの文字数上限(300字)は
-        // X/Threadsより厳しく、このテキストがそれより長い場合に「そのまま使える」と案内すると
-        // 誤解を招くため、「そのまま」はX・Threadsのみに限定し、Blueskyは要約が必要な旨を明記した
-        // (新たな文章生成・AI呼び出しは追加していない)。
-        // 2026/10/8改修: 800字を超える場合は3〜4回の連載に分け、各回に投稿ボタンを付ける
-        // (src/lib/x-serialize.ts)。800字以下ならそのまま1回分として表示される。
-        emailBody += `\n\n${"=".repeat(30)}\n🔓 ロックアップ解除前の振り返り記事(X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮してご利用ください)\n${"=".repeat(30)}\n\n${renderSeriesForEmail(serializeForX(lockupPreRecapText))}`;
-      }
-
-      if (ipoRepostCount > 0) {
-        const { data: repostDrafts } = await supabase
-          .from("x_post_drafts")
-          .select("content")
-          .eq("theme_number", 0)
-          .eq("theme_label", "IPO再掲")
-          .order("created_at", { ascending: false })
-          .limit(ipoRepostCount);
-
-        if (repostDrafts && repostDrafts.length > 0) {
-          // 2026/10/8改修: 他の2箇所と同じく、長文の場合だけ連載化+投稿ボタンを付ける。
-          const repostBody = repostDrafts
-            .map(d => renderSeriesForEmail(serializeForX(d.content)))
-            .join("\n\n" + "─".repeat(20) + "\n\n");
-          emailBody += `\n\n${"=".repeat(30)}\n📌 IPO再掲ドラフト(${ipoRepostCount}件・X・Threadsはそのままコピペ可／Blueskyは300字目安に短縮)\n${"=".repeat(30)}\n\n${repostBody}`;
-        }
-      }
-
-      await notifyAdmin(
-        `大手町発マーケットトレンド 更新通知`,
-        emailBody,
-        failedThemes.length > 0 ? (trendsUpdated ? "warn" : "error") : "info"
-      );
-    } catch (e) {
-      console.error("更新通知メール送信失敗:", e);
     }
 
     return NextResponse.json({

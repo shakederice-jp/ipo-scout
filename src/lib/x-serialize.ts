@@ -24,6 +24,12 @@ function buildPostUrl(text: string): string {
   return `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
 }
 
+// 2026/10/18追加: メール方式のX投稿(src/lib/x-email.ts)から、Xの投稿画面を原稿入力済みで開く
+// リンクを作るために公開する。
+export function xIntentUrl(text: string): string {
+  return buildPostUrl(text.trim());
+}
+
 // メール(HTML)に原稿を表示するときの文字の置き換え(< > & がそのまま入ると表示が崩れるため)
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { runAutoPost, type AutoPostSlot } from "@/lib/x-auto-post";
 
-// 要約(Gemini)+X投稿(twitter-api-v2)を1回のリクエストで行うため、他のcronと同様に余裕を持たせる。
-export const maxDuration = 60;
+// 2026/10/18改修: X API投稿をやめ、メール送信方式に変更した(src/lib/x-auto-post.ts参照)。
+// 1回の実行で、新情報の原稿を1件ずつ要約(Gemini)してメール送信するため、余裕を持たせる。
+export const maxDuration = 120;
 
-// 2026/10/8改修: 投稿時刻の変更(朝7:30/昼11:30/夜21:00)にあわせてスロット名を
-// morning/evening1/evening2 → morning/noon/evening に変更。あわせて、管理画面からの
-// 手動実行時に時間帯ガードを無視する force パラメータを追加した。
-const VALID_SLOTS: AutoPostSlot[] = ["morning", "noon", "evening"];
+// 朝7時の便(morning)・夕17時の便(evening)の2枠。旧「noon(昼枠)」は廃止した。
+// (時間帯ガードも廃止したため、force パラメータは受け付けるが動作は変わらない)
+const VALID_SLOTS: AutoPostSlot[] = ["morning", "evening"];
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const slotParam = searchParams.get("slot");
   if (!slotParam || !VALID_SLOTS.includes(slotParam as AutoPostSlot)) {
     return NextResponse.json(
-      { error: "slotパラメータが不正です(morning / noon / evening のいずれかを指定してください)" },
+      { error: "slotパラメータが不正です(morning / evening のいずれかを指定してください)" },
       { status: 400 }
     );
   }
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const result = await runAutoPost(slotParam as AutoPostSlot, { force });
     return NextResponse.json(result);
   } catch (e: any) {
-    console.error("X自動投稿cronでエラー:", e);
+    console.error("X投稿メールcronでエラー:", e);
     return NextResponse.json({ error: e?.message ?? "unknown error" }, { status: 500 });
   }
 }
