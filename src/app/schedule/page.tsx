@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getCompanies, type CompanyListItem } from "@/lib/get-companies";
 import { todayJst, jpDate, shortDate, priceRangeText, yen, pctText, companySlug } from "@/lib/jp-format";
 import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, JsonLd, C } from "@/components/PageParts";
+import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
 
 // 2026/10/18新設(SEO・GEO対応): 「IPO スケジュール 2026」などで検索する人向けの一覧表ページ。
 // 登録済みの銘柄から自動で作る(銘柄の追加・上場日の更新は、30分以内に手作業なしで反映される)。
@@ -101,6 +102,9 @@ export default async function SchedulePage() {
           : "上場日が決まっている銘柄が登録され次第、ここに一覧で表示します。"}
         {" "}カレンダーで見たい方は<a href="/" style={{ color: C.nav, fontWeight: 700 }}>トップページ</a>をご覧ください。（{jpDate(today)}時点）
       </Lead>
+
+      {/* 2026/10/20追加(案2): 毎週金曜18時の「IPO週報」(無料)の申込みカード */}
+      <WeeklyBriefSignup />
 
       {[...byMonth.entries()].map(([k, list]) => (
         <Card key={k}>

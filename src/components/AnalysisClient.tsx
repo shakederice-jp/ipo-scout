@@ -1,5 +1,6 @@
 "use client";
 import KeyFacts from "@/components/KeyFacts";
+import ThreeMinuteCard from "@/components/ThreeMinuteCard";
 import type { KeyFactsData } from "@/lib/key-facts";
 import {
   RevenueChart, KeyMetricsTable, ShareholdersChart,
@@ -1186,6 +1187,23 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           </div>
         </div>
+
+        {/* 2026/10/20新設(「時間のない資産層」向け・案1): 冒頭に「3分で分かる結論カード」を置く。
+            注目点2つ・注意点1つ・AIの見立てを、登録済みの分析から自動でまとめる(src/components/ThreeMinuteCard.tsx)。
+            有料の中身は、閲覧権(hasAccess)のある人にだけ表示する。 */}
+        <ThreeMinuteCard
+          grade={grade}
+          score={score}
+          summary={analysis.summary}
+          insights={insights as any}
+          axes={allAxesFlat as any}
+          hasAccess={hasAccess}
+          termGrades={{
+            ultra:(analysis as any).ultra_short_grade??null,
+            short:(analysis as any).short_grade??null,
+            long:(analysis as any).long_grade??null,
+          }}
+        />
 
         {/* 2026/10/18新設(SEO・GEO対応): 分析ページの冒頭に「結論1行＋主要数値表」を置く。
             登録済みの情報から自動で作る(src/lib/key-facts.ts)。サーバー側で最初のHTMLに入るので、
