@@ -167,6 +167,8 @@ ${marketNoteBlock}
    業績予想（次期見通し）／配当方針／株主別の具体的な保有比率／流通株式比率の具体的な数値／主幹事証券会社名／類似他社との詳細な比較データ／黒字化・収益化の見込み時期／代表者の同業界での実績年数
    ※このリストは例示であり、他にも実データに記載がなく投資判断上重要と思われる項目があれば追加してよい
 5. 記載がなかった項目が無い場合はmissing_data_pointsを空配列[]にすること
+6. total_score・各グレード・axes_scoresは、上記【実データ】の根拠から、この銘柄について新たに採点すること。【出力形式】に書かれた記号(<…>)や、他の銘柄と同じ並びの数値を、そのまま使うことは禁止。9軸は銘柄の特徴に応じて差をつけ、強みの軸は高く、懸念のある軸は低くすること。全軸を同じ値や、規則的な並びにしないこと
+7. グレードは点数で決める: 80以上=A、65〜79=B、50〜64=C、35〜49=D、34以下=E。total_scoreは9軸の平均を目安に、プラスマイナス5点以内で決める。ultra_short_gradeは float・lockup・timing の平均、short_gradeは valuation・vc_sell・growth の平均、long_gradeは management・unit_econ・competitor の平均から、同じ基準で決める
 
 【出力形式】必ず以下の構造のみで完結させること:
 {
@@ -176,19 +178,20 @@ ${marketNoteBlock}
   "data_confidence": "high（実データあり）/ medium（一部推定）/ low（データ不足）のいずれか",
   "missing_data_points": ["記載がなかった項目1（15字以内、体言止め）", "記載がなかった項目2（15字以内、体言止め）"],
   "ai_summary": "トップページ掲載用・120字以内。この銘柄の最大の魅力・独自ポジション・成長の根拠を核心から語る文章。ですます調",
-  "total_score": 65,
-  "grade": "B",
-  "ultra_short_grade": "B",
-  "short_grade": "C",
-  "long_grade": "B",
+  "total_score": <0〜100の整数。ルール6・7で採点>,
+  "grade": "<A〜Eのいずれか1文字。total_scoreから決める>",
+  "ultra_short_grade": "<A〜Eのいずれか1文字>",
+  "short_grade": "<A〜Eのいずれか1文字>",
+  "long_grade": "<A〜Eのいずれか1文字>",
   "grade_reason": {
     "ultra_short": "超短期（初値〜当日）の判定理由。100字以内。ですます調",
     "short": "短期（1〜3ヶ月）の判定理由。100字以内。ですます調",
     "long": "長期（数年〜）の判定理由。100字以内。ですます調"
   },
   "axes_scores": {
-    "float": 65, "lockup": 60, "timing": 70, "valuation": 55, "vc_sell": 50,
-    "growth": 75, "management": 65, "unit_econ": 60, "competitor": 55
+    "float": <0〜100の整数>, "lockup": <0〜100の整数>, "timing": <0〜100の整数>,
+    "valuation": <0〜100の整数>, "vc_sell": <0〜100の整数>, "growth": <0〜100の整数>,
+    "management": <0〜100の整数>, "unit_econ": <0〜100の整数>, "competitor": <0〜100の整数>
   }
 }
 グレードはA〜Eの5段階（A=強気(上位20%) 〜 E=弱気(下位20%)）`;
@@ -515,7 +518,8 @@ export async function POST(req: NextRequest) {
       const insights = body.insights ?? [];
       const prompt = insightsBeginnerPrompt(insights);
       const msg = await callClaudeWithRetry(prompt);
-      const parsed = repairJson(fromFirstBrace(textOf(msg)));
+      const raw2 = (msg.content[0] as any).text ?? "";
+      const parsed = repairJson('{' + raw2);
       if (!parsed) {
         return NextResponse.json({ error: "parse failed (insights_beginner)" }, { status: 500 });
       }
