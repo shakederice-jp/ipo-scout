@@ -5,6 +5,7 @@ import { notifyAdmin, ADMIN_EMAIL } from "@/lib/notify-admin";
 import { canReadPaidAnalysis } from "@/lib/member-auth";
 import { loadBriefData, hasBriefContent, briefSubject, buildBriefHtml } from "@/lib/weekly-brief";
 import { unsubscribeUrl } from "@/lib/weekly-brief-token";
+import { latestPublishedSlide } from "@/lib/weekly-slides-store";
 
 // 2026/10/20新設(案2): 週刊ブリーフ「IPO週報」を、毎週金曜18時に配信する。
 // 使い方(いずれも Authorization: Bearer <CRON_SECRET> が必要):
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "今週は載せる内容が無いため、送信しませんでした", sent: 0 });
   }
   const subject = briefSubject(data);
+  // 今週号のPDFスライドが公開済みなら、有料会員向けのメールにだけリンクを付ける(2026/10/20追加)
+  const slide = await latestPublishedSlide(supabase).catch(() => null);
+  const slidesUrl = slide && slide.issue_date === data.thisFri ? "https://ipo.finance-tower.com/mypage" : undefined;
 
   // ── プレビュー(送らない) ──
   if (sp.get("preview") === "1") {
@@ -43,7 +47,7 @@ export async function GET(req: NextRequest) {
         from: FROM,
         to: ADMIN_EMAIL,
         subject: `【テスト・${paid ? "有料版" : "無料版"}】${subject}`,
-        html: buildBriefHtml(data, { paid, unsubscribeUrl: "https://ipo.finance-tower.com/mypage" }),
+        html: buildBriefHtml(data, { paid, unsubscribeUrl: "https://ipo.finance-tower.com/mypage", slidesUrl: paid ? slidesUrl : undefined }),
       });
     }
     return NextResponse.json({ success: true, test: true, sentTo: ADMIN_EMAIL });
@@ -82,7 +86,7 @@ export async function GET(req: NextRequest) {
         from: FROM,
         to: email,
         subject,
-        html: buildBriefHtml(data, { paid, unsubscribeUrl: unsubscribeUrl(id) }),
+        html: buildBriefHtml(data, { paid, unsubscribeUrl: unsubscribeUrl(id), slidesUrl }),
       });
       if (error) { failed++; console.error("IPO週報の送信エラー:", error); } else { sent++; }
     } catch (e) {

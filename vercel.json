@@ -1,6 +1,7 @@
 {
   "crons": [
     {"path": "/api/cron/notify", "schedule": "0 9 * * 5"},
+    {"path": "/api/cron/weekly-slides", "schedule": "0 6 * * 5"},
     {"path": "/api/cron/weekly-brief", "schedule": "0 9 * * 5"},
     {"path": "/api/cron/db-check", "schedule": "0 1 * * 1"},
     {"path": "/api/cron/market-snapshot", "schedule": "0 23 * * 0"},

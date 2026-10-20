@@ -43,3 +43,9 @@ export function canReadPaidAnalysis(profile: { plan?: string | null; free_until?
   if (profile.plan && PAID_ANALYSIS_PLANS.includes(profile.plan)) return true;
   return isFreeUntilActive(profile.free_until);
 }
+
+// 2026/10/20追加(案2): 週刊PDFスライドを読めるか。いまは有料分析ページと同じ条件。
+// プランの見直し(3プラン化)のときは、ここだけを書き換えれば、スライドの閲覧条件が変わる。
+export function canReadWeeklySlides(profile: { plan?: string | null; free_until?: string | null } | null | undefined): boolean {
+  return canReadPaidAnalysis(profile);
+}

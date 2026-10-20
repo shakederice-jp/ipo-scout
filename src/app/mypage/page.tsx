@@ -4,6 +4,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut, TrendingUp, Trash2 } from "lucide-react";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
+import WeeklySlidesList from "@/components/WeeklySlidesList";
 
 const PRIMARY = "#66c3c6";
 const DARK = "#082b2e";
@@ -485,6 +486,9 @@ export default function MyPage() {
 
         {/* 3.5 IPO週報(2026/10/20新設・案2): 毎週金曜18時の無料メール。受け取る／止めるをここで切り替える */}
         <WeeklyBriefSignup style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
+
+        {/* 3.6 週刊スライド(2026/10/20新設・案2): 公開中のPDFスライド。有料会員だけ開ける */}
+        <WeeklySlidesList style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
 
         {/* 4. 通知設定 */}
         <Section icon={<Bell size={16} />} title="通知設定">

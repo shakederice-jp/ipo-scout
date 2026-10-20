@@ -167,7 +167,8 @@ function gradeTag(grade: string): string {
   return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:${bg};color:${color};font-weight:800;font-size:12px;border:1px solid ${color}">評価 ${esc(grade)}（${esc(GRADE_LABEL[grade] ?? "中立")}）</span>`;
 }
 
-export function buildBriefHtml(d: BriefData, opts: { paid: boolean; unsubscribeUrl: string }): string {
+// slidesUrl: 今週号のPDFスライドが公開済みのとき、有料会員向けのメールにだけ付ける(2026/10/20追加)
+export function buildBriefHtml(d: BriefData, opts: { paid: boolean; unsubscribeUrl: string; slidesUrl?: string }): string {
   const sec = (title: string, body: string) =>
     `<div style="background:white;border:1px solid #b3e8ea;border-radius:12px;padding:16px 18px;margin-bottom:14px">
        <h3 style="margin:0 0 10px;font-size:14px;color:#082b2e">${title}</h3>${body}
@@ -230,6 +231,14 @@ export function buildBriefHtml(d: BriefData, opts: { paid: boolean; unsubscribeU
        ${hasAnalysis(f) ? `<p style="margin:10px 0 0"><a href="${SITE_URL}/analysis/${esc(slug(f))}" style="display:inline-block;padding:9px 20px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">分析レポートを見る →</a></p>` : ""}`);
   }
 
+  const slidesHtml = opts.paid && opts.slidesUrl
+    ? `<div style="background:#e8f9f9;border:1px solid #b3e8ea;border-radius:12px;padding:14px 18px;margin-bottom:14px;text-align:center">
+         <p style="margin:0 0 8px;font-size:13px;color:#082b2e;font-weight:700">📄 今週号のスライド（PDF）を公開しました</p>
+         <p style="margin:0 0 10px;font-size:11px;color:#475569">ログインしたうえで、マイページから読めます。</p>
+         <a href="${esc(opts.slidesUrl)}" style="display:inline-block;padding:9px 20px;background:#0d4f52;color:white;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700">スライドを開く →</a>
+       </div>`
+    : "";
+
   const ctaHtml = `
     <div style="text-align:center;margin:20px 0 6px">
       <a href="${SITE_URL}/" style="display:inline-block;padding:12px 26px;background:#66c3c6;color:#082b2e;text-decoration:none;border-radius:8px;font-weight:800;font-size:13px">📅 IPOカレンダーを見る</a>
@@ -244,7 +253,7 @@ export function buildBriefHtml(d: BriefData, opts: { paid: boolean; unsubscribeU
   </div>
   <div style="background:#f4fbfc;padding:18px 0 0">
     <p style="color:#082b2e;font-size:13px;line-height:1.8;margin:0 0 14px">週末に、来週のIPOの予定と今週の結果を、3分で確認できるようにまとめました。</p>
-    ${pointsHtml}${eventsHtml}${resultsHtml}${featuredHtml}${ctaHtml}
+    ${slidesHtml}${pointsHtml}${eventsHtml}${resultsHtml}${featuredHtml}${ctaHtml}
     <p style="margin:18px 0 0;font-size:10px;color:#94a3b8;line-height:1.8;border-top:1px solid #e2e8f0;padding-top:12px">
       本メールは公開情報の整理を目的としており、投資勧誘ではありません。日程や価格は変更されることがあります。最終的な投資判断は、ご自身の責任でお願いします。<br/>
       このメールは、IPO週報の配信を希望された方へ、毎週金曜日の18時にお送りしています。<br/>
