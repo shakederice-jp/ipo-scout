@@ -5,6 +5,7 @@
 import { todayJst, shortDate, jpDate, yen, priceRangeText, pctText } from "@/lib/jp-format";
 import { loadBriefData } from "@/lib/weekly-brief";
 import { pickTheme } from "@/lib/weekly-slides-themes";
+import { isTrustedScore } from "@/lib/score-template";
 import { generateWithGemini } from "@/lib/gemini";
 import type {
   SlidesData, SlideFeatured, SlideResultRow, SlideScheduleRow, SlideLockupRow,
@@ -51,8 +52,11 @@ function median(xs: number[]): number | null {
 function preListingGrade(c: any): { grade: string | null; score: number | null } {
   const s = c.analysis_summary;
   const g = s?.grade ?? null;
-  const at: string | undefined = s?.generated_at;
+  // 点数を作り直した日(rescored_at)があれば、その日を評価の日とする(上場後に採点し直した評価を「上場前の評価」に入れない)
+  const at: string | undefined = s?.rescored_at ?? s?.generated_at;
   if (!g || !at || !c.listing_date) return { grade: null, score: null };
+  // プロンプトの例の数字のコピーだった評価(2026/10/20に判明した不具合)は使わない
+  if (!isTrustedScore(s)) return { grade: null, score: null };
   if (at.slice(0, 10) >= c.listing_date) return { grade: null, score: null };
   return { grade: g, score: typeof s.total_score === "number" ? s.total_score : null };
 }
