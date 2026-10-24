@@ -243,10 +243,10 @@ export default function WeeklyCalendarView({
       <div style={{ padding: "10px 14px 14px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 8 }}>
           <a href="/mypage#weekly-slides" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
-            📄 この週のスライドを読む（C 完全パックプラン）
+            📄 この週のスライドを読む（C フルパックプラン）
           </a>
           <a href="/mypage#calendar-feed" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
-            🗓️ 予定を自動でカレンダーに登録（C 完全パックプラン）
+            🗓️ 予定を自動でカレンダーに登録（C フルパックプラン）
           </a>
         </div>
         <div style={{ fontSize: 10, color: C.muted, textAlign: "center", lineHeight: 1.7 }}>

@@ -267,7 +267,7 @@ export default async function Home({
             <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:"0 0 12px" }}>
               上場日・BB・申込開始・ロックアップ解除を<strong style={{ color:"#082b2e" }}>前週金曜日18時</strong>にまとめてお届けします。
             </p>
-            {[{ label:"B 分析見放題＋通知プラン", price:"¥3,890/月" }, { label:"C 完全パックプラン", price:"¥4,890/月" }].map(item => (
+            {[{ label:"B 分析見放題＋通知プラン", price:"¥3,890/月" }, { label:"C フルパックプラン", price:"¥4,890/月" }].map(item => (
               <div key={item.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", borderRadius:10, padding:"8px 12px", marginBottom:6, backgroundColor:"#f4fbfc", border:"1px solid #dff3f4" }}>
                 <span style={{ fontSize:11, fontWeight:700, color:"#0d4f52" }}>{item.label}</span>
                 <span style={{ fontSize:11, fontWeight:900, color:"#66c3c6" }}>{item.price}</span>

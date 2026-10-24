@@ -50,7 +50,7 @@ export default function WeeklySlidesList({ style }: { style?: React.CSSPropertie
       ) : (
         <div>
           <p style={{ fontSize: 12, color: "#92400e", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 10px", margin: "0 0 10px" }}>
-            🔒 最新号：{slides[0].issue_label}（C 完全パックプランの会員、または友達紹介の特典期間中の方が読めます）
+            🔒 最新号：{slides[0].issue_label}（C フルパックプランの会員、または友達紹介の特典期間中の方が読めます）
           </p>
           <a href="/plans" style={{ display: "inline-block", padding: "9px 18px", border: `1.5px solid ${PRIMARY}`, color: MID, borderRadius: 8, fontWeight: 900, fontSize: 12, textDecoration: "none" }}>
             プランを見る →

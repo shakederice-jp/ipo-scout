@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { NEXT_COOKIE } from "@/lib/post-login";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,18 @@ export default function AuthPage() {
 
   const handleSubmit = async () => {
     setLoading(true); setError(null); setMessage(null);
+    // パスワードを忘れた場合: 再設定用のメールを送る。メールのリンクを押すと、ログイン状態になって
+    // 新しいパスワードを入れる画面(/auth/reset)へ進む(戻り先は post_auth_next クッキーで覚えておく)
+    if (mode === "forgot") {
+      const addr = email.trim();
+      if (!addr) { setError("メールアドレスを入力してください"); setLoading(false); return; }
+      try { document.cookie = `${NEXT_COOKIE}=${encodeURIComponent("/auth/reset")}; path=/; max-age=3600; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch {}
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${location.origin}/auth/callback` });
+      if (resetError) setError("再設定メールを送れませんでした。しばらくしてからもう一度お試しください。");
+      else setMessage("登録されているメールアドレスの場合は、パスワード再設定用のメールをお送りしました。メール内のリンクから、新しいパスワードを設定してください。");
+      setLoading(false);
+      return;
+    }
     if (mode === "signup") {
       // 2026/9/26改修: 紹介コードは、ここではその人のアカウント情報に預けておくだけにした。
       // 実際の特典の付与は、確認メールのリンクを押してログインが完了した時点で、サーバーが本人を
@@ -112,6 +125,12 @@ export default function AuthPage() {
         </h1>
         <p style={{ margin:"0 0 24px", fontSize:"11px", color:"#2a7a7e" }}>担当：大手町調査室九課</p>
 
+        {mode === "forgot" ? (
+          <div style={{ marginBottom:"20px" }}>
+            <div style={{ fontSize:"15px", fontWeight:"900", color:"#111", marginBottom:"6px" }}>パスワードの再設定</div>
+            <p style={{ fontSize:"12px", color:"#475569", lineHeight:1.8, margin:0 }}>ご登録のメールアドレスを入力してください。再設定用のメールをお送りします。</p>
+          </div>
+        ) : (
         <div style={{ display:"flex", marginBottom:"24px", borderRadius:"8px", overflow:"hidden", border:"1px solid #b3e8ea" }}>
           {(["login", "signup"] as const).map(m => (
             <button key={m} onClick={() => { setMode(m); setError(null); setMessage(null); }}
@@ -122,6 +141,7 @@ export default function AuthPage() {
             </button>
           ))}
         </div>
+        )}
 
         <div style={{ marginBottom:"16px" }}>
           <label style={{ display:"block", fontSize:"12px", fontWeight:"700", color:"#2a7a7e", marginBottom:"6px" }}>メールアドレス</label>
@@ -130,6 +150,7 @@ export default function AuthPage() {
             style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}/>
         </div>
 
+        {mode !== "forgot" && (
         <div style={{ marginBottom:"24px" }}>
           <label style={{ display:"block", fontSize:"12px", fontWeight:"700", color:"#2a7a7e", marginBottom:"6px" }}>パスワード</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
@@ -137,6 +158,15 @@ export default function AuthPage() {
             style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}
           />
         </div>
+        )}
+        {mode === "login" && (
+          <div style={{ textAlign:"right", margin:"-14px 0 20px" }}>
+            <button type="button" onClick={() => { setMode("forgot"); setError(null); setMessage(null); }}
+              style={{ background:"none", border:"none", cursor:"pointer", fontSize:"12px", color:"#2a7a7e", textDecoration:"underline", padding:0 }}>
+              パスワードを忘れた方はこちら
+            </button>
+          </div>
+        )}
 
         {mode === "signup" && (
           <div style={{ marginBottom:"24px" }}>
@@ -158,8 +188,15 @@ export default function AuthPage() {
           style={{ width:"100%", padding:"12px", backgroundColor: loading ? "#b3e8ea" : "#66c3c6",
             color:"white", border:"none", borderRadius:"8px", cursor: loading ? "default" : "pointer",
             fontWeight:"900", fontSize:"14px" }}>
-          {loading ? "処理中..." : mode === "login" ? "ログイン" : "登録する"}
+          {loading ? "処理中..." : mode === "login" ? "ログイン" : mode === "forgot" ? "再設定メールを送る" : "登録する"}
         </button>
+
+        {mode === "forgot" && (
+          <button type="button" onClick={() => { setMode("login"); setError(null); setMessage(null); }}
+            style={{ display:"block", width:"100%", textAlign:"center", marginTop:"14px", background:"none", border:"none", cursor:"pointer", fontSize:"12px", color:"#2a7a7e" }}>
+            ← ログインに戻る
+          </button>
+        )}
 
         <a href="/" style={{ display:"block", textAlign:"center", marginTop:"16px", fontSize:"12px", color:"#2a7a7e" }}>
           ← トップへ戻る

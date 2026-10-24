@@ -4,7 +4,7 @@
 //
 // 画面に出すだけのファイルなので、サーバー専用の処理(Stripeなど)は読み込まない。
 // 内部のプラン名(データベースの user_profiles.plan に入る値):
-//   plan_a = A 分析見放題プラン / plan_b = B 分析見放題＋通知プラン / plan_c = C 完全パックプラン(A・Bに週刊スライドと予定の自動登録を加えたもの)
+//   plan_a = A 分析見放題プラン / plan_b = B 分析見放題＋通知プラン / plan_c = C フルパックプラン(A・Bに週刊スライドと予定の自動登録を加えたもの)
 
 export type PlanId = "plan_a" | "plan_b" | "plan_c";
 export type PlanKey = PlanId | "single";
@@ -64,7 +64,7 @@ export const PLAN_CATALOG: Record<PlanId, PlanInfo> = {
   plan_c: {
     id: "plan_c",
     letter: "C",
-    name: "完全パックプラン",
+    name: "フルパックプラン",
     price: "¥4,890",
     period: "/月",
     color: "#0d4f52",
