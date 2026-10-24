@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminRequest } from "@/lib/admin-auth";
+import { isInvestmentCorporation } from "@/lib/edinet";
 
 // 2026/8/31追記: Skyfall(625A)がEDINET自動検出のスキャン窓(直近5日)を過ぎて
 // 見落とされたまま二度と自動登録されない不具合が発覚したことを受けて新設。
@@ -43,6 +44,14 @@ export async function POST(req: NextRequest) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) {
       return NextResponse.json({ error: "会社名を入力してください" }, { status: 400 });
+    }
+
+    // 2026/10/24追加: 投資法人(J-REIT・インフラファンド等)は、当サービスの対象外
+    if (isInvestmentCorporation(name)) {
+      return NextResponse.json(
+        { error: `「${name}」は投資法人(J-REIT等)のため登録できません。当サービスは株式のIPOだけを対象にしています。` },
+        { status: 400 }
+      );
     }
 
     const supabase = getSupabase();

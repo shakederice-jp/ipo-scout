@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isInvestmentCorporation } from "@/lib/edinet";
 
 
 function extractJson(text: string): string {
@@ -52,7 +53,8 @@ ${sourceText}
     const parseText = (parseMsg.content[0] as any).text.replace(/```json|```/g, "").trim();
     const parsedIpos = JSON.parse(parseText);
     const ipos: any[] = Array.isArray(parsedIpos) ? parsedIpos : [];
-    const newIpos = ipos.filter(ipo => !existingTickers.has(ipo.ticker));
+    // 2026/10/24追加: 投資法人(J-REIT等)は対象外。スケジュール表には載っていても取り込まない
+    const newIpos = ipos.filter(ipo => !existingTickers.has(ipo.ticker) && !isInvestmentCorporation(ipo.name));
 
     let added = 0;
     const errors: string[] = [];

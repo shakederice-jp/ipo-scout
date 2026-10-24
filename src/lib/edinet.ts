@@ -48,6 +48,15 @@ export function isSameCompanyName(a: string | null | undefined, b: string | null
   return ALLOWED_EXTRA.has(extra);
 }
 
+// 2026/10/24追加: 投資法人(J-REIT・インフラファンド等)かどうかの判定。
+// 当サービスは株式のIPOだけを対象にする方針のため、投資法人は自動・手動のどの登録経路でも取り込まない。
+// (投資法人の届出書の書類名は「有価証券届出書（内国投資証券）」で、社名は「○○投資法人」。
+//  2026/10にKDX Kolet投資法人(666A)が混入したため、全経路で除外するようにした)
+const INVESTMENT_CORP_PATTERN = /投資法人|投資証券|不動産投資信託|リート|REIT|インフラファンド/i;
+export function isInvestmentCorporation(name?: string | null, docDescription?: string | null): boolean {
+  return INVESTMENT_CORP_PATTERN.test(name ?? "") || INVESTMENT_CORP_PATTERN.test(docDescription ?? "");
+}
+
 // 新規上場時などの株式の有価証券届出書(訂正・投資信託等を除く)
 // 2026/10/6修正: 様式コード(formCode)が "030000" のものだけに絞っていたが、新規公開時の届出書が
 // 別の様式コードで登録されている可能性があるため、書類種別コード(docTypeCode "030" =有価証券届出書)
@@ -61,7 +70,8 @@ export function isNewStockRegistration(doc: any): boolean {
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
     !desc.includes("投資信託") &&
-    !desc.includes("投資法人")
+    !desc.includes("投資法人") &&
+    !isInvestmentCorporation(doc?.filerName, desc)
   );
 }
 

@@ -5,7 +5,7 @@ import { postToX } from "@/lib/post-to-x";
 import { xShortPostLinkHtml } from "@/lib/x-short-link";
 import Anthropic from "@anthropic-ai/sdk";
 import { internalAuthHeaders } from "@/lib/admin-auth";
-import { isSameCompanyName } from "@/lib/edinet";
+import { isSameCompanyName, isInvestmentCorporation } from "@/lib/edinet";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +40,9 @@ function isProspectus(doc: any): boolean {
     desc.includes("有価証券届出書") &&
     !desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投資信託")
+    !desc.includes("投資信託") &&
+    // 2026/10/24追加: 投資法人(J-REIT等・「内国投資証券」)は対象外
+    !isInvestmentCorporation(doc.filerName, desc)
   );
 }
 
@@ -51,7 +53,8 @@ function isCorrectedProspectus(doc: any): boolean {
     desc.includes("有価証券届出書") &&
     desc.includes("訂正") &&
     !desc.includes("受益証券") &&
-    !desc.includes("投資信託")
+    !desc.includes("投資信託") &&
+    !isInvestmentCorporation(doc.filerName, desc)
   );
 }
 
