@@ -17,16 +17,12 @@ const C = {
 // 「一番人気」などのバッジは付けず、3つを同じ扱いで並べる(マイケルさんの方針)。
 type Row = { label: string; value: string; ok: boolean };
 const rowsFor = (o: { reports: string; notify: boolean; slides: boolean; calendar: boolean; single: string }): Row[] => [
-  { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
-  { label: "100万円投資シミュレーション", value: "あり", ok: true },
-  { label: "友達紹介プログラム（分析＋週刊スライドが2ヶ月読み放題）", value: "あり", ok: true },
   { label: "AI分析レポート", value: o.reports, ok: true },
   { label: "カレンダー・メモ機能", value: "あり", ok: true },
   { label: "週次メール通知", value: o.notify ? "あり" : "なし", ok: o.notify },
   { label: "BB・申込・上場日通知", value: o.notify ? "あり" : "なし", ok: o.notify },
   { label: "ロックアップ解除通知", value: o.notify ? "あり" : "なし", ok: o.notify },
-  { label: "週刊スライド（PDF・週1回）", value: o.slides ? "あり" : "なし", ok: o.slides },
-  { label: "予定のカレンダー自動登録", value: o.calendar ? "あり" : "なし", ok: o.calendar },
+  { label: "週刊スライド・予定の自動登録", value: o.slides ? "あり" : "なし", ok: o.slides },
   { label: "シングル購入", value: o.single, ok: true },
 ];
 
@@ -204,15 +200,12 @@ export default function PlansPage() {
                 </thead>
                 <tbody>
                   {[
-                    { label: "お気に入り登録・100万円シミュレーション", values: ["✅", "✅", "✅", "✅"] },
-                    { label: "友達紹介プログラム",   values: ["✅", "✅", "✅", "✅"] },
                     { label: "AI分析レポート",      values: ["月2銘柄", "無制限", "無制限", "無制限"] },
                     { label: "カレンダー・メモ",     values: ["✅", "✅", "✅", "✅"] },
                     { label: "週次メール通知",       values: ["❌", "❌", "✅", "✅"] },
                     { label: "BB・申込・上場日通知", values: ["❌", "❌", "✅", "✅"] },
                     { label: "ロックアップ解除通知", values: ["❌", "❌", "✅", "✅"] },
-                    { label: "週刊スライド（PDF・週1回）", values: ["❌", "❌", "❌", "✅"] },
-                    { label: "予定のカレンダー自動登録", values: ["❌", "❌", "❌", "✅"] },
+                    { label: "週刊スライド・予定の自動登録", values: ["❌", "❌", "❌", "✅"] },
                     { label: "シングル購入",         values: ["¥500/件", "不要", "不要", "不要"] },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: i % 2 === 0 ? "white" : C.light }}>
