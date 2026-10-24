@@ -22,12 +22,12 @@ const rowsFor = (o: { reports: string; notify: boolean; slides: boolean; calenda
   { label: "100万円投資シミュレーション", value: "あり", ok: true },
   { label: "友達紹介プログラム（分析＋週刊スライドが2ヶ月読み放題）", value: "あり", ok: true },
   { label: "AI分析レポート", value: o.reports, ok: true },
+  { label: "カレンダー・メモ機能", value: "あり", ok: true },
   { label: "週次メール通知", value: o.notify ? "あり" : "なし", ok: o.notify },
   { label: "BB・申込・上場日通知", value: o.notify ? "あり" : "なし", ok: o.notify },
   { label: "ロックアップ解除通知", value: o.notify ? "あり" : "なし", ok: o.notify },
   { label: "週刊スライド（PDF・週1回）", value: o.slides ? "あり" : "なし", ok: o.slides },
   { label: "予定のカレンダー自動登録", value: o.calendar ? "あり" : "なし", ok: o.calendar },
-  { label: "カレンダー・メモ機能", value: "あり", ok: true },
   { label: "シングル購入", value: o.single, ok: true },
 ];
 
@@ -69,7 +69,7 @@ const faqs = [
   // 分けて説明する内容に修正(サイト全体のフリー/有料導線見直しの一環)。
   { q: "無料会員に期限はありますか？", a: "ありません。メールアドレスだけで登録でき、期限なく無料でご利用いただけます（お気に入り登録・100万円投資シミュレーション・友達紹介プログラムなど）。なお、分析レポート自体は、毎月最初の2銘柄はログイン・登録不要でどなたでもお読みいただけます。" },
   { q: "「無料会員登録」と「無料で読めるレポート」は何が違いますか？", a: "「無料で読めるレポート」は、毎月最初の2銘柄の分析レポートを指し、ログイン不要でどなたでも閲覧できます。一方「無料会員登録」はメールアドレスでのログインを指し、登録すると3銘柄目以降は読めませんが、代わりにお気に入り登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（有料分析が2ヶ月間読み放題）がご利用いただけるようになります。" },
-  { q: "決済は安全ですか？", a: "はい。世界標準の決済サービス「Stripe」を使用しています。カード情報は当サービスでは保持しません。" },
+  { q: "決済は安全ですか？", a: "はい。世界標準の決済サービス「Stripe」を使用しています。カード情報の入力はStripeの専用画面で行い、当サービスでは保持しません。会員登録で取得するのもメールアドレスとパスワードだけです。" },
   { q: "プランの変更はできますか？", a: "はい。マイページからいつでもプランの変更・アップグレードが可能です。" },
   // 2026/10/10: 米国版(ipo-us.finance-tower.com)とのプラン共通化に伴い追加
   { q: "米国版の分析サイトでも使えますか？", a: "はい。料金は日本版と米国版で共通で、プランも共通です。同じメールアドレスで米国版にも登録していただくと、日本版で加入したプラン（A 分析見放題プラン・B 分析見放題＋通知プラン・C フルパックプラン）が米国版でも有効になります。米国版で加入した場合も同様です。解約・変更も両方に反映されます。なおシングルレポートは、購入した銘柄だけが読めます。" },
@@ -144,6 +144,30 @@ export default function PlansPage() {
           ))}
         </div>
 
+        {/* 安心してお申し込みいただくために(2026/10/24新設・日米共通の文面) */}
+        <div style={{ marginTop: 24, backgroundColor: "#ecfdf5", border: "2px solid #6ee7b7", borderRadius: 16, padding: "20px 22px" }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: "#065f46", marginBottom: 6 }}>🔒 安心してお申し込みいただくために</div>
+          <p style={{ fontSize: 12, color: "#047857", lineHeight: 1.8, margin: "0 0 14px" }}>
+            情報漏洩のニュースが続く今、「そもそも漏れて困る情報を持たない」ことを基本に、このサイトを作っています。
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
+            {[
+              { t: "カード番号は当サイトに残りません", d: "カード情報の入力は、世界標準の決済サービス「Stripe」の専用画面で行います。当サイトのサーバーを通らず、保存もしません。" },
+              { t: "預かる個人情報は最小限", d: "会員登録で取得するのは、メールアドレスとパスワードだけです。氏名・住所・電話番号はお聞きしません。" },
+              { t: "パスワードは運営者にも見えません", d: "パスワードは、認証サービス「Supabase」が暗号化して管理します。当社が中身を見ることはできません。" },
+              { t: "通信はすべて暗号化", d: "サイトとの通信は常時HTTPS（暗号化通信）で保護しています。" },
+            ].map((s) => (
+              <div key={s.t} style={{ backgroundColor: "white", border: "1px solid #a7f3d0", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#065f46", marginBottom: 4 }}>✅ {s.t}</div>
+                <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>{s.d}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "#64748b", lineHeight: 1.7, margin: "12px 0 0" }}>
+            詳しくは<a href="/privacy" style={{ color: "#047857", fontWeight: 700 }}>プライバシーポリシー</a>をご覧ください。
+          </p>
+        </div>
+
         {/* お申し込みの流れ */}
         <div style={{ marginTop: 24, backgroundColor: "white", border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: C.dark, marginBottom: 10 }}>お申し込みの流れ（約2分）</div>
@@ -185,12 +209,12 @@ export default function PlansPage() {
                     { label: "お気に入り登録・100万円シミュレーション", values: ["✅", "✅", "✅", "✅"] },
                     { label: "友達紹介プログラム",   values: ["✅", "✅", "✅", "✅"] },
                     { label: "AI分析レポート",      values: ["月2銘柄", "無制限", "無制限", "無制限"] },
+                    { label: "カレンダー・メモ",     values: ["✅", "✅", "✅", "✅"] },
                     { label: "週次メール通知",       values: ["❌", "❌", "✅", "✅"] },
                     { label: "BB・申込・上場日通知", values: ["❌", "❌", "✅", "✅"] },
                     { label: "ロックアップ解除通知", values: ["❌", "❌", "✅", "✅"] },
                     { label: "週刊スライド（PDF・週1回）", values: ["❌", "❌", "❌", "✅"] },
                     { label: "予定のカレンダー自動登録", values: ["❌", "❌", "❌", "✅"] },
-                    { label: "カレンダー・メモ",     values: ["✅", "✅", "✅", "✅"] },
                     { label: "シングル購入",         values: ["¥500/件", "不要", "不要", "不要"] },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: i % 2 === 0 ? "white" : C.light }}>
