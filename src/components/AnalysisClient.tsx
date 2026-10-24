@@ -1,6 +1,8 @@
 "use client";
 import KeyFacts from "@/components/KeyFacts";
 import ThreeMinuteCard from "@/components/ThreeMinuteCard";
+import LatestNewsBox from "@/components/LatestNewsBox";
+import type { LatestNewsEntry } from "@/lib/company-news";
 import type { KeyFactsData } from "@/lib/key-facts";
 import {
   RevenueChart, KeyMetricsTable, ShareholdersChart,
@@ -618,11 +620,11 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
           <div style={{backgroundColor:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#92400e"}}>
             {/* 2026/9/12改修: 「ログインが必要」とだけ表示すると、通知機能そのものが
                 有料なのか無料会員登録だけで使えるのかが伝わらなかったため、
-                「登録は無料・実際の配信には通知プランが必要」の2段階を明示する
+                「登録は無料・実際の配信にはB以上のプランが必要」の2段階を明示する
                 文言に変更(サイト全体のフリー/有料導線見直しの一環)。 */}
             {!userId
-              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>通知プラン（¥890/月）</strong>に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
-              : <>通知の配信には<strong>通知プラン（¥890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
+              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>B 分析＋通知プラン（¥3,890/月）</strong>以上に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
+              : <>通知の配信には<strong>B 分析＋通知プラン（¥3,890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
             }
           </div>
         )}
@@ -884,7 +886,7 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
   );
 }
 
-export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert",keyFacts}:{company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner";keyFacts?:KeyFactsData}) {
+export default function AnalysisClient({company,initialAnalysis,visualizationData,allCompanies,hasAccess=true,level="expert",keyFacts,latestNews}:{latestNews?:LatestNewsEntry[];company:IpoCompany;initialAnalysis:Analysis|null;visualizationData?:any;allCompanies?:any[];hasAccess?:boolean;level?:"expert"|"beginner";keyFacts?:KeyFactsData}) {
   const [analysis]=useState<Analysis|null>(initialAnalysis);
   const [scenTab,setScenTab]=useState<"short"|"long">("short");
   const [showNotify,setShowNotify]=useState(false);
@@ -1205,6 +1207,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           }}
         />
 
+        {/* 2026/10/24新設(束D・⑦): 「この銘柄の最新情報」欄。新情報が無い銘柄では表示しない。
+            データは company_news(src/lib/company-news.ts の定期収集)とマーケットトレンドの記事から読む。 */}
+        <LatestNewsBox items={latestNews}/>
+
         {/* 2026/10/18新設(SEO・GEO対応): 分析ページの冒頭に「結論1行＋主要数値表」を置く。
             登録済みの情報から自動で作る(src/lib/key-facts.ts)。サーバー側で最初のHTMLに入るので、
             検索エンジンや生成AIが上場日・公募価格などをそのまま文字として読み取れる。 */}
@@ -1311,15 +1317,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           <div style={{borderRadius:14,padding:"20px",backgroundColor:"#0d4f52",color:"white",textAlign:"center"}}>
             <div style={{fontSize:15,fontWeight:900,marginBottom:6}}>🔒 ここから先は有料コンテンツです</div>
             <p style={{fontSize:12,color:"#a0d4d6",margin:"0 0 14px",lineHeight:1.7}}>
-            軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、レポート無制限プラン以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
+            軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、分析プラン(A)以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
             </p>
             <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:380,margin:"0 auto"}}>
               <PlanButton plan="single" stockId={company.id} label={"この銘柄だけ読む（¥500・買い切り）"}
                 style={{display:"block",width:"100%",padding:"13px 16px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:10,fontWeight:900,fontSize:14,border:"none"}} messageStyle={{color:"#fecaca"}} />
-              <PlanButton plan="report" label={"全銘柄が読み放題（レポート無制限 ¥1,890/月）"}
+              <PlanButton plan="plan_a" label={"全銘柄が読み放題（分析プラン ¥2,890/月）"}
                 style={{display:"block",width:"100%",padding:"12px 16px",backgroundColor:"transparent",color:"#ffffff",borderRadius:10,fontWeight:800,fontSize:13,border:"1.5px solid #66c3c6"}} messageStyle={{color:"#fecaca"}} />
               <a href="/plans" style={{fontSize:12,color:"#a0d4d6",textDecoration:"underline"}}>
-                通知プラン・コンプリートパックなど、全プランを比較する →
+                通知・週刊スライドつきプランも含めて、全プランを比較する →
               </a>
             </div>
             {/* 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 有料の壁にぶつかった
@@ -1338,7 +1344,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               <span style={{fontSize:20}}>🔔</span>
               <div>
                 <div style={{fontWeight:900,fontSize:13,color:"#082b2e"}}>BB開始・上場日・公募価格確定をお知らせ</div>
-                <div style={{fontSize:11,color:"#92400e",marginTop:2}}>通知プランで前週金曜18時に自動配信</div>
+                <div style={{fontSize:11,color:"#92400e",marginTop:2}}>B・Cプランで前週金曜18時に自動配信</div>
               </div>
             </div>
             <button onClick={() => setShowNotify(true)}

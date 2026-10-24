@@ -5,6 +5,7 @@ import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOu
 import { CheckoutButton } from "@/components/CheckoutButton";
 import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
 import WeeklySlidesList from "@/components/WeeklySlidesList";
+import CalendarFeedCard from "@/components/CalendarFeedCard";
 
 const PRIMARY = "#66c3c6";
 const DARK = "#082b2e";
@@ -14,9 +15,12 @@ const BORDER = "#b3e8ea";
 
 const PLAN_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   free:     { label: "無料プラン",           color: "#64748b", bg: "#f1f5f9" },
-  notify:   { label: "通知プラン",           color: "#0369a1", bg: "#eff6ff" },
-  report:   { label: "レポート無制限プラン", color: "#7c3aed", bg: "#f5f3ff" },
-  complete: { label: "コンプリートパック",   color: "#d97706", bg: "#fffbeb" },
+  // 2026/10/24(束A・④): 3プラン化。report / complete は管理者が手で付けた旧名が残っていた場合の表示用。
+  plan_a:   { label: "A 分析プラン",         color: "#0369a1", bg: "#eff6ff" },
+  plan_b:   { label: "B 分析＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
+  plan_c:   { label: "C 総合プラン",         color: "#0d4f52", bg: "#e8f9f9" },
+  report:   { label: "A 分析プラン",         color: "#0369a1", bg: "#eff6ff" },
+  complete: { label: "B 分析＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
 };
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -332,6 +336,13 @@ export default function MyPage() {
               </span>
             } />
           )}
+          {/* 2026/10/24追加(束A・⑤): 紹介特典の終了が近い(14日以内)人に、続けて読む場合のプランを案内する */}
+          {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
+            <div style={{ marginTop: 10, padding: "10px 12px", backgroundColor: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
+              紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC 総合プラン（¥4,890/月）があります。自動で課金されることはありません。
+              <a href="/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
+            </div>
+          )}
 
 <a href="/cancel"
             style={{ display: "block", textAlign: "center", width: "100%", marginTop: 16, padding: "12px", backgroundColor: "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 13, boxSizing: "border-box" }}>
@@ -340,7 +351,7 @@ export default function MyPage() {
 
 <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
-            <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
+            <CheckoutButton availablePlans={["plan_a", "plan_b", "plan_c"]} defaultPlan="plan_c" />
             <p style={{ fontSize: 11, color: "#64748b", marginTop: 10, lineHeight: 1.6 }}>
               💡 特定の1銘柄だけ読みたい場合は、各銘柄の分析ページから「シングルレポートを購入」できます。
             </p>
@@ -480,7 +491,7 @@ export default function MyPage() {
           <InfoRow label="招待済み人数" value={`${completedReferrals}名`} />
           <InfoRow label="獲得した読み放題期間" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
-            💡 友達が登録すると、あなたと友達の両方が<strong>有料分析を2ヶ月間読み放題</strong>になります（<strong>先着100名限定</strong>・予告なく終了する場合があります）
+            💡 友達が登録すると、あなたと友達の両方が<strong>有料分析と週刊スライドを2ヶ月間読み放題</strong>になります（通知・予定の自動登録は対象外）（<strong>先着100名限定</strong>・予告なく終了する場合があります）
           </div>
         </Section>
 
@@ -488,7 +499,12 @@ export default function MyPage() {
         <WeeklyBriefSignup style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
 
         {/* 3.6 週刊スライド(2026/10/20新設・案2): 公開中のPDFスライド。有料会員だけ開ける */}
+        <div id="weekly-slides" />
         <WeeklySlidesList style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
+
+        {/* 3.7 予定の自動登録(2026/10/24新設・束A①): カレンダー購読リンク。Cプランの会員だけ */}
+        <div id="calendar-feed" />
+        <CalendarFeedCard style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
 
         {/* 4. 通知設定 */}
         <Section icon={<Bell size={16} />} title="通知設定">

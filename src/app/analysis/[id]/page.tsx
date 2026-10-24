@@ -2,6 +2,7 @@ import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, cre
 export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
+import { getLatestNews } from "@/lib/company-news";
 import { getVerifiedUser, getServiceSupabase, canReadPaidAnalysis } from "@/lib/member-auth";
 import { syncPlanForUser } from "@/lib/plan-sync";
 import { toClientCompany } from "@/lib/client-company";
@@ -186,6 +187,8 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   // データに含まれてしまっていた問題の修正。詳細は src/lib/client-company.ts)。
   // long_term_strength を無料ユーザーに送らない従来の処理もこの中に含めている。
   const companyForClient = toClientCompany(co, hasAccess);
+  // 2026/10/24追加(束D・⑦): 「この銘柄の最新情報」欄のデータ(取得に失敗しても分析ページは表示する)
+  const latestNews = await getLatestNews(company.id, 5).catch(() => []);
 
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
@@ -272,6 +275,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
         allCompanies={allCompanies as any[]}
         hasAccess={hasAccess}
         keyFacts={keyFacts}
+        latestNews={latestNews}
       />
     </>
   );

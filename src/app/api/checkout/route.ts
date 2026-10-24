@@ -8,10 +8,11 @@ import { OWN_APP, isPaidPlan, syncPlanForUser } from "@/lib/plan-sync";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const PRICE_MAP: Record<string, string | undefined> = {
-  notify:   process.env.STRIPE_PRICE_NOTIFY,
-  report:   process.env.STRIPE_PRICE_REPORT,
-  complete: process.env.STRIPE_PRICE_COMPLETE,
-  single:   process.env.STRIPE_PRICE_SINGLE,
+  // 2026/10/24(束A・④): 3プラン化。Vercelの環境変数 STRIPE_PRICE_A / B / C にPrice IDを入れる
+  plan_a: process.env.STRIPE_PRICE_A,
+  plan_b: process.env.STRIPE_PRICE_B,
+  plan_c: process.env.STRIPE_PRICE_C,
+  single: process.env.STRIPE_PRICE_SINGLE,
 };
 
 export async function POST(req: NextRequest) {
@@ -30,9 +31,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body    = await req.json() as { plan?: string; stockId?: string | null };
-    const plan    = body.plan    ?? "complete";
+    const plan    = body.plan    ?? "plan_c";
     const stockId = body.stockId ?? "";
-    const priceId = PRICE_MAP[plan];
+    const priceId = Object.prototype.hasOwnProperty.call(PRICE_MAP, plan) ? PRICE_MAP[plan] : undefined;
     if (!priceId) {
       return NextResponse.json({ error: `プラン「${plan}」の料金IDが未設定です` }, { status: 500 });
     }

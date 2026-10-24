@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { headers } from "next/headers";
-import { OWN_APP, applyPlan, bestPlanForCustomer } from "@/lib/plan-sync";
+import { OWN_APP, applyPlan, bestPlanForCustomer, PURCHASABLE_PLANS, type PaidPlan } from "@/lib/plan-sync";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "user_id,company_id" }
       );
-    } else if (plan === "notify" || plan === "report" || plan === "complete") {
+    } else if (PURCHASABLE_PLANS.includes(plan as PaidPlan)) {
       // サブスク購入 → user_profiles のプランを更新
       await applyPlan(userId, {
         plan,

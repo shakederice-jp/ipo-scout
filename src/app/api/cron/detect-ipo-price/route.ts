@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
-import { fetchDailyBars } from "@/lib/yahoo-price";
+import { fetchDailyBars, isAutoPriceSupported } from "@/lib/yahoo-price";
 
 export const maxDuration = 60;
 
@@ -34,9 +34,9 @@ export async function GET(req: NextRequest) {
   // 上場日に最初についた取引価格(いわゆる「初値」)そのものではない
   // (寄り付き後の値動きにより異なることがある)。管理者向け表示・通知文言も
   // 「上場日終値」で統一する。
-  const { data: targets, error } = await supabase
+  const { data: allTargets, error } = await supabase
     .from("ipo_companies")
-    .select("id, name, ticker, listing_date, ipo_price, initial_price")
+    .select("id, name, ticker, listing_date, ipo_price, initial_price, exchange")
     .lte("listing_date", today)
     .is("initial_price", null)
     .not("ticker", "is", null);
@@ -45,8 +45,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!targets || targets.length === 0) {
-    return NextResponse.json({ message: "上場日終値未取得銘柄なし", updated: 0 });
+  // 2026/10/24(⑩): 名証・福証・札証のみに上場している銘柄(例: かがやきHD 624A)は、Yahoo Financeで
+  // 株価を取得できない。自動取得の対象から外し、毎回「取得失敗」にならないようにする。
+  // 上場日終値は、管理画面の「初値・騰落率入力」で手入力する。手入力が要る銘柄は、毎週月曜(日本時間)にだけ知らせる。
+  const targets = (allTargets ?? []).filter((c: any) => isAutoPriceSupported(c.exchange));
+  const manualNeeded = (allTargets ?? []).filter((c: any) => !isAutoPriceSupported(c.exchange));
+  const isMondayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCDay() === 1;
+  if (manualNeeded.length > 0 && isMondayJst) {
+    try {
+      await notifyAdmin(
+        "初値(上場日終値)の手入力が必要な銘柄があります(週1回のお知らせ)",
+        [
+          "次の銘柄は、東証以外(名証・福証・札証)のみに上場しているため、株価を自動取得できません。",
+          "管理画面の「初値・騰落率入力」から、上場日終値を手入力してください。",
+          "",
+          ...manualNeeded.map((c: any) => "・" + c.name + "(" + c.ticker + "・" + (c.exchange ?? "市場不明") + ")"),
+        ].join("\n"),
+        "info"
+      );
+    } catch (e) {
+      console.error("初値手入力のお知らせに失敗:", e);
+    }
+  }
+
+  if (targets.length === 0) {
+    return NextResponse.json({ message: "上場日終値未取得銘柄なし", updated: 0, manualNeeded: manualNeeded.length });
   }
 
   const results: string[] = [];
@@ -97,6 +120,7 @@ export async function GET(req: NextRequest) {
     success: true,
     updated: updatedCount,
     results,
+    manualNeeded: manualNeeded.length,
     fetched_at: new Date().toISOString(),
   });
 }

@@ -13,12 +13,18 @@
 //      同じく本人確認済みの状態でこの処理を行う)
 //  3. 条件: メール確認済み・登録から14日以内の新しいアカウント・自分のコードではない・まだ紹介特典を
 //     使っていない。紹介の記録(referral_logs)を先に保存でき、その後で無料期間を付与する。
-//  4. 無料期間(user_profiles.free_until)中は、プラン未加入でも有料の分析ページを読める
-//     (src/lib/member-auth.ts の canReadPaidAnalysis)。
+//  4. 無料期間(user_profiles.free_until)中は、プラン未加入でも有料の分析ページと週刊スライドを読める
+//     (src/lib/member-auth.ts の canReadPaidAnalysis・canReadWeeklySlides)。通知・予定の自動登録は対象外。
 import type { User } from "@supabase/supabase-js";
 import { getServiceSupabase } from "@/lib/member-auth";
 
 export const REFERRAL_FREE_MONTHS = 2;
+
+// 2026/10/24(束A・⑤): 運営(大手町調査室九課)の公式の紹介コード。キャンペーンの申込みページ(/campaign)経由の登録に自動で使う。
+// ・このコードで登録した人は、通常の紹介と同じく2ヶ月の特典(有料分析＋週刊スライド)を受ける。
+// ・運営側のアカウントには特典(無料期間・紹介人数)を付けない(運営は元から全部読めるため)。紹介の記録(referral_logs)は残す。
+// ・このコードは、マイケルさんのアカウント(user_profiles.referral_code)に設定しておく(SQLは束Aの案内を参照)。
+export const OFFICIAL_REFERRAL_CODE = "OTEMACHI9";
 const NEW_ACCOUNT_DAYS = 14;
 
 export type ReferralResult =
@@ -81,14 +87,16 @@ export async function applyReferral(user: User, rawCode: unknown): Promise<Refer
     .from("user_profiles")
     .upsert({ id: user.id, free_until: addMonthsFrom(me?.free_until, REFERRAL_FREE_MONTHS) }, { onConflict: "id" });
 
-  // 紹介した人
-  await admin
-    .from("user_profiles")
-    .update({
-      free_until: addMonthsFrom(referrer.free_until, REFERRAL_FREE_MONTHS),
-      referral_count: (referrer.referral_count ?? 0) + 1,
-    })
-    .eq("id", referrer.id);
+  // 紹介した人(運営の公式コードの場合は、運営側に特典を付けない)
+  if (code !== OFFICIAL_REFERRAL_CODE) {
+    await admin
+      .from("user_profiles")
+      .update({
+        free_until: addMonthsFrom(referrer.free_until, REFERRAL_FREE_MONTHS),
+        referral_count: (referrer.referral_count ?? 0) + 1,
+      })
+      .eq("id", referrer.id);
+  }
 
   return { ok: true };
 }

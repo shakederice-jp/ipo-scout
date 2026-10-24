@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVerifiedUser, getServiceSupabase } from '@/lib/member-auth';
+import { getVerifiedUser, getServiceSupabase, canUseNotifications } from '@/lib/member-auth';
 
 // 通知設定(銘柄ごと・全体)の取得・保存・削除。
 // 2026/9/26修正: 以前はブラウザから送られてきた user_id をそのまま信じて読み書きしていたため、
@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
   const supabase = getServiceSupabase();
 
   const { data: profile } = await supabase.from('user_profiles').select('plan, email').eq('id', user.id).single();
-  const allowedPlans = ['notify', 'report', 'complete'];
-  if (!profile || !allowedPlans.includes(profile.plan ?? '')) {
-    return NextResponse.json({ error: 'この機能は通知プラン以上でご利用いただけます。', needsPlan: true }, { status: 403 });
+  // 2026/10/24(束A): 通知を使えるのは B(分析＋通知)・C(総合) プラン
+  if (!profile || !canUseNotifications(profile)) {
+    return NextResponse.json({ error: 'この機能は、分析＋通知プラン(B)以上でご利用いただけます。', needsPlan: true }, { status: 403 });
   }
 
   const { error } = await supabase.from('notification_settings').upsert({

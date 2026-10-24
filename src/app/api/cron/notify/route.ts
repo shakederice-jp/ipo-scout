@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { notifyAdmin } from '@/lib/notify-admin';
 import { buildBlurbs } from '@/lib/email-blurb';
 import { postToX } from '@/lib/post-to-x';
-import { xPostLinkHtml } from '@/lib/x-serialize';
+import { xShortPostLinkHtml } from '@/lib/x-short-link';
 
 export const maxDuration = 60;
 
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       // 2026/10/11追加: 失敗しても手動で投稿できるよう、投稿予定だった原稿と「この原稿で投稿する」リンクを添える
       await notifyAdmin(
         "X自動投稿失敗",
-        `エラー: ${xResult.error}\n\n▼ 投稿予定だった原稿\n\n${xText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}\n\n${xPostLinkHtml(xText)}`,
+        `エラー: ${xResult.error}\n\n▼ 投稿予定だった原稿\n\n${xText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}\n\n${await xShortPostLinkHtml(xText, { kind: "週次ツイート", title: "翌週のIPOスケジュール" })}`,
         "warn"
       );
     }

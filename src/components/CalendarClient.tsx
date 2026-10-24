@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import WeeklyCalendarView from "@/components/WeeklyCalendarView";
 
 type Company = {
   id: string;
@@ -14,6 +15,8 @@ type Company = {
   listing_date_confirmed?: boolean | null;
   ai_summary?: string | null;
   is_free?: boolean;
+  bb_start_date?: string | null;     // 2026/10/24追加(束C): 週間表示で使う
+  apply_start_date?: string | null;   // 同上
   lockup_90_date?: string | null;
   lockup_180_date?: string | null;
   initial_price?: number | null;
@@ -103,6 +106,9 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
   const [pnlInput,  setPnlInput]    = useState("");
   const [saving, setSaving]         = useState(false);
   const [modalOpen, setModalOpen]   = useState(false);
+  // 2026/10/24追加(束C・⑥): 「月 / 週」の表示切替。月間の日付を押すと、その日を含む週の表示に切り替わる。
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
+  const [weekAnchor, setWeekAnchor] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/companies")
@@ -121,7 +127,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
         if (Array.isArray(data)) {
           const map: Record<string, CalendarNote> = {};
           data.forEach((n: CalendarNote) => { map[n.note_date] = n; });
-          setNotes(map);
+          setNotes(prev => ({ ...prev, ...map }));
         }
       })
       .catch(() => {});
@@ -131,6 +137,29 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
       .then(data => { if (Array.isArray(data)) setEvents(data); })
       .catch(() => {});
   }, [year, month]);
+
+  // 週間表示から呼ばれる: 指定された月のメモを読み込み、すでにあるメモに足す
+  const loadNotesForMonths = (months: string[]) => {
+    months.forEach(m => {
+      fetch(`/api/calendar-notes?month=${m}`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const map: Record<string, CalendarNote> = {};
+            data.forEach((n: CalendarNote) => { map[n.note_date] = n; });
+            setNotes(prev => ({ ...prev, ...map }));
+          }
+        })
+        .catch(() => {});
+    });
+  };
+  // 日付を押したら、その日を含む週の表示に切り替える(下の一覧も同じ月に合わせる)
+  const openWeekFor = (dateStr: string) => {
+    setWeekAnchor(dateStr);
+    setYear(parseInt(dateStr.slice(0, 4)));
+    setMonth(parseInt(dateStr.slice(5, 7)) - 1);
+    setViewMode("week");
+  };
 
   const toDateStr = (d: number) =>
     `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -333,6 +362,33 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
       {/* ── メインレイアウト ── */}
       <div style={{ maxWidth:900, margin:"0 auto", padding:"16px 12px" }}>
         <div>
+          {/* 2026/10/24追加(束C・⑥): 月 / 週 の切替タブ */}
+          <div style={{ display:"flex", gap:4, backgroundColor:"#e8f9f9", borderRadius:20, padding:3, marginBottom:10, width:"fit-content" }}>
+            {([["month","月間"],["week","週間"]] as const).map(([k, label]) => (
+              <button key={k}
+                onClick={() => {
+                  if (k === "week" && !weekAnchor) {
+                    const t = new Date();
+                    const ds = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+                    openWeekFor(ds);
+                  } else setViewMode(k);
+                }}
+                style={{ fontSize:13, fontWeight: viewMode===k ? 800 : 500, color: viewMode===k ? "#ffffff" : C.nav, backgroundColor: viewMode===k ? C.nav : "transparent", border:"none", borderRadius:16, padding:"6px 18px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {viewMode === "week" ? (
+            <WeeklyCalendarView
+              companies={companies}
+              level={level}
+              anchorDate={weekAnchor}
+              notes={notes}
+              onLoadNotes={loadNotesForMonths}
+              onOpenMemo={openModal}
+              onBackToMonth={() => setViewMode("month")}
+            />
+          ) : (
           <div style={{ backgroundColor:C.white, borderRadius:16, border:`1px solid ${C.border}`, marginBottom:20, overflow:"hidden" }}>
 
             {/* ヘッダー：月移動 */}
@@ -368,7 +424,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
 
                 return (
                   <div key={day}
-                    onClick={() => openModal(dateStr)}
+                    onClick={() => openWeekFor(dateStr)}
                     style={{ minHeight:60, padding:"4px 2px", borderRadius:8, backgroundColor: isToday ? C.tealLt : "transparent", border: isToday ? `1px solid ${C.teal}` : "1px solid transparent", cursor:"pointer", transition:"background .15s" }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = isToday ? C.tealLt : "#f5fefe")}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = isToday ? C.tealLt : "transparent")}
@@ -424,7 +480,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
             {/* フッター：凡例 */}
             <div style={{ padding:"8px 16px 12px", borderTop:`1px solid ${C.border}` }}>
               <div style={{ fontSize:10, color:C.muted, marginBottom:6, textAlign:"center" }}>
-                日付をタップ → メモ・損益を記録｜番号をタップ → 銘柄へジャンプ
+                日付をタップ → その週の予定表へ｜番号をタップ → 銘柄へジャンプ
               </div>
               <div style={{ display:"flex", flexWrap:"wrap", gap:4, justifyContent:"center" }}>
                 {Object.entries(EVENT_STYLE).map(([type, s]) => (
@@ -436,6 +492,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* ── ロックアップ解除アラート一覧（60日以内に解除を迎える銘柄） ── */}
@@ -451,7 +508,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                 const dd = new Date(a.date);
                 const near = a.days <= 30;
                 return (
-                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.ticker || a.company.id}/beginner` : `/analysis/${a.company.ticker || a.company.id}`} style={{
+                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.id}/beginner` : `/analysis/${a.company.id}`} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
                     padding:"10px 12px", borderRadius:10, textDecoration:"none",
                     backgroundColor: near ? "#fef2f2" : "#f8fafc",
@@ -502,7 +559,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                   一文を追加(サイト全体のフリー/有料導線見直しの一環)。 */}
               <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:0 }}>
                 {lang === "ja"
-                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます（ログイン不要）。特定銘柄だけをピックアップして読む場合は¥500です。また、すべてコミコミの<strong style={{ color:"#082b2e" }}>コンプリートパック</strong>もあります。無料会員登録（ログインのみ・課金不要）をすると、気になる銘柄のお気に入り登録・100万円投資シミュレーション・友達紹介特典（2ヶ月無料）もご利用いただけます。</>
+                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます（ログイン不要）。特定銘柄だけをピックアップして読む場合は¥500です。また、分析・通知・週刊スライドがそろった<strong style={{ color:"#082b2e" }}>C 総合プラン</strong>もあります。無料会員登録（ログインのみ・課金不要）をすると、気になる銘柄のお気に入り登録・100万円投資シミュレーション・友達紹介特典（2ヶ月無料）もご利用いただけます。</>
                   : <>The first <strong style={{ color:"#082b2e" }}>2 IPO reports each month are completely free</strong> (no login required). Single reports are ¥500. A <strong style={{ color:"#082b2e" }}>Complete Pack</strong> with all features is also available. Free member registration (login only, no charge) also unlocks favorites, the ¥1M investment simulation, and referral rewards.</>
                 }
               </p>
@@ -619,10 +676,10 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                     </p>
                   )}
                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, flexWrap:"wrap" }}>
-                    <a href={`/analysis/${company.ticker || company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
+                    <a href={`/analysis/${company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
                       {lang === "ja" ? "📖 初心者向け分析" : "📖 Beginner"}
                     </a>
-                    <a href={`/analysis/${company.ticker || company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
+                    <a href={`/analysis/${company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
                       {lang === "ja" ? "🎓 中・上級者向け分析" : "🎓 Expert"}
                     </a>
                   </div>

@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { parseYenToOku } from "./ipo-revenue-chart";
 import { fetchCompetitorFinancials } from "./competitor-financials";
 import { notifyAdmin } from "./notify-admin";
+import { isAutoPriceSupported } from "./yahoo-price";
 
 // 2026/9/2追加: 「②経済指標・イベント速報」テーマで、economic_eventsテーブルに
 // 実績値が保存されていない(日付・種類・ラベルのみ)ため、Claude Haiku + web検索で
@@ -544,7 +545,7 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
 
   const { data: rows, error } = await supabaseForThemes
     .from("ipo_companies")
-    .select("id, name, ticker, sector, listing_date, ipo_price, analysis_summary, price_day2, price_day10, price_month1")
+    .select("id, name, ticker, sector, exchange, listing_date, ipo_price, analysis_summary, price_day2, price_day10, price_month1")
     .not("ticker", "is", null)
     .not("analysis_summary", "is", null)
     .lte("listing_date", todayJst);
@@ -559,6 +560,9 @@ export async function generatePriceCheckpointPost(): Promise<PriceCheckpointResu
   const stale: { co: any; key: CheckpointKey; targetStr: string; lateDays: number }[] = [];
   for (const co of rows) {
     if (!co.listing_date) continue;
+    // 2026/10/24(⑩): 名証・福証・札証のみに上場している銘柄(例: 624A)は、Yahoo Financeで株価を取得できないため、
+    // 答え合わせの対象から外す(毎週の「取得できない」お知らせも出さない)。
+    if (!isAutoPriceSupported(co.exchange)) continue;
     const listingStr = String(co.listing_date).slice(0, 10);
     for (const key of CHECKPOINT_ORDER) {
       if (co[`price_${key}`] != null) continue; // 記録済み。次のチェックポイントへ

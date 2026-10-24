@@ -1,6 +1,16 @@
 // 2026/9/26新設: Yahoo Financeの日足(終値)取得の共通処理(各バッチで同じ処理を別々に書いていたのをまとめた)。
 // 注意: Yahoo Financeは名証単独上場の銘柄(例: かがやきHD 624A)のデータを持っていない
 // (2026/9/26に「.T」「.N」などで確認済み)。そのため名証単独上場の銘柄は株価を自動取得できない。
+// 2026/10/24追記(⑩): 名証・福証・札証にだけ上場している銘柄は、上記のとおり自動取得できない。
+// その銘柄を自動取得の対象から外す(毎回「取得失敗」の通知が出るのを防ぐ)ための判定。
+// exchange は ipo_companies.exchange の値("グロース" "スタンダード" "プライム" "名証ネクスト" "名証メイン" "福証" "札証" "未確認" など)。
+// 空欄・「未確認」は、取得を試す側(true)に倒す。
+export function isAutoPriceSupported(exchange?: string | null): boolean {
+  const ex = String(exchange ?? "").trim();
+  if (!ex) return true;
+  return !/^(名証|福証|札証)|名古屋|福岡|札幌|アンビシャス|Q-?Board/i.test(ex);
+}
+
 export type DailyBar = { date: string; close: number }; // date は日本時間の YYYY-MM-DD
 
 async function fetchChart(symbol: string, range: string): Promise<DailyBar[]> {

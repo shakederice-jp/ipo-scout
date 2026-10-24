@@ -6,7 +6,8 @@
 //    （戻り先のURLに ?buy=プラン名 を付けて、戻ったときにこのボタンが自動で動く）
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
-export type PlanKey = "notify" | "report" | "complete" | "single";
+import type { PlanKey } from "@/lib/plan-catalog";
+export type { PlanKey };
 
 const DEFAULT_MESSAGE_STYLE: CSSProperties = {
   fontSize: 12, color: "#b91c1c", marginTop: 8, lineHeight: 1.6, textAlign: "center",

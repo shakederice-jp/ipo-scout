@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   try {
     const r = await generateWeeklySlides(supabase, { force: sp.get("force") === "1", dry: sp.get("dry") === "1" });
     if (sp.get("dry") === "1") {
-      return NextResponse.json({ ok: r.ok, message: r.message, pages: r.pages, expectedPages: r.expectedPages, issues: r.issues, commentary: r.data?.commentary, points: r.data?.points });
+      return NextResponse.json({ ok: r.ok, message: r.message, pages: r.pages, expectedPages: r.expectedPages, issues: r.issues, headline: r.data?.headline, bullets: r.data?.bullets, companies: r.data?.companies?.map((c) => `${c.name}(${c.grade ?? "評価なし"}/${c.score ?? "-"})`), market: r.data ? { toneLabel: r.data.market.toneLabel, avg: r.data.market.avg, n: r.data.market.n } : undefined, hasTrack: !!r.data?.track });
     }
     if (r.row && r.row.status === "pending" && r.message.startsWith("作成しました")) {
       const view = `${SITE_URL}/api/admin/weekly-slides?id=${r.row.id}&action=view`;

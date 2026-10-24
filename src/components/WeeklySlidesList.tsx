@@ -26,7 +26,7 @@ export default function WeeklySlidesList({ style }: { style?: React.CSSPropertie
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
         <span style={{ fontSize: 16 }}>📄</span>
         <span style={{ fontWeight: 900, fontSize: 15, color: DARK }}>週刊スライド（PDF）</span>
-        <span style={{ fontSize: 10, fontWeight: 900, color: MID, backgroundColor: LIGHT, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "2px 8px" }}>有料会員向け</span>
+        <span style={{ fontSize: 10, fontWeight: 900, color: MID, backgroundColor: LIGHT, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "2px 8px" }}>Cプラン・紹介特典の方</span>
       </div>
       <p style={{ fontSize: 12, color: "#475569", lineHeight: 1.9, margin: "0 0 12px" }}>
         来週の予定・直近の初値の地合い・AI評価の答え合わせ・注目銘柄の9軸スコアを、横向きのスライド（PDF）にまとめています。毎週金曜に公開します。
@@ -50,7 +50,7 @@ export default function WeeklySlidesList({ style }: { style?: React.CSSPropertie
       ) : (
         <div>
           <p style={{ fontSize: 12, color: "#92400e", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 10px", margin: "0 0 10px" }}>
-            🔒 最新号：{slides[0].issue_label}（有料プランの会員の方が読めます）
+            🔒 最新号：{slides[0].issue_label}（C 総合プランの会員、または友達紹介の特典期間中の方が読めます）
           </p>
           <a href="/plans" style={{ display: "inline-block", padding: "9px 18px", border: `1.5px solid ${PRIMARY}`, color: MID, borderRadius: 8, fontWeight: 900, fontSize: 12, textDecoration: "none" }}>
             プランを見る →

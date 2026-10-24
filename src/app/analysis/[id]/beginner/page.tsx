@@ -2,10 +2,10 @@ import { fetchIpoCompanyById, fetchIpoCompanies, createSupabaseServerClient, cre
 export const dynamic = "force-dynamic";
 import { createClient } from "@supabase/supabase-js";
 import AnalysisClient from "@/components/AnalysisClient";
+import { getLatestNews } from "@/lib/company-news";
 import { getVerifiedUser, getServiceSupabase, canReadPaidAnalysis } from "@/lib/member-auth";
 import { syncPlanForUser } from "@/lib/plan-sync";
 import { toClientCompany } from "@/lib/client-company";
-import { buildKeyFacts } from "@/lib/key-facts";
 import { notFound } from "next/navigation";
 
 async function fetchCompany(id: string) {
@@ -67,10 +67,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const ticker = (data as any).ticker;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}/beginner`;
-  // 2026/10/18改修(SEO対応): 初心者向けページは、通常版(/analysis/コード)と同じ銘柄・同じ数字を
-  // 別の言い回しで見せるページ。検索エンジンに「どちらが本体か」を伝えるため、canonical(正規URL)を
-  // 通常版にした。ページ自体は従来どおり開けるので、ヘッダーの切替ボタンなどは今までどおり使える。
-  const canonicalUrl = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
   return {
     title,
     description: summary.slice(0, 150),
@@ -87,7 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title, description: summary.slice(0, 150),
       images: ["https://ipo.finance-tower.com/ogp.png"],
     },
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: url },
   };
 }
 
@@ -147,6 +143,8 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
   // データに含まれてしまっていた問題の修正。詳細は src/lib/client-company.ts)。
   // long_term_strength を無料ユーザーに送らない従来の処理もこの中に含めている。
   const companyForClient = toClientCompany(co, hasAccess);
+  // 2026/10/24追加(束D・⑦): 「この銘柄の最新情報」欄のデータ(取得に失敗しても分析ページは表示する)
+  const latestNews = await getLatestNews(company.id, 5).catch(() => []);
 
   if (hasAccess && !isFreeCompany && userId) {
     try {
@@ -163,13 +161,6 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
 
-  const hasAnalysis = !!(analysisSummary || co.analysis_detail);
-  const keyFacts = buildKeyFacts(co, {
-    underwriter: co.analysis_market?.lead_underwriter || null,
-    grade: hasAnalysis ? (analysisSummary?.grade ?? co.analysis_detail?.grade ?? null) : null,
-    score: hasAnalysis ? (analysisSummary?.total_score ?? co.analysis_detail?.total_score ?? null) : null,
-  });
-
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -180,13 +171,11 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
       "name": "大手町調査室九課",
       "url": "https://ipo.finance-tower.com",
     },
-    "datePublished": analysisSummary?.generated_at ?? company.listing_date ?? new Date().toISOString(),
-    // 2026/10/18修正: 以前は常に「今」の時刻を入れており、中身が変わっていなくても「更新した」と
-    // 検索エンジンに伝えていた。実際にAI分析を保存した時刻を使う。
-    "dateModified": analysisSummary?.generated_at ?? company.listing_date ?? new Date().toISOString(),
+    "datePublished": company.listing_date ?? new Date().toISOString(),
+    "dateModified": new Date().toISOString(),
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://ipo.finance-tower.com/analysis/${canonicalId}`,
+      "@id": `https://ipo.finance-tower.com/analysis/${canonicalId}/beginner`,
     },
   };
 
@@ -200,7 +189,7 @@ export default async function AnalysisBeginnerPage({ params }: { params: Promise
         allCompanies={allCompanies as any[]}
         hasAccess={hasAccess}
         level="beginner"
-        keyFacts={keyFacts}
+        latestNews={latestNews}
       />
     </>
   );

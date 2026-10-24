@@ -3,48 +3,33 @@
 import { CreditCard, Crown, Bell, BookOpen, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlanButton } from "@/components/PlanButton";
+import { PLAN_CATALOG, PLAN_ORDER, SINGLE_PRICE, SINGLE_LABEL, type PlanKey } from "@/lib/plan-catalog";
 
-type Plan = "notify" | "report" | "complete" | "single";
+// 2026/10/24(束A・④): 3プラン化。名前・金額・説明は src/lib/plan-catalog.ts にまとめた(ここでは表示の並べ方だけ持つ)。
+type Plan = PlanKey;
+
+const ICONS: Record<Plan, React.ReactNode> = {
+  plan_a: <BookOpen className="h-3.5 w-3.5" aria-hidden />,
+  plan_b: <Bell className="h-3.5 w-3.5" aria-hidden />,
+  plan_c: <Crown className="h-3.5 w-3.5" aria-hidden />,
+  single: <Zap className="h-3.5 w-3.5" aria-hidden />,
+};
 
 const PLANS: {
   id: Plan;
   label: string;
   price: string;
-  icon: React.ReactNode;
   description: string;
 }[] = [
-  {
-    id: "notify",
-    label: "通知プラン",
-    price: "¥890/月",
-    icon: <Bell className="h-3.5 w-3.5" aria-hidden />,
-    description: "上場日・BB・申込開始・ロックアップ解除を前週金曜18時にまとめて通知",
-  },
-  {
-    id: "report",
-    label: "レポート無制限",
-    price: "¥1,890/月",
-    icon: <BookOpen className="h-3.5 w-3.5" aria-hidden />,
-    description: "全IPO銘柄の超深度分析が読み放題",
-  },
-  {
-    id: "complete",
-    label: "コンプリートパック",
-    price: "¥2,490/月",
-    icon: <Crown className="h-3.5 w-3.5" aria-hidden />,
-    description: "通知フル＋レポート読み放題・全機能解放",
-  },
-  {
-    id: "single",
-    label: "シングルレポート",
-    price: "¥500/件",
-    icon: <Zap className="h-3.5 w-3.5" aria-hidden />,
-    description: "特定の1銘柄だけ・永続閲覧",
-  },
+  ...PLAN_ORDER.map((id) => {
+    const p = PLAN_CATALOG[id];
+    return { id: id as Plan, label: `${p.letter} ${p.name}`, price: `${p.price}${p.period}`, description: p.summary };
+  }),
+  { id: "single", label: SINGLE_LABEL, price: `${SINGLE_PRICE}/件`, description: "特定の1銘柄だけ・永続閲覧" },
 ];
 
 export function CheckoutButton({
-  defaultPlan = "complete",
+  defaultPlan = "plan_c",
   stockId,
   availablePlans,
 }: {
@@ -70,7 +55,7 @@ export function CheckoutButton({
   return (
     <div className="flex flex-col items-stretch gap-3">
       {/* プラン選択 */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 gap-1.5">
         {visiblePlans.map((plan) => (
           <button
             key={plan.id}
@@ -84,7 +69,7 @@ export function CheckoutButton({
             ].join(" ")}
           >
             <span className="flex items-center gap-1 font-semibold">
-              {plan.icon}
+              {ICONS[plan.id]}
               {plan.label}
             </span>
             <span className="font-bold tracking-wide">{plan.price}</span>

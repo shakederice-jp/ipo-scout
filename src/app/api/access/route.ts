@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const profile = synced ? { ...(profileRow ?? {}), plan: synced } : profileRow;
 
   // 2026/9/26修正: 分析ページ本体(src/app/analysis/[id]/page.tsx)と判定をそろえた。以前は「free以外の
-  // プランなら閲覧可」としていたため、分析レポートを含まない通知プラン(notify)でも閲覧可と判定していた。
+  // プランなら閲覧可」としていたため、分析レポートを含まない旧・通知プラン(notify)でも閲覧可と判定していた。
   // あわせて紹介特典の無料期間中も閲覧可とする(src/lib/member-auth.ts 参照)。
   if (canReadPaidAnalysis(profile)) {
     return NextResponse.json({ access: true, reason: profile?.plan && PAID_ANALYSIS_PLANS.includes(profile.plan) ? "subscription" : "referral_free" });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { Resend } from "resend";
-import { xPostLinkHtml } from "@/lib/x-serialize";
+import { xShortPostLinkHtml } from "@/lib/x-short-link";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
 
   if (featuredItems.length > 0) {
     const now = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-    const emailRows = featuredItems.map((item, i) => {
+    const emailRows = (await Promise.all(featuredItems.map(async (item, i) => {
       return "<div style='margin-bottom:24px;padding:16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0'>"
         + "<div style='font-size:11px;color:#66c3c6;font-weight:700;margin-bottom:6px'>📌 注目ニュース " + (i + 1) + "｜" + item.sector + "</div>"
         + "<div style='font-size:12px;color:#334155;margin-bottom:12px;line-height:1.5'>" + item.title + "</div>"
@@ -162,10 +162,10 @@ export async function GET(req: NextRequest) {
         + "<div style='font-size:10px;color:#a0d4d6;margin-bottom:6px;font-weight:700'>▼ X投稿用（そのままコピペ）</div>"
         + "<div style='font-size:13px;color:white;line-height:1.7;white-space:pre-wrap;'>" + item.tweet + "</div>"
         + "</div>"
-        + "<div style='margin-top:10px;font-size:13px;color:#082b2e'>" + xPostLinkHtml(item.tweet) + "</div>"
+        + "<div style='margin-top:10px;font-size:13px;color:#082b2e'>" + (await xShortPostLinkHtml(item.tweet, { kind: "注目ニュース", title: item.title })) + "</div>"
         + "<div style='margin-top:8px;font-size:11px;color:#94a3b8'>🔗 元記事: <a href='" + item.shortUrl + "' style='color:#66c3c6'>" + item.shortUrl + "</a></div>"
         + "</div>";
-    }).join("");
+    }))).join("");
 
     const emailHtml = "<div style='font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f4fbfc'>"
       + "<div style='background:#0d4f52;padding:16px 24px;border-radius:12px 12px 0 0'>"

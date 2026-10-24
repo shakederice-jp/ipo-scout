@@ -77,6 +77,7 @@ export function RelatedLinks({ current }: { current?: string }) {
     { href: "/results", label: "📊 初値の結果一覧" },
     { href: "/lockup", label: "🔓 ロックアップ解除予定" },
     { href: "/how-to-apply", label: "📝 IPOの申込方法" },
+    { href: "/tax-nisa", label: "💴 税金・NISAの基本" },
     { href: "/glossary", label: "📖 IPO用語集" },
     { href: "/ipo-guide", label: "💡 IPO投資の実践的法則" },
   ].filter((i) => i.href !== current);

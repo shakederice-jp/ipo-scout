@@ -1,32 +1,18 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useApp } from "@/contexts/AppContext";
 
 const C = { nav: "#0d4f52", teal: "#66c3c6" };
 type FontSize = "sm" | "md" | "lg";
-type Level = "beginner" | "expert";
 
 export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { fontSize, setFontSize, lang, setLang, level, setLevel } = useApp();
+  const { fontSize, setFontSize, lang } = useApp();
   const isAnalysis = pathname.startsWith("/analysis/");
 
-  // ヘッダーの初心者/中上級者切替は、サイト全体の「好み」を更新するだけでなく、
-  // 銘柄分析ページを閲覧中であれば、今見ている銘柄の該当バージョンへ
-  // その場で移動する(例: /analysis/1234 ⇔ /analysis/1234/beginner)
-  const handleLevelChange = (l: Level) => {
-    setLevel(l);
-    if (isAnalysis) {
-      const segments = pathname.split("/").filter(Boolean); // ["analysis","<id>"] または ["analysis","<id>","beginner"]
-      const id = segments[1];
-      if (id) {
-        const target = l === "beginner" ? `/analysis/${id}/beginner` : `/analysis/${id}`;
-        if (target !== pathname) router.push(target);
-      }
-    }
-  };
+  // 2026/10/24改修(束C): ヘッダーは「ロゴ＋文字サイズ(A A A)」だけにした。
+  // 初心者/中上級者の切替・料金/購入・トレンドへの入口は、全ページ共通のフッターへ移した(Footer.tsx / FooterLevelSwitch.tsx)。
 
   const crumbs = isAnalysis ? [
     { label: lang === "ja" ? "トップ" : "Top", href: "/", link: true },
@@ -35,10 +21,6 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
 
   return (
     <header style={{ backgroundColor: C.nav, position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-      <style>{`
-        .hdr-buy-short { display: none; }
-        @media (max-width: 560px) { .hdr-buy-long { display: none; } .hdr-buy-short { display: inline; } }
-      `}</style>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 44 }}>
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>📊</span>
@@ -53,22 +35,6 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 4px" }}>
-            {([
-              { key: "beginner" as Level, label: "📖" },
-              { key: "expert" as Level, label: "🎓" },
-            ]).map((opt) => (
-              <button key={opt.key} onClick={() => handleLevelChange(opt.key)}
-                title={opt.key === "beginner" ? "初心者向け表示" : "中・上級者向け表示"}
-                style={{
-                  fontSize: 13,
-                  fontWeight: level === opt.key ? 700 : 400,
-                  color: level === opt.key ? C.teal : "#a0d4d6",
-                  background: "none", border: "none", cursor: "pointer", padding: "2px 6px", borderRadius: 4,
-                  backgroundColor: level === opt.key ? "rgba(102,195,198,0.2)" : "transparent",
-                }}>{opt.label}</button>
-            ))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 4px" }}>
           {(["sm", "md", "lg"] as FontSize[]).map((s) => (
               <button key={s} onClick={() => setFontSize(s)} style={{
                 fontSize: s === "sm" ? 13 : s === "md" ? 15 : 17,
@@ -79,20 +45,7 @@ export default function AppHeader({ slot }: { slot?: React.ReactNode }) {
               }}>A</button>
             ))}
           </div>
-          <Link href="/plans" style={{
-            fontSize: 11, fontWeight: 800, color: "#ffffff", whiteSpace: "nowrap",
-            backgroundColor: "#f59e0b", border: "1px solid #d97706",
-            borderRadius: 6, padding: "3px 8px", cursor: "pointer", textDecoration: "none",
-          }}>
-            <span className="hdr-buy-long">💳 料金・購入</span>
-            <span className="hdr-buy-short">💳 購入</span>
-          </Link>
-          <Link href="/trends" style={{
-            fontSize: 11, fontWeight: 600, color: "#66c3c6",
-            backgroundColor: "rgba(102,195,198,0.15)", border: "1px solid rgba(102,195,198,0.3)",
-            borderRadius: 6, padding: "3px 8px", cursor: "pointer", textDecoration: "none",
-          }}>📡 トレンド</Link>
-                 </div>
+        </div>
       </div>
       {crumbs.length > 0 && (
         <div style={{ backgroundColor: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(102,195,198,0.15)" }}>

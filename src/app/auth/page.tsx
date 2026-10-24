@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { NEXT_COOKIE, safeNext } from "@/lib/post-login";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -11,25 +10,27 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refCode, setRefCode] = useState("");
-  // 購入ボタンなどから来た場合の戻り先（ログイン・登録のあとに、元の画面へ戻して決済に進むため）
-  const [next, setNext] = useState<string | null>(null);
 
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const n = safeNext(new URLSearchParams(window.location.search).get("next"));
-      if (n) {
-        setNext(n);
-        // 購入ボタンから来た人は、まだ会員でない可能性が高いので「新規登録」を先に見せる
-        if (n.includes("buy=")) setMode("signup");
-      }
       // 2026/9/6修正: 紹介リンクはトップページ(/?ref=コード)に案内する作りのため、
       // トップページ等を見てから登録画面に来た場合はURLに?refが付いていない。
       // その場合は、ReferralCapture.tsx がlayout側で保存しておいたコードを
       // localStorageから拾う(URL側にあれば従来通りそちらを優先)。
       const urlRef = new URLSearchParams(window.location.search).get("ref");
-      if (urlRef) {
+      // 2026/10/24(束A・⑤): 運営の公式コード(/campaign経由)の場合は、友達の紹介コードがすでに預かってあればそちらを優先する
+      let friendCode: string | null = null;
+      if (urlRef && urlRef.trim().toUpperCase() === "OTEMACHI9") {
+        try {
+          const old = JSON.parse(localStorage.getItem("pendingReferralCode") ?? "null");
+          if (old?.code && String(old.code).trim().toUpperCase() !== "OTEMACHI9" && Date.now() - Number(old.savedAt ?? 0) < 30 * 86400000) friendCode = String(old.code);
+        } catch {}
+      }
+      if (friendCode) {
+        setRefCode(friendCode);
+      } else if (urlRef) {
         setRefCode(urlRef);
       } else {
         try {
@@ -54,9 +55,6 @@ export default function AuthPage() {
       // 確認してから行う(src/lib/referral.ts・src/app/auth/callback/route.ts)。以前はここから会員IDを
       // 送って即時に付与していたため、架空のIDで特典を何度でも発生させられる問題があった。
       const pendingCode = refCode.trim().toUpperCase();
-      if (next) {
-        try { document.cookie = `${NEXT_COOKIE}=${encodeURIComponent(next)}; path=/; max-age=3600; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch {}
-      }
       const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
@@ -89,7 +87,7 @@ export default function AuthPage() {
           referralNote = " 紹介コードを受け付けました。メール内のリンクから登録を完了すると、あなたと紹介者様の有料分析が2ヶ月間読み放題になります。";
         }
       }
-      setMessage(`確認メールを送信しました。メールをご確認ください。${next?.includes("buy=") ? " メール内のリンクを押すと、自動でお支払い画面に進みます。" : ""}${referralNote}`);
+      setMessage(`確認メールを送信しました。メールをご確認ください。${referralNote}`);
     }
     } else {
       const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -100,7 +98,7 @@ export default function AuthPage() {
         if ((signInData?.user?.user_metadata as any)?.pending_referral_code) {
           try { await fetch("/api/referral", { method: "POST" }); } catch {}
         }
-        location.href = next ?? "/";
+        location.href = "/";
       }
     }
     setLoading(false);
@@ -113,12 +111,6 @@ export default function AuthPage() {
           📊 IPO企業情報AI分析レポート
         </h1>
         <p style={{ margin:"0 0 24px", fontSize:"11px", color:"#2a7a7e" }}>担当：大手町調査室九課</p>
-
-        {next?.includes("buy=") && (
-          <div style={{ marginBottom:"16px", padding:"10px 12px", borderRadius:"8px", backgroundColor:"#fffbeb", border:"1px solid #fde68a", fontSize:"12px", color:"#92400e", lineHeight:1.7 }}>
-            🔒 お申し込みには、会員登録（無料）またはログインが必要です。完了すると、自動でお支払い画面に進みます。<br/>すでに会員の方は「ログイン」を押してください。
-          </div>
-        )}
 
         <div style={{ display:"flex", marginBottom:"24px", borderRadius:"8px", overflow:"hidden", border:"1px solid #b3e8ea" }}>
           {(["login", "signup"] as const).map(m => (

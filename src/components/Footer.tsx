@@ -10,6 +10,8 @@
 // という典型的なflexboxの罠)。対応として、表示するリンクを主要な3つ
 // (特定商取引法に基づく表記・プライバシーポリシー・お問い合わせ)に絞り、
 // 各リンクにwhiteSpace:"nowrap"を指定して文字単位の折り返しを防いだ。
+import FooterLevelSwitch from "@/components/FooterLevelSwitch";
+
 export default function Footer() {
   return (
     <footer style={{ borderTop: "1px solid #b3e8ea", backgroundColor: "white", padding: "24px 16px", textAlign: "center" as const }}>
@@ -18,10 +20,14 @@ export default function Footer() {
           全ページ共通フッターに置くことで、どのページからでも主要ページへ1クリックで
           移動できるようにした。折り返し対策は既存の3リンク行と同じ方針
           (flexWrap+各リンクにwhiteSpace:nowrap)を踏襲。 */}
+      {/* 2026/10/24改修(束C・⑨): ヘッダーから移した入口。表示の切替(📖/🎓)・料金と購入・トレンド。 */}
+      <FooterLevelSwitch />
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 10, marginBottom: 14 }}>
+        <a href="/plans" style={{ fontSize: 12, fontWeight: 800, color: "#ffffff", backgroundColor: "#f59e0b", border: "1px solid #d97706", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>💳 料金・購入</a>
+        <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📡 トレンド</a>
+      </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 14 }}>
         <a href="/" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ホーム</a>
-        <a href="/plans" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>料金プラン</a>
-        <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>トレンド記事</a>
         <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
         {/* 2026/10/18新設(SEO対応): 新設ページへの内部リンク。全ページ共通のフッターに置くことで、
             どのページからでも1クリックで到達でき、検索エンジンにも各ページの存在が伝わりやすくなる。 */}
@@ -29,6 +35,8 @@ export default function Footer() {
         <a href="/results" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>初値の結果</a>
         <a href="/lockup" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ロックアップ解除</a>
         <a href="/how-to-apply" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPOの申込方法</a>
+        {/* 2026/10/24新設(束C・③): 税金・NISAの無料解説ページ */}
+        <a href="/tax-nisa" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>税金・NISA</a>
         <a href="/glossary" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPO用語集</a>
         {/* 2026/9/14新設: E-E-A-T対策として新設した「運営者について・分析手法について」ページへの
             導線。法的表記の行(下)ではなく、この主要リンク行に置くことで信頼性シグナルとしての

@@ -1,15 +1,35 @@
 import type { Metadata } from "next";
-import { PlanButton, type PlanKey } from "@/components/PlanButton";
+import { PlanButton } from "@/components/PlanButton";
+import { PLAN_CATALOG, PLAN_ORDER, SINGLE_PRICE } from "@/lib/plan-catalog";
 
 export const metadata: Metadata = {
   title: "料金プラン｜大手町調査室九課",
-  description: "IPO企業情報AI分析レポートの料金プラン一覧。無料会員・通知プラン・レポート無制限・コンプリートパックの4プランをご用意。",
+  description: "IPO企業情報AI分析レポートの料金プラン一覧。無料会員のほか、有料は分析プラン(A)・分析＋通知プラン(B)・総合プラン(C・週刊スライドつき)の3つをご用意。",
 };
 
 const C = {
   teal: "#66c3c6", nav: "#0d4f52", dark: "#082b2e",
   light: "#f0fafa", border: "#b3e8ea", mid: "#2a7a7e",
 };
+
+// 2026/10/24(束A・④): 通知プラン(¥890)・レポート無制限(¥1,890)・コンプリートパック(¥2,490)を廃止し、
+// A 分析プラン / B 分析＋通知プラン / C 総合プラン の3つにした。名前・金額は src/lib/plan-catalog.ts で管理。
+// 「一番人気」などのバッジは付けず、3つを同じ扱いで並べる(マイケルさんの方針)。
+type Row = { label: string; value: string; ok: boolean };
+const rowsFor = (o: { reports: string; notify: boolean; slides: boolean; calendar: boolean; single: string }): Row[] => [
+  { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
+  { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
+  { label: "100万円投資シミュレーション", value: "あり", ok: true },
+  { label: "友達紹介プログラム（分析＋週刊スライドが2ヶ月読み放題）", value: "あり", ok: true },
+  { label: "AI分析レポート", value: o.reports, ok: true },
+  { label: "週次メール通知", value: o.notify ? "あり" : "なし", ok: o.notify },
+  { label: "BB・申込・上場日通知", value: o.notify ? "あり" : "なし", ok: o.notify },
+  { label: "ロックアップ解除通知", value: o.notify ? "あり" : "なし", ok: o.notify },
+  { label: "週刊スライド（PDF・週1回）", value: o.slides ? "あり" : "なし", ok: o.slides },
+  { label: "予定のカレンダー自動登録", value: o.calendar ? "あり" : "なし", ok: o.calendar },
+  { label: "カレンダー・メモ機能", value: "あり", ok: true },
+  { label: "シングル購入", value: o.single, ok: true },
+];
 
 const plans = [
   {
@@ -23,97 +43,24 @@ const plans = [
     color: "#64748b",
     bg: "#f8fafc",
     border: "#e2e8f0",
-    badge: null,
     target: "まずIPO投資を始めてみたい方・月2銘柄で十分な方",
-    features: [
-      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
-      // 2026/9/12追加: お気に入り登録・100万円投資シミュレーション・友達紹介は、
-      // 課金の有無にかかわらずログイン(無料会員登録)さえすれば全プラン共通で
-      // 使える機能であることを明示(サイト全体のフリー/有料導線見直しの一環)。
-      { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
-      { label: "100万円投資シミュレーション", value: "あり", ok: true },
-      { label: "友達紹介プログラム（有料分析2ヶ月読み放題）", value: "あり", ok: true },
-      { label: "AI分析レポート", value: "月2銘柄", ok: true },
-      { label: "週次メール通知", value: "なし", ok: false },
-      { label: "BB・申込・上場日通知", value: "なし", ok: false },
-      { label: "ロックアップ解除通知", value: "なし", ok: false },
-      { label: "カレンダー・メモ機能", value: "あり", ok: true },
-      { label: "シングル購入", value: "¥500/件", ok: true },
-    ],
+    features: rowsFor({ reports: "月2銘柄", notify: false, slides: false, calendar: false, single: `${SINGLE_PRICE}/件` }),
   },
-  {
-    id: "notify",
-    name: "通知プラン",
-    price: "¥890",
-    period: "/月",
-    color: "#0369a1",
-    bg: "#eff6ff",
-    border: "#bfdbfe",
-    badge: null,
-    target: "BB開始を絶対に見逃したくない方・通知重視の方",
-    features: [
-      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
-      { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
-      { label: "100万円投資シミュレーション", value: "あり", ok: true },
-      { label: "友達紹介プログラム（有料分析2ヶ月読み放題）", value: "あり", ok: true },
-      { label: "AI分析レポート", value: "月2銘柄", ok: true },
-      { label: "週次メール通知", value: "あり", ok: true },
-      { label: "BB・申込・上場日通知", value: "あり", ok: true },
-      { label: "ロックアップ解除通知", value: "あり", ok: true },
-      { label: "カレンダー・メモ機能", value: "あり", ok: true },
-      { label: "シングル購入", value: "¥500/件", ok: true },
-    ],
-  },
-  {
-    id: "unlimited",
-    name: "レポート無制限",
-    price: "¥1,890",
-    period: "/月",
-    color: "#7c3aed",
-    bg: "#f5f3ff",
-    border: "#7c3aed",
-    badge: "🔥 一番人気",
-    target: "毎月すべての銘柄を研究したい方・情報量重視の方",
-    features: [
-      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
-      { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
-      { label: "100万円投資シミュレーション", value: "あり", ok: true },
-      { label: "友達紹介プログラム（有料分析2ヶ月読み放題）", value: "あり", ok: true },
-      { label: "AI分析レポート", value: "無制限", ok: true },
-      { label: "週次メール通知", value: "なし", ok: false },
-      { label: "BB・申込・上場日通知", value: "なし", ok: false },
-      { label: "ロックアップ解除通知", value: "なし", ok: false },
-      { label: "カレンダー・メモ機能", value: "あり", ok: true },
-      { label: "シングル購入", value: "不要", ok: true },
-    ],
-  },
-  {
-    id: "complete",
-    name: "コンプリートパック",
-    price: "¥2,490",
-    period: "/月",
-    color: C.nav,
-    bg: "#e8f9f9",
-    border: C.teal,
-    badge: null,
-    target: "通知も情報も両方欲しい方・IPO投資に本気で取り組む方",
-    features: [
-      { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
-      { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
-      { label: "100万円投資シミュレーション", value: "あり", ok: true },
-      { label: "友達紹介プログラム（有料分析2ヶ月読み放題）", value: "あり", ok: true },
-      { label: "AI分析レポート", value: "無制限", ok: true },
-      { label: "週次メール通知", value: "あり", ok: true },
-      { label: "BB・申込・上場日通知", value: "あり", ok: true },
-      { label: "ロックアップ解除通知", value: "あり", ok: true },
-      { label: "カレンダー・メモ機能", value: "あり", ok: true },
-      { label: "シングル購入", value: "不要", ok: true },
-    ],
-  },
+  ...PLAN_ORDER.map((id) => {
+    const p = PLAN_CATALOG[id];
+    return {
+      id: p.id as string,
+      name: `${p.letter}　${p.name}`,
+      price: p.price,
+      period: p.period,
+      color: p.color,
+      bg: p.bg,
+      border: p.border,
+      target: p.target,
+      features: rowsFor({ reports: "無制限", notify: p.notify, slides: p.slides, calendar: p.calendar, single: "不要" }),
+    };
+  }),
 ];
-
-// 料金ページのプランID → 決済用のプラン名
-const PLAN_KEY: Record<string, PlanKey> = { notify: "notify", unlimited: "report", complete: "complete" };
 
 const faqs = [
   { q: "いつでも解約できますか？", a: "はい。マイページからいつでもキャンセル可能です。解約後は当月末まで引き続きご利用いただけます。" },
@@ -125,7 +72,7 @@ const faqs = [
   { q: "決済は安全ですか？", a: "はい。世界標準の決済サービス「Stripe」を使用しています。カード情報は当サービスでは保持しません。" },
   { q: "プランの変更はできますか？", a: "はい。マイページからいつでもプランの変更・アップグレードが可能です。" },
   // 2026/10/10: 米国版(ipo-us.finance-tower.com)とのプラン共通化に伴い追加
-  { q: "米国版の分析サイトでも使えますか？", a: "はい。料金は日本版と米国版で共通で、プランも共通です。同じメールアドレスで米国版にも登録していただくと、日本版で加入したプラン（通知プラン・レポート無制限・コンプリートパック）が米国版でも有効になります。米国版で加入した場合も同様です。解約・変更も両方に反映されます。なおシングルレポートは、購入した銘柄だけが読めます。" },
+  { q: "米国版の分析サイトでも使えますか？", a: "はい。料金は日本版と米国版で共通で、プランも共通です。同じメールアドレスで米国版にも登録していただくと、日本版で加入したプラン（A 分析プラン・B 分析＋通知プラン・C 総合プラン）が米国版でも有効になります。米国版で加入した場合も同様です。解約・変更も両方に反映されます。なおシングルレポートは、購入した銘柄だけが読めます。" },
   { q: "シングルレポートとは何ですか？", a: "サブスク不要で、気になる1銘柄だけを¥500で購入できるプランです。無料枠の2銘柄以外を読みたい場合にご利用ください。" },
 ];
 
@@ -138,7 +85,7 @@ export default function PlansPage() {
         <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.teal, letterSpacing: "0.1em", marginBottom: 16 }}>PRICING</div>
           <h1 style={{ fontSize: "clamp(24px,4vw,36px)", fontWeight: 900, color: "white", lineHeight: 1.4, marginBottom: 12 }}>
-            あなたのIPO投資スタイルに合わせて<br/>選べる4つのプラン
+            あなたのIPO投資スタイルに合わせて<br/>選べる3つの有料プラン
           </h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.9 }}>
             まずは無料からお試しいただけます。いつでもアップグレード・解約が可能です。
@@ -160,12 +107,7 @@ export default function PlansPage() {
         {/* プランカード */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
           {plans.map(plan => (
-            <div key={plan.id} style={{ backgroundColor: "white", borderRadius: 20, border: `2px solid ${plan.border}`, overflow: "hidden", boxShadow: plan.badge ? `0 4px 24px ${plan.color}33` : "0 2px 8px rgba(0,0,0,0.06)", position: "relative" }}>
-              {plan.badge && (
-                <div style={{ backgroundColor: plan.color, color: "white", fontSize: 11, fontWeight: 900, textAlign: "center", padding: "6px 0" }}>
-                  {plan.badge}
-                </div>
-              )}
+            <div key={plan.id} style={{ backgroundColor: "white", borderRadius: 20, border: `2px solid ${plan.border}`, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", position: "relative" }}>
               <div style={{ backgroundColor: plan.bg, padding: "20px 20px 16px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: plan.color, marginBottom: 6 }}>{plan.name}</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
@@ -188,7 +130,7 @@ export default function PlansPage() {
                 ) : (
                   <>
                     <PlanButton
-                      plan={PLAN_KEY[plan.id]}
+                      plan={plan.id as "plan_a" | "plan_b" | "plan_c"}
                       label="このプランを申し込む →"
                       style={{ display: "block", width: "100%", marginTop: 16, padding: "12px 10px", backgroundColor: plan.color, color: "#ffffff", borderRadius: 10, fontWeight: 900, fontSize: 13, textAlign: "center", border: "none" }}
                     />
@@ -229,7 +171,7 @@ export default function PlansPage() {
                   <tr style={{ backgroundColor: C.nav }}>
                     <th style={{ padding: "14px 16px", textAlign: "left", color: "white", fontWeight: 700, width: "30%" }}>機能</th>
                     {plans.map(p => (
-                      <th key={p.id} style={{ padding: "14px 12px", textAlign: "center", color: p.badge ? C.teal : "rgba(255,255,255,0.8)", fontWeight: p.badge ? 900 : 700, fontSize: 12 }}>
+                      <th key={p.id} style={{ padding: "14px 12px", textAlign: "center", color: "rgba(255,255,255,0.8)", fontWeight: 700, fontSize: 12 }}>
                         {p.name}<br/>
                         <span style={{ fontSize: 14, fontWeight: 900 }}>{p.price}</span>
                         <span style={{ fontSize: 10 }}>{p.period}</span>
@@ -242,12 +184,14 @@ export default function PlansPage() {
                     { label: "投資スタイル別9軸AI分析", values: ["✅", "✅", "✅", "✅"] },
                     { label: "お気に入り登録・100万円シミュレーション", values: ["✅", "✅", "✅", "✅"] },
                     { label: "友達紹介プログラム",   values: ["✅", "✅", "✅", "✅"] },
-                    { label: "AI分析レポート",      values: ["月2銘柄", "月2銘柄", "無制限", "無制限"] },
-                    { label: "週次メール通知",       values: ["❌", "✅", "❌", "✅"] },
-                    { label: "BB・申込・上場日通知", values: ["❌", "✅", "❌", "✅"] },
-                    { label: "ロックアップ解除通知", values: ["❌", "✅", "❌", "✅"] },
+                    { label: "AI分析レポート",      values: ["月2銘柄", "無制限", "無制限", "無制限"] },
+                    { label: "週次メール通知",       values: ["❌", "❌", "✅", "✅"] },
+                    { label: "BB・申込・上場日通知", values: ["❌", "❌", "✅", "✅"] },
+                    { label: "ロックアップ解除通知", values: ["❌", "❌", "✅", "✅"] },
+                    { label: "週刊スライド（PDF・週1回）", values: ["❌", "❌", "❌", "✅"] },
+                    { label: "予定のカレンダー自動登録", values: ["❌", "❌", "❌", "✅"] },
                     { label: "カレンダー・メモ",     values: ["✅", "✅", "✅", "✅"] },
-                    { label: "シングル購入",         values: ["¥500/件", "¥500/件", "不要", "不要"] },
+                    { label: "シングル購入",         values: ["¥500/件", "不要", "不要", "不要"] },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: i % 2 === 0 ? "white" : C.light }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600, color: C.dark, fontSize: 12 }}>{row.label}</td>

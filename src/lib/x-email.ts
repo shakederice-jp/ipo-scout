@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateWithGemini } from "./gemini";
 import { ADMIN_EMAIL, MAIL_FROM, escapeHtml } from "./notify-admin";
 import { xIntentUrl } from "./x-serialize";
+import { appendCampaignTail, createXShortLink } from "./x-short-link";
 
 // ===== 2026/10/18新設: X投稿を「API投稿」から「メール送信方式」に切り替えるための共通部品 =====
 // X API経由の自動投稿は費用がかかるため、投稿用の原稿はすべてマイケルさん宛のメールで届け、
@@ -211,10 +212,15 @@ export interface XEmailItem {
 }
 
 export async function sendXPostEmail(item: XEmailItem): Promise<{ ok: boolean; error?: string }> {
-  const intent = xIntentUrl(item.postText);
-  const count = item.postText.length;
-  const slotLabel = SLOT_LABEL[item.slot];
+  // 2026/10/24(束B): ①原稿の末尾に友達紹介キャンペーンの案内(リンク)を足す ②メールのボタンは、原稿を保存した「短いリンク」(/x/xxxx)にする。
+  //  (長い原稿だと、原稿ごと詰め込んだリンクがGmailで表示されないことがあったため。保存に失敗したら従来の長いリンクを使う)
+  const finalText = appendCampaignTail(item.postText);
   const headline = `${item.kindLabel}｜${item.title}${item.seriesLabel ? `(${item.seriesLabel})` : ""}`;
+  const shortUrl = await createXShortLink({ text: finalText, kind: item.kindLabel, title: `${item.title}${item.seriesLabel ? `(${item.seriesLabel})` : ""}`, imageUrl: item.imageUrl });
+  const intent = xIntentUrl(finalText);
+  const buttonUrl = shortUrl ?? intent;
+  const count = finalText.length;
+  const slotLabel = SLOT_LABEL[item.slot];
   const subject = `【X投稿用】${headline}`;
   const nowJst = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
@@ -235,12 +241,13 @@ export async function sendXPostEmail(item: XEmailItem): Promise<{ ok: boolean; e
       </div>
       <div style="background:white;padding:24px;border-radius:0 0 12px 12px;border:1px solid #b3e8ea">
         ${imageBlock}
-        <div style="font-size:14px;color:#1e293b;line-height:1.9;white-space:pre-wrap;background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">${escapeHtml(item.postText)}</div>
+        <div style="font-size:14px;color:#1e293b;line-height:1.9;white-space:pre-wrap;background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">${escapeHtml(finalText)}</div>
         <p style="margin:6px 0 16px;font-size:11px;color:#94a3b8">${count}文字(リンク・ハッシュタグ込み)</p>
         <div style="text-align:center;margin:8px 0 12px">
-          <a href="${intent}" style="display:inline-block;padding:14px 28px;background:#0f1419;color:white;text-decoration:none;border-radius:999px;font-weight:800;font-size:14px">𝕏 この原稿で投稿する →</a>
+          <a href="${buttonUrl}" style="display:inline-block;padding:14px 28px;background:#0f1419;color:white;text-decoration:none;border-radius:999px;font-weight:800;font-size:14px">${shortUrl ? "𝕏 原稿を開いて投稿する →" : "𝕏 この原稿で投稿する →"}</a>
         </div>
-        <p style="margin:0;font-size:11px;color:#64748b;line-height:1.7;text-align:center">ボタンを押すと、Xの投稿画面が原稿入りで開きます。内容を確認してから投稿してください。</p>
+        <p style="margin:0;font-size:11px;color:#64748b;line-height:1.7;text-align:center">${shortUrl ? "ボタンを押すと、原稿のページが開きます。そこで「コピー」または「𝕏 この原稿で投稿する」を押してください。" : "ボタンを押すと、Xの投稿画面が原稿入りで開きます。内容を確認してから投稿してください。"}</p>
+        ${shortUrl ? `<p style="margin:6px 0 0;font-size:10px;color:#94a3b8;text-align:center"><a href="${intent}" style="color:#94a3b8">Xの投稿画面を直接開く</a>（リンクが長いため、メールによっては表示されないことがあります）</p>` : ""}
         <p style="margin-top:16px;font-size:11px;color:#94a3b8;word-break:break-all">
           リンク先: <a href="${escapeHtml(item.linkUrl)}">${escapeHtml(item.linkUrl)}</a><br/>
           © 大手町調査室九課 自動生成システム

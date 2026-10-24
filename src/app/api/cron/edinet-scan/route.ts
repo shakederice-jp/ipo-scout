@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
 import { postToX } from "@/lib/post-to-x";
-import { xPostLinkHtml } from "@/lib/x-serialize";
+import { xShortPostLinkHtml } from "@/lib/x-short-link";
 import Anthropic from "@anthropic-ai/sdk";
 import { internalAuthHeaders } from "@/lib/admin-auth";
 import { isSameCompanyName } from "@/lib/edinet";
@@ -238,7 +238,7 @@ const { data: edinetCompanyList } = await supabase
                 `業種: ${analysis.sector}\n\n` +
                 `管理画面から①〜⑥のステップを実行して分析を完成させてください。\n` +
                 `https://ipo.finance-tower.com/admin\n\n` +
-                `▼ X速報の原稿(手動で投稿する場合)\n\n${tweetTextHtml}\n\n${xPostLinkHtml(tweetText)}`,
+                `▼ X速報の原稿(手動で投稿する場合)\n\n${tweetTextHtml}\n\n${await xShortPostLinkHtml(tweetText, { kind: "新規IPO発見", title: companyName })}`,
                 "info"
               );
 
@@ -251,7 +251,7 @@ const { data: edinetCompanyList } = await supabase
                   } else {
                     await notifyAdmin(
                       `⚠️ X投稿失敗: ${companyName}`,
-                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}\n\n▼ 投稿予定だった原稿\n\n${tweetTextHtml}\n\n${xPostLinkHtml(tweetText)}`,
+                      `速報ツイートの投稿に失敗しました。\n\nエラー: ${postResult.error}\n\n▼ 投稿予定だった原稿\n\n${tweetTextHtml}\n\n${await xShortPostLinkHtml(tweetText, { kind: "新規IPO発見", title: companyName })}`,
                       "warn"
                     );
                   }

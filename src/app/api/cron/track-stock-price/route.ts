@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyAdmin } from "@/lib/notify-admin";
-import { fetchDailyBars } from "@/lib/yahoo-price";
+import { fetchDailyBars, isAutoPriceSupported } from "@/lib/yahoo-price";
 
 // 2026/9/6新設: 「100万円投資シミュレーション」機能用の日次株価取得バッチ。
 // 上場済み銘柄(ticker設定済み)の株価をYahoo Financeから毎日取得し、
@@ -32,9 +32,9 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
 
   // 上場日を過ぎていてtickerが設定されている銘柄はすべて対象(初値取得済み/未取得を問わない)
-  const { data: targets, error } = await supabase
+  const { data: allTargets, error } = await supabase
     .from("ipo_companies")
-    .select("id, name, ticker, listing_date")
+    .select("id, name, ticker, listing_date, exchange")
     .lte("listing_date", today)
     .not("ticker", "is", null);
 
@@ -42,8 +42,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!targets || targets.length === 0) {
-    return NextResponse.json({ message: "追跡対象銘柄なし", updated: 0 });
+  // 2026/10/24(⑩): 名証・福証・札証のみに上場している銘柄は、Yahoo Financeで株価を取得できないため対象から外す
+  // (毎回「株価取得失敗」になって、失敗が多発の通知が出るのを防ぐ)。
+  const targets = (allTargets ?? []).filter((c: any) => isAutoPriceSupported(c.exchange));
+  const skippedUnsupported = (allTargets ?? []).length - targets.length;
+
+  if (targets.length === 0) {
+    return NextResponse.json({ message: "追跡対象銘柄なし", updated: 0, skippedUnsupported });
   }
 
   const failures: string[] = [];
@@ -90,6 +95,7 @@ export async function GET(req: NextRequest) {
     updated: updatedCount,
     failed: failures.length,
     failures,
+    skippedUnsupported,
     fetched_at: new Date().toISOString(),
   });
 }

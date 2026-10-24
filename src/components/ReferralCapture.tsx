@@ -15,6 +15,14 @@ export default function ReferralCapture() {
     try {
       const urlRef = new URLSearchParams(window.location.search).get("ref");
       if (urlRef && urlRef.trim()) {
+        // 2026/10/24(束A・⑤): 運営の公式コード(キャンペーンページ経由)は、友達の紹介コードがすでに預かってある場合は上書きしない
+        // (友達の紹介を優先し、紹介した友達に特典が付くようにするため)。
+        if (urlRef.trim().toUpperCase() === "OTEMACHI9") {
+          try {
+            const old = JSON.parse(localStorage.getItem("pendingReferralCode") ?? "null");
+            if (old?.code && Date.now() - Number(old.savedAt) < 30 * 86400000) return;
+          } catch {}
+        }
         localStorage.setItem(
           "pendingReferralCode",
           JSON.stringify({ code: urlRef.trim(), savedAt: Date.now() })

@@ -8,7 +8,11 @@
 //    自分のデータベースの user_profiles.plan に反映します。
 //  ・どちらのサイトで加入しても、もう一方のサイトでは「閲覧時（または購入時・マイページ表示時）」に自動反映されます。
 //  ・シングルレポート（単品購入）は共有しません（銘柄が日米で別のため）。
-// 必要な環境変数（日米で同じ値を設定）: STRIPE_SECRET_KEY, STRIPE_PRICE_NOTIFY / STRIPE_PRICE_REPORT / STRIPE_PRICE_COMPLETE
+// 必要な環境変数（日米で同じ値を設定）: STRIPE_SECRET_KEY, STRIPE_PRICE_A / STRIPE_PRICE_B / STRIPE_PRICE_C
+// 2026/10/24(束A・④): 通知プラン(¥890)・レポート無制限(¥1,890)・コンプリートパック(¥2,490)を廃止し、
+//   A 分析プラン ¥2,890 (plan_a) / B 分析＋通知プラン ¥3,890 (plan_b) / C 総合プラン ¥4,890 (plan_c) の3つにした。
+//   旧プランの契約者は0人のため、旧Priceの互換処理は持たない。
+//   ただし、管理者が手で付けた旧プラン名(report / complete)が残っていても閲覧できるよう、判定側(member-auth.ts)では旧名も許可している。
 // =============================================================
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
@@ -16,11 +20,14 @@ import { createClient } from "@supabase/supabase-js";
 /** このアプリが日本版(jp)か米国版(us)か */
 export const OWN_APP: "jp" | "us" = "jp";
 
-export type PaidPlan = "notify" | "report" | "complete";
+export type PaidPlan = "plan_a" | "plan_b" | "plan_c";
+// 購入できる有料プランの名前
+export const PURCHASABLE_PLANS: readonly PaidPlan[] = ["plan_a", "plan_b", "plan_c"];
 // 有料プランの名前。これ以外（"free" や、データベースの初期値 "standard" など）はすべて無料会員として扱う。
-export const PAID_PLANS: readonly string[] = ["notify", "report", "complete"];
+// (旧名 report / complete は、管理者が手で付けたものが残っていても有料扱いにするために含めている)
+export const PAID_PLANS: readonly string[] = ["plan_a", "plan_b", "plan_c", "report", "complete"];
 export const isPaidPlan = (p: string | null | undefined): boolean => !!p && PAID_PLANS.includes(p);
-const RANK: Record<PaidPlan, number> = { notify: 1, report: 2, complete: 3 };
+const RANK: Record<PaidPlan, number> = { plan_a: 1, plan_b: 2, plan_c: 3 };
 const VALID_STATUS = new Set(["active", "trialing", "past_due"]);
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -29,9 +36,9 @@ const getAdmin = () =>
 
 function priceIdToPlan(): Record<string, PaidPlan> {
   const m: Record<string, PaidPlan> = {};
-  if (process.env.STRIPE_PRICE_NOTIFY) m[process.env.STRIPE_PRICE_NOTIFY] = "notify";
-  if (process.env.STRIPE_PRICE_REPORT) m[process.env.STRIPE_PRICE_REPORT] = "report";
-  if (process.env.STRIPE_PRICE_COMPLETE) m[process.env.STRIPE_PRICE_COMPLETE] = "complete";
+  if (process.env.STRIPE_PRICE_A) m[process.env.STRIPE_PRICE_A] = "plan_a";
+  if (process.env.STRIPE_PRICE_B) m[process.env.STRIPE_PRICE_B] = "plan_b";
+  if (process.env.STRIPE_PRICE_C) m[process.env.STRIPE_PRICE_C] = "plan_c";
   return m;
 }
 
@@ -89,7 +96,7 @@ const PAID_TTL_MS = 10 * 60 * 1000;
 
 /**
  * この会員のプランをStripeの契約に合わせて最新にする。
- * 戻り値: 反映後のプラン名（"notify" | "report" | "complete" | "free"）。Stripeに問い合わせできなかった時は null（=変更しない）。
+ * 戻り値: 反映後のプラン名（"plan_a" | "plan_b" | "plan_c" | "free"）。Stripeに問い合わせできなかった時は null（=変更しない）。
  * force=true で間隔制限を無視する（購入直前の確認用）。
  */
 export async function syncPlanForUser(

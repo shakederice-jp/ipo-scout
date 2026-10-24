@@ -3,6 +3,7 @@ import { getCompanies, type CompanyListItem } from "@/lib/get-companies";
 import { todayJst, jpDate, shortDate, priceRangeText, yen, pctText, companySlug } from "@/lib/jp-format";
 import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, JsonLd, C } from "@/components/PageParts";
 import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
+import TrendsLinkCard from "@/components/TrendsLinkCard";
 
 // 2026/10/18新設(SEO・GEO対応): 「IPO スケジュール 2026」などで検索する人向けの一覧表ページ。
 // 登録済みの銘柄から自動で作る(銘柄の追加・上場日の更新は、30分以内に手作業なしで反映される)。
@@ -103,6 +104,15 @@ export default async function SchedulePage() {
         {" "}カレンダーで見たい方は<a href="/" style={{ color: C.nav, fontWeight: 700 }}>トップページ</a>をご覧ください。（{jpDate(today)}時点）
       </Lead>
 
+      {/* 2026/10/24追加(束C・⑨): 無料で読める範囲の案内。読点は1文に1つ以下 */}
+      <div style={{ backgroundColor: "#e8f9f9", border: "1.5px solid #66c3c6", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#0d4f52", lineHeight: 1.8 }}>
+        <strong>毎月2銘柄は無料で読めます。</strong>毎月最初の2銘柄の分析レポートは、登録なしでご覧いただけます。
+        <a href="/plans" style={{ color: C.nav, fontWeight: 800, marginLeft: 6, whiteSpace: "nowrap" }}>プランを見る →</a>
+      </div>
+
+      {/* 2026/10/24追加(束C・⑨): トップページと同じ「マーケットトレンド」カード */}
+      <TrendsLinkCard marginBottom={12} />
+
       {/* 2026/10/20追加(案2): 毎週金曜18時の「IPO週報」(無料)の申込みカード */}
       <WeeklyBriefSignup />
 
@@ -147,6 +157,7 @@ export default async function SchedulePage() {
         <H2>IPOスケジュールの見方</H2>
         <P>表の「仮条件」は、ブックビルディングで申し込む価格の範囲です。「公募価格」は、その結果を受けて決まる購入時の価格です。「BB開始」はブックビルディング（需要申告）の開始日で、「申込開始」は購入申込などの手続きが始まる日です。</P>
         <P>表に「-」とあるのは、まだ発表されていない項目です。発表され次第、自動で表示が更新されます。銘柄名のリンク先では、目論見書をAIが解析した分析レポートを読めます。</P>
+        <P>IPOで利益が出たときの税金やNISAの基本は、<a href="/tax-nisa" style={{ color: C.nav, fontWeight: 700 }}>税金・NISAの解説ページ</a>にまとめています。</P>
       </Card>
 
       <Card>

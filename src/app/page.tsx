@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import TrendsLinkCard from "@/components/TrendsLinkCard";
 import CalendarClient from "@/components/CalendarClient";
 import InstallPwaButton from "@/components/InstallPwaButton";
 import { CheckoutButton } from "@/components/CheckoutButton";
@@ -194,7 +195,7 @@ export default async function Home({
           <a href="/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
             <div>
               <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>📋 料金プランを見る</div>
-              <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥2,490/月・4プラン比較</div>
+              <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥4,890/月・有料3プラン比較</div>
             </div>
             <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
           </a>
@@ -209,7 +210,7 @@ export default async function Home({
               </div>
             </div>
             <div style={{ padding:16, backgroundColor:"white" }}>
-              <CheckoutButton availablePlans={["notify", "report", "complete"]} defaultPlan="notify" />
+              <CheckoutButton availablePlans={["plan_a", "plan_b", "plan_c"]} defaultPlan="plan_c" />
               <p style={{ fontSize:10, color:"#64748b", marginTop:10, lineHeight:1.6 }}>
                 💡 各IPOレポートの単一購入は、各銘柄の分析ページからお申込みいただけます。
               </p>
@@ -217,13 +218,7 @@ export default async function Home({
           </div>
 
           {/* トレンドページへのリンク */}
-          <a href="/trends" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#0d4f52", border:"2px solid #0d4f52", textDecoration:"none" }}>
-            <div>
-              <div style={{ fontSize:13, fontWeight:900, color:"white" }}>📡 大手町発マーケットトレンド</div>
-              <div style={{ fontSize:10, color:"#a0d4d6", marginTop:2 }}>IPO・スタートアップ・資金調達の最新動向</div>
-            </div>
-            <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
-          </a>
+          <TrendsLinkCard />
 
 {/* IPO投資ガイドへのリンク */}
 <a href="/ipo-guide" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#f0fdf4", textDecoration:"none", border:"1.5px solid #22c55e" }}>
@@ -247,9 +242,9 @@ export default async function Home({
 
           {/* 2026/9/6追加: 紹介プログラムがマイページの奥にしかなく気づかれにくかったため、
               トップページからも露出させる導線。マイページの「友達招待プログラム」に遷移する。 */}
-          <a href="/mypage" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
+          <a href="/campaign" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
             <div>
-              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>🎁 友達紹介で有料分析2ヶ月読み放題</div>
+              <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>🎁 友達紹介で有料分析＋週刊スライド2ヶ月読み放題</div>
               <div style={{ fontSize:10, color:"#b91c1c", marginTop:2, fontWeight:700 }}>🎉 先着100名限定キャンペーン実施中</div>
             </div>
             <span style={{ fontSize:16, color:"#dc2626" }}>→</span>
@@ -272,7 +267,7 @@ export default async function Home({
             <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:"0 0 12px" }}>
               上場日・BB・申込開始・ロックアップ解除を<strong style={{ color:"#082b2e" }}>前週金曜日18時</strong>にまとめてお届けします。
             </p>
-            {[{ label:"通知プラン", price:"¥890/月" }, { label:"コンプリートパック", price:"¥2,490/月" }].map(item => (
+            {[{ label:"B 分析＋通知プラン", price:"¥3,890/月" }, { label:"C 総合プラン", price:"¥4,890/月" }].map(item => (
               <div key={item.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", borderRadius:10, padding:"8px 12px", marginBottom:6, backgroundColor:"#f4fbfc", border:"1px solid #dff3f4" }}>
                 <span style={{ fontSize:11, fontWeight:700, color:"#0d4f52" }}>{item.label}</span>
                 <span style={{ fontSize:11, fontWeight:900, color:"#66c3c6" }}>{item.price}</span>
