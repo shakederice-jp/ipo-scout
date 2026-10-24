@@ -17,7 +17,6 @@ const C = {
 // 「一番人気」などのバッジは付けず、3つを同じ扱いで並べる(マイケルさんの方針)。
 type Row = { label: string; value: string; ok: boolean };
 const rowsFor = (o: { reports: string; notify: boolean; slides: boolean; calendar: boolean; single: string }): Row[] => [
-  { label: "投資スタイル別9軸AI分析", value: "あり", ok: true },
   { label: "お気に入り登録（銘柄・記事）", value: "あり", ok: true },
   { label: "100万円投資シミュレーション", value: "あり", ok: true },
   { label: "友達紹介プログラム（分析＋週刊スライドが2ヶ月読み放題）", value: "あり", ok: true },
@@ -205,7 +204,6 @@ export default function PlansPage() {
                 </thead>
                 <tbody>
                   {[
-                    { label: "投資スタイル別9軸AI分析", values: ["✅", "✅", "✅", "✅"] },
                     { label: "お気に入り登録・100万円シミュレーション", values: ["✅", "✅", "✅", "✅"] },
                     { label: "友達紹介プログラム",   values: ["✅", "✅", "✅", "✅"] },
                     { label: "AI分析レポート",      values: ["月2銘柄", "無制限", "無制限", "無制限"] },
