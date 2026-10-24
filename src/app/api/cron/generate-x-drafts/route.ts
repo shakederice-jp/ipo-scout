@@ -106,7 +106,7 @@ export async function GET(request: Request) {
   let trendsUpdated = false;
 
   // 2026/10/18変更: 「新規IPO承認」ドラフト(x_post_drafts)のメール送信は、このcronでは行わなくなった。
-  // X投稿用のメールは、朝7時・夕17時の2回(src/lib/x-auto-post.ts)で、1件につき1通ずつ送る。
+  // X投稿用のメールは、朝6時・夕16時の2回(src/lib/x-auto-post.ts)で、1件につき1通ずつ送る。
   // ドラフトは included_in_digest=false のまま残り、次の便で送られる。
 
   try {
@@ -382,7 +382,7 @@ export async function GET(request: Request) {
     const failedThemes = results.filter((r) => r.status === "failed");
 
     // 2026/10/18変更: 「マーケットトレンドが更新されました」だけの通知メールは廃止した
-    // (内容も本数も分からず役に立たないため)。新しい記事は、朝7時・夕17時の便(src/lib/x-auto-post.ts)で
+    // (内容も本数も分からず役に立たないため)。新しい記事は、朝6時・夕16時の便(src/lib/x-auto-post.ts)で
     // 1本につき1通、タイトル入り・投稿ボタン付きのメールで届く。IPO再掲ドラフトやロックアップ解除前の
     // 振り返り記事も同じ便で個別に届く。ここでは、生成に失敗したテーマがあった場合だけ短く知らせる。
     if (failedThemes.length > 0) {

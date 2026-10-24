@@ -10,7 +10,7 @@ import { appendCampaignTail, createXShortLink } from "./x-short-link";
 // マイケルさんが「この原稿で投稿する」ボタン(Xの投稿画面が原稿入りで開く)から投稿する方式にした。
 // このファイルは、メールの共通の型(件名・本文・投稿ボタン)、投稿文の整形(300〜500字・語りかけ口調)、
 // 投稿文に付けるリンク(銘柄ページ or 関連ページ+utm)を担当する。呼び出し元は
-// src/lib/x-auto-post.ts(朝7時・夕17時の送信)。
+// src/lib/x-auto-post.ts(朝6時・夕16時の送信)。
 //
 // 件数が重なる場合は1通にまとめず、1件につき1通で送る(2026/10/18のご要望)。件名には種類と
 // タイトルを入れ、受信箱で一瞥して内容が分かるようにしてある。
@@ -27,8 +27,8 @@ const supabaseForEmail = createClient(
 export type EmailSlot = "morning" | "evening";
 
 export const SLOT_LABEL: Record<EmailSlot, string> = {
-  morning: "朝7時の便",
-  evening: "夕17時の便",
+  morning: "朝6時の便",
+  evening: "夕16時の便",
 };
 
 // ---------- リンク(X経由と分かる印=utmを付ける) ----------

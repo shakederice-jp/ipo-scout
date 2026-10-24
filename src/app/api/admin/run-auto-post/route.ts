@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 // 2026/9/19追加: 管理画面から、cronの時刻を待たずにX投稿(1日2回・メール送信方式)をその場で1回試すための
 // プロキシ。send-notify/route.tsと同じパターン(追加認証なし・内部でCRON_SECRETを付けて
-// /api/cron/auto-postを叩くだけ)。2026/10/18: メール送信方式に変更し、枠は朝7時・夕17時の2つになった。
+// /api/cron/auto-postを叩くだけ)。2026/10/18: メール送信方式に変更し、枠は朝6時・夕16時の2つになった。
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));

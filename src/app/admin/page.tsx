@@ -1007,14 +1007,14 @@ export default function AdminPage() {
                   </div>
                   <hr style={{ border:"none", borderTop:"1px solid #e2e8f0" }}/>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>📧 X投稿用メール(1日2回・メール送信方式) <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（XへのAPI投稿はしません。マイケルさん宛にメールが届きます。通常: 毎朝7時・毎夕17時に自動実行）</span></div>
+                    <div style={{ fontWeight:700, fontSize:13, color:"#082b2e", marginBottom:2 }}>📧 X投稿用メール(1日2回・メール送信方式) <span style={{ fontSize:10, color:"#94a3b8", marginLeft:6 }}>（XへのAPI投稿はしません。マイケルさん宛にメールが届きます。通常: 平日(月〜金)の朝6時・夕16時に自動実行。土日は配信しません）</span></div>
                     <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>未送信の新情報(新規IPO承認・マーケットトレンド記事など)を、1件につき1通のメールで送ります。新情報が無いときは、連載の続き・IPO用語ワンポイントなどの予備の原稿を1通送ります。メール内の「この原稿で投稿する」ボタンから、Xの投稿画面が原稿入りで開きます。</p>
                     <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
                       <button onClick={()=>handleRunAutoPost("morning")} disabled={!!autoPostLoading} style={btnStyle("#1d9bf0", !!autoPostLoading)}>
-                        {autoPostLoading==="morning"?"送信中...":"朝7時の便をメールで今すぐ送る"}
+                        {autoPostLoading==="morning"?"送信中...":"朝6時の便をメールで今すぐ送る"}
                       </button>
                       <button onClick={()=>handleRunAutoPost("evening")} disabled={!!autoPostLoading} style={btnStyle("#1d9bf0", !!autoPostLoading)}>
-                        {autoPostLoading==="evening"?"送信中...":"夕17時の便をメールで今すぐ送る"}
+                        {autoPostLoading==="evening"?"送信中...":"夕16時の便をメールで今すぐ送る"}
                       </button>
                     </div>
                     <p style={{ fontSize:10, color:"#94a3b8", margin:"6px 0 0" }}>押した時点で未送信の原稿がすべて送られます(送信済みのものは二重には送られません)。cronの実行が遅れても、その時点で未送信のものを必ず送ります。</p>
