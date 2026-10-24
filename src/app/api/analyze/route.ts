@@ -327,6 +327,8 @@ export async function POST(req: NextRequest) {
         scenarios_long:    Array.isArray(r.scenarios_long) ? r.scenarios_long.slice(0,3) : [],
         axes_scores:       r.axes_scores ?? {},
         data_source:       r.data_source ?? "AI",
+        // 2026/10/24追加: 原文との照合(校正)の結果(件数だけ。直した文の中身は管理画面にだけ表示する)
+        proofread:         (r.proofread && typeof r.proofread === "object") ? r.proofread : null,
         sources: [
           { label:"東証新規上場情報", url:"https://www.jpx.co.jp/listing/stocks/new/index.html" },
           { label:"EDINET・有価証券届出書", url:"https://disclosure2.edinet-fsa.go.jp/" },

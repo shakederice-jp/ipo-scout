@@ -64,3 +64,38 @@ export async function generateWithGemini(prompt: string): Promise<string> {
 
   return result.text;
 }
+
+// 2026/10/24追加: 原文(有価証券届出書)との照合(校正)用。JSONで返させる・温度は低め・出力枠は広め。
+// 米国版(ipo-scout-us)の校正の仕組みを、日本版にも入れるために追加した。
+export async function generateJsonWithGemini(prompt: string, maxOutputTokens = 8192): Promise<any> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY が設定されていません");
+
+  const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens,
+        responseMimeType: "application/json",
+      },
+    }),
+    // 呼び出し元(api/admin/proofread)の上限は120秒。Geminiの待ちは90秒までにして、残りでJSON解析・返却に使う
+    signal: AbortSignal.timeout(90000),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini APIエラー: ${res.status} ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts) ? parts.map((p: any) => p?.text ?? "").join("") : "";
+  if (!text) throw new Error("Geminiからテキストが返りませんでした");
+  const t = text.trim();
+  try { return JSON.parse(t); } catch {}
+  const i = t.indexOf("{"), j = t.lastIndexOf("}");
+  if (i !== -1 && j > i) { try { return JSON.parse(t.slice(i, j + 1)); } catch {} }
+  throw new Error("Geminiの返答をJSONとして読めませんでした");
+}

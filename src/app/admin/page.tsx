@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import InitialPriceForm from "@/components/InitialPriceForm";
+import { runProofread, collectFields, applyFields } from "@/lib/proofread";
 
 // 2026/9/26: 以前はここにパスワードを直書きし、ブラウザ内だけでログイン判定していた(開発者ツールで
 // 誰でもパスワードを読めた)。現在はサーバー側で判定する(src/lib/admin-auth.ts・src/proxy.ts 参照)。
@@ -45,6 +46,45 @@ export default function AdminPage() {
   const [edinetDocId, setEdinetDocId] = useState("");
   const [stepLoading, setStepLoading] = useState<Record<string,boolean>>({});
   const [stepResult, setStepResult] = useState<Record<string,string|null>>({});
+  // 2026/10/24追加: 校正(Gemini→Sonnet)で自動で直した内容・「要確認」として残った指摘の中身(STEPごと)。画面で確認できるようにする
+  const [proofDetails, setProofDetails] = useState<Record<string, { unresolved: any[]; changes: any[] }>>({});
+  const renderProofDetails = (key: string) => {
+    const d = proofDetails[key];
+    if (!d || (d.unresolved.length === 0 && d.changes.length === 0)) return null;
+    const kindLabel: Record<string,string> = { contradiction:"原文と食い違い", unsupported:"根拠が見当たらない", overstated:"言い過ぎ" };
+    const actLabel: Record<string,string> = { fix:"原文に合わせて修正", soften:"根拠のない部分をやわらげた", remove:"根拠が示せないため削除" };
+    return (
+      <>
+        {d.changes.length > 0 && (
+          <details style={{ marginTop:6, fontSize:11, lineHeight:1.7, background:"#f0f9ff", border:"1px solid #bae6fd", borderRadius:6, padding:"6px 8px" }}>
+            <summary style={{ cursor:"pointer", fontWeight:700, color:"#075985" }}>AIが自動で直した内容を見る({d.changes.length}件)</summary>
+            {d.changes.map((u:any, i:number) => (
+              <div key={i} style={{ marginTop:6, paddingTop:6, borderTop: i===0 ? "none" : "1px dashed #bae6fd", color:"#0c4a6e", whiteSpace:"pre-wrap" }}>
+                <div><b>{i+1}. {actLabel[u.action] ?? u.action}</b>{u.reason ? `(${u.reason})` : ""}</div>
+                <div style={{ color:"#64748b" }}>直す前: {u.before}</div>
+                <div>直した後: {u.after || "(この文を削除)"}</div>
+              </div>
+            ))}
+          </details>
+        )}
+        {d.unresolved.length > 0 && (
+          <details style={{ marginTop:6, fontSize:11, lineHeight:1.7, background:"#fffbeb", border:"1px solid #fde68a", borderRadius:6, padding:"6px 8px" }}>
+            <summary style={{ cursor:"pointer", fontWeight:700, color:"#92400e" }}>要確認の中身を見る({d.unresolved.length}件)</summary>
+            {d.unresolved.map((u:any, i:number) => (
+              <div key={i} style={{ marginTop:6, paddingTop:6, borderTop: i===0 ? "none" : "1px dashed #fde68a", color:"#78350f", whiteSpace:"pre-wrap" }}>
+                <div><b>{i+1}. {kindLabel[u.kind] ?? u.kind}</b>　「{u.quote}」</div>
+                <div>問題点: {u.problem}</div>
+                {u.source_quote ? <div style={{ color:"#64748b" }}>原文: {u.source_quote}</div> : null}
+              </div>
+            ))}
+          </details>
+        )}
+      </>
+    );
+  };
+  // 「校正だけやり直す」ボタン用の状態(ふだんは使わない)
+  const [redoLoading, setRedoLoading] = useState<string | null>(null);
+  const [redoResult, setRedoResult] = useState<Record<string,string>>({});
   const [vizLoading, setVizLoading] = useState(false);
   const [vizResult, setVizResult] = useState<string | null>(null);
   const [ipoPriceInput, setIpoPriceInput] = useState("");
@@ -187,12 +227,18 @@ export default function AdminPage() {
       }
     } catch { /* 初心者向けリライト失敗は致命的ではないため、通常保存は続行する */ }
 
+    // 2026/10/24追加: 原文(有価証券届出書)との照合。Geminiが間違い候補を挙げ、Sonnetが原文で再確認して書き直す(失敗しても保存は続ける)
+    const pr = await runProofread(selectedCompany.id, collectFields(merged), msg => setStepResult(prev => ({...prev, "4": `⏳ ${msg}`})));
+    applyFields(merged, pr.fields);
+    setProofDetails(prev => ({...prev, "4": { unresolved: pr.unresolved, changes: pr.changes }}));
+    merged.proofread = { checked_at: new Date().toISOString(), fixed: pr.fixed, unresolved_count: pr.unresolved.length, skipped: pr.skipped ?? null }; // 直した文の中身(原文の引用を含む)は公開データに混ぜないため、件数だけ保存する
+    const proofNote = pr.skipped ? `・校正スキップ(${pr.skipped})` : `・校正:修正${pr.fixed}件${pr.unresolved.length ? `／要確認${pr.unresolved.length}件` : ""}`;
     setStepResult(prev => ({...prev, "4": "⏳ 保存中..."}));
     try {
       const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep("4", false, `❌ 保存エラー: ${saveData.error}`); return; }
-      setStep("4", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
+      setStep("4", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク${proofNote}　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
       return;
     } catch { setStep("4", false, "❌ 保存通信エラー"); return; }
   };
@@ -244,14 +290,48 @@ export default function AdminPage() {
       }
       allResults.push({ id:axisId, label:axisLabel, score:axisScore, grade:axisGrade, report:combinedText.trim() });
     }
+    // 2026/10/24追加: 原文との照合(Gemini→Sonnet)。失敗しても保存は続ける
+    const pf: Record<string,string> = {};
+    allResults.forEach((a:any, idx:number) => { if (a.report) pf[`axis${idx}`] = a.report; });
+    const pr = await runProofread(selectedCompany.id, pf, msg => setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${msg}`})));
+    allResults.forEach((a:any, idx:number) => { if (pr.fields[`axis${idx}`]) a.report = pr.fields[`axis${idx}`]; });
+    setProofDetails(prev => ({...prev, [stepNum]: { unresolved: pr.unresolved, changes: pr.changes }}));
+    const proofNote = pr.skipped ? `・校正スキップ(${pr.skipped})` : `・校正:修正${pr.fixed}件${pr.unresolved.length ? `／要確認${pr.unresolved.length}件` : ""}`;
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
       const saveRes = await fetch("/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return false; }
     } catch { setStep(stepNum, false, "❌ 保存通信エラー"); return false; }
-    setStep(stepNum, false, `✅ ${label} 完了（${allResults.map((a:any)=>`${a.id}:${a.grade}`).join("/")}）`);
+    setStep(stepNum, false, `✅ ${label} 完了（${allResults.map((a:any)=>`${a.id}:${a.grade}`).join("/")}）${proofNote}`);
     return true;
+  };
+
+  // 2026/10/24追加: 「校正だけやり直す」。保存済みの分析文(STEP4の文章・9軸の各レポート)に、校正だけをもう一度かける。
+  // 校正がスキップされた銘柄や、あとから原文を直した銘柄に使う(ふだんは押さなくてよい)。
+  const redoProof = async (scope: string, label: string) => {
+    if (!selectedCompany) return;
+    setRedoLoading(scope);
+    setRedoResult(prev => ({...prev, [scope]: `⏳ ${label} 保存済みの文章を読み込み中...`}));
+    const call = async (body: any) => {
+      const res = await fetch("/api/admin/proofread", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ...body }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    };
+    try {
+      const ld = await call({ action:"load", scope });
+      if (!ld.fields || Object.keys(ld.fields).length === 0) { setRedoResult(prev => ({...prev, [scope]: `❌ ${label}: 保存済みの分析文がありません(先に分析を実行してください)`})); return; }
+      const pr = await runProofread(selectedCompany.id, ld.fields, msg => setRedoResult(prev => ({...prev, [scope]: `⏳ ${label} ${msg}`})));
+      if (pr.skipped) { setRedoResult(prev => ({...prev, [scope]: `❌ ${label}: 校正スキップ(${pr.skipped})。もう一度押してください`})); return; }
+      if (pr.fixed > 0) await call({ action:"save", scope, fields: pr.fields });
+      setProofDetails(prev => ({...prev, [`redo-${scope}`]: { unresolved: pr.unresolved, changes: pr.changes }}));
+      setRedoResult(prev => ({...prev, [scope]: `✅ ${label}: 校正完了・修正${pr.fixed}件${pr.fixed > 0 && scope !== "summary" ? "(初心者向けリライトは、STEP 7をやり直すと反映されます)" : ""}`}));
+    } catch (e: any) {
+      setRedoResult(prev => ({...prev, [scope]: `❌ ${label}: ${String(e?.message ?? e).slice(0, 120)}`}));
+    } finally {
+      setRedoLoading(null);
+    }
   };
 
   const handleStep5 = async () => {
@@ -616,6 +696,7 @@ export default function AdminPage() {
           {isLoading?"⏳ 処理中...":isDone?"✅ 完了（再実行）":btnLabel}
         </button>
         {res && <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"6px 8px", borderRadius:6, background:isErr?"#fef2f2":"#f0fdf4", color:isErr?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>{res}</div>}
+        {renderProofDetails(num)}
       </div>
     );
   };
@@ -1138,8 +1219,28 @@ export default function AdminPage() {
                       {allAxesLoading?"⏳ 分析中（しばらくお待ちください）...":"⑤ 9軸を一括分析する"}
                     </button>
                     {["5a","5b","5c"].map(n=>stepResult[n]&&(
-                      <div key={n} style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
-                        {stepResult[n]}
+                      <div key={n}>
+                        <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:stepResult[n]?.startsWith("❌")?"#fef2f2":"#f0fdf4", color:stepResult[n]?.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>
+                          {stepResult[n]}
+                        </div>
+                        {renderProofDetails(n)}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ borderRadius:10, padding:"12px 14px", marginBottom:10, border:"1px dashed #cbd5e1", background:"#f8fafc" }}>
+                    <div style={{ fontWeight:900, color:"#475569", fontSize:13, marginBottom:3 }}>🔍 校正だけやり直す（ふだんは押さなくてOK）</div>
+                    <p style={{ fontSize:11, color:"#64748b", margin:"2px 0 8px", lineHeight:1.7 }}>STEP 4・5の最後に、原文との照合は自動で行われます。「校正スキップ」と表示された銘柄だけ、ここで校正をやり直してください。9軸を直したあとは、STEP 7（初心者向けリライト）もやり直すと反映されます。</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                      {([["summary","STEP4の文章"],["ultra_short","超短期3軸"],["short","短期3軸"],["long","長期3軸"]] as [string,string][]).map(([sc,lb])=>(
+                        <button key={sc} onClick={()=>redoProof(sc, lb)} disabled={!!redoLoading || !selectedCompany} style={btnStyle("#475569", !!redoLoading || !selectedCompany)}>
+                          {redoLoading===sc?"⏳ 校正中...":`${lb}を校正`}
+                        </button>
+                      ))}
+                    </div>
+                    {Object.entries(redoResult).map(([sc,msg])=>(
+                      <div key={sc}>
+                        <div style={{ marginTop:6, fontSize:11, lineHeight:1.7, padding:"4px 8px", borderRadius:6, background:msg.startsWith("❌")?"#fef2f2":"#f0fdf4", color:msg.startsWith("❌")?"#dc2626":"#166534", whiteSpace:"pre-wrap" }}>{msg}</div>
+                        {renderProofDetails(`redo-${sc}`)}
                       </div>
                     ))}
                   </div>

@@ -57,7 +57,14 @@ export default function AuthPage() {
       if (!addr) { setError("メールアドレスを入力してください"); setLoading(false); return; }
       try { document.cookie = `${NEXT_COOKIE}=${encodeURIComponent("/auth/reset")}; path=/; max-age=3600; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch {}
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${location.origin}/auth/callback` });
-      if (resetError) setError("再設定メールを送れませんでした。しばらくしてからもう一度お試しください。");
+      if (resetError) {
+        console.error("resetPasswordForEmail:", resetError.message);
+        // 短時間に続けて送ると、送信回数の上限(Supabaseの設定)に達して断られる
+        const limited = (resetError as any).status === 429 || /rate limit|too many|after \d+ seconds|security purposes/i.test(resetError.message);
+        setError(limited
+          ? "短時間にメールの送信が重なったため、いったん受け付けられませんでした。1時間ほど待ってから、もう一度お試しください。"
+          : "再設定メールを送れませんでした。しばらくしてからもう一度お試しください。");
+      }
       else setMessage("登録されているメールアドレスの場合は、パスワード再設定用のメールをお送りしました。メール内のリンクから、新しいパスワードを設定してください。");
       setLoading(false);
       return;
