@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
 
   const { data: profile } = await supabase.from("user_profiles").select("plan").eq("id", row.user_id).maybeSingle();
   if (!canUseCalendarFeed(profile)) {
-    return new NextResponse("この購読リンクは、C 総合プランの会員向けです。", { status: 403 });
+    return new NextResponse("この購読リンクは、C 完全パックプランの会員向けです。", { status: 403 });
   }
 
   const ics = await buildCalendarIcs(supabase);

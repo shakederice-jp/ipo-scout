@@ -111,7 +111,7 @@ export default function GuidePage() {
               { step: "01", icon: "🗓️", title: "カレンダーで上場スケジュールを確認", body: "毎月のIPO銘柄をカレンダー形式で一覧表示。BB開始日・申込開始日・上場日が一目でわかります。気になる銘柄の番号をタップするとそのまま詳細へジャンプできます。" },
               { step: "02", icon: "⚡", title: "AI要約で気になる銘柄をスクリーニング", body: "トップページのAI分析要約を読んで、興味を持った銘柄だけを深掘り。すべての銘柄を調べる必要はありません。時間をかけずに投資候補を絞り込めます。" },
               { step: "03", icon: "🔬", title: "9軸レポートで投資判断を深める", body: "「需給の軽さ」「ロックアップ」「バリュエーション」「成長性」など9つの視点から詳細レポートを確認。判断の根拠が数値と文章でセットになっているので、自分なりの結論を出しやすくなります。" },
-              { step: "04", icon: "🔔", title: "通知設定でBB開始を見逃さない", body: "BB（ブックビルディング）開始日を前週金曜日にメールでお知らせします。B 分析＋通知プランまたはC 総合プランに登録することで、申込機会を逃さず投資行動に移れます。" },
+              { step: "04", icon: "🔔", title: "通知設定でBB開始を見逃さない", body: "BB（ブックビルディング）開始日を前週金曜日にメールでお知らせします。B 分析見放題＋通知プランまたはC 完全パックプランに登録することで、申込機会を逃さず投資行動に移れます。" },
             ].map((item, i) => (
               <div key={i} style={{ backgroundColor: "white", borderRadius: 16, border: `1px solid ${C.border}`, padding: "24px 24px", display: "flex", gap: 20, alignItems: "flex-start" }}>
                 <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 14, backgroundColor: C.light, border: `2px solid ${C.teal}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>

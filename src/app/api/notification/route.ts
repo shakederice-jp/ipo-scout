@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase.from('user_profiles').select('plan, email').eq('id', user.id).single();
   // 2026/10/24(束A): 通知を使えるのは B(分析＋通知)・C(総合) プラン
   if (!profile || !canUseNotifications(profile)) {
-    return NextResponse.json({ error: 'この機能は、分析＋通知プラン(B)以上でご利用いただけます。', needsPlan: true }, { status: 403 });
+    return NextResponse.json({ error: 'この機能は、分析見放題＋通知プラン(B)以上でご利用いただけます。', needsPlan: true }, { status: 403 });
   }
 
   const { error } = await supabase.from('notification_settings').upsert({

@@ -16,11 +16,11 @@ const BORDER = "#b3e8ea";
 const PLAN_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   free:     { label: "無料プラン",           color: "#64748b", bg: "#f1f5f9" },
   // 2026/10/24(束A・④): 3プラン化。report / complete は管理者が手で付けた旧名が残っていた場合の表示用。
-  plan_a:   { label: "A 分析プラン",         color: "#0369a1", bg: "#eff6ff" },
-  plan_b:   { label: "B 分析＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
-  plan_c:   { label: "C 総合プラン",         color: "#0d4f52", bg: "#e8f9f9" },
-  report:   { label: "A 分析プラン",         color: "#0369a1", bg: "#eff6ff" },
-  complete: { label: "B 分析＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
+  plan_a:   { label: "A 分析見放題プラン",         color: "#0369a1", bg: "#eff6ff" },
+  plan_b:   { label: "B 分析見放題＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
+  plan_c:   { label: "C 完全パックプラン",         color: "#0d4f52", bg: "#e8f9f9" },
+  report:   { label: "A 分析見放題プラン",         color: "#0369a1", bg: "#eff6ff" },
+  complete: { label: "B 分析見放題＋通知プラン",   color: "#7c3aed", bg: "#f5f3ff" },
 };
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -339,7 +339,7 @@ export default function MyPage() {
           {/* 2026/10/24追加(束A・⑤): 紹介特典の終了が近い(14日以内)人に、続けて読む場合のプランを案内する */}
           {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
             <div style={{ marginTop: 10, padding: "10px 12px", backgroundColor: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
-              紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC 総合プラン（¥4,890/月）があります。自動で課金されることはありません。
+              紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC 完全パックプラン（¥4,890/月）があります。自動で課金されることはありません。
               <a href="/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
             </div>
           )}

@@ -559,7 +559,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                   一文を追加(サイト全体のフリー/有料導線見直しの一環)。 */}
               <p style={{ fontSize:12, color:"#2a7a7e", lineHeight:1.7, margin:0 }}>
                 {lang === "ja"
-                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます（ログイン不要）。特定銘柄だけをピックアップして読む場合は¥500です。また、分析・通知・週刊スライドがそろった<strong style={{ color:"#082b2e" }}>C 総合プラン</strong>もあります。無料会員登録（ログインのみ・課金不要）をすると、気になる銘柄のお気に入り登録・100万円投資シミュレーション・友達紹介特典（2ヶ月無料）もご利用いただけます。</>
+                  ? <>毎月、日付順で最初の<strong style={{ color:"#082b2e" }}>2銘柄の分析レポートは完全無料</strong>でご覧いただけます（ログイン不要）。特定銘柄だけをピックアップして読む場合は¥500です。また、分析・通知・週刊スライドがそろった<strong style={{ color:"#082b2e" }}>C 完全パックプラン</strong>もあります。無料会員登録（ログインのみ・課金不要）をすると、気になる銘柄のお気に入り登録・100万円投資シミュレーション・友達紹介特典（2ヶ月無料）もご利用いただけます。</>
                   : <>The first <strong style={{ color:"#082b2e" }}>2 IPO reports each month are completely free</strong> (no login required). Single reports are ¥500. A <strong style={{ color:"#082b2e" }}>Complete Pack</strong> with all features is also available. Free member registration (login only, no charge) also unlocks favorites, the ¥1M investment simulation, and referral rewards.</>
                 }
               </p>

@@ -623,8 +623,8 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
                 「登録は無料・実際の配信にはB以上のプランが必要」の2段階を明示する
                 文言に変更(サイト全体のフリー/有料導線見直しの一環)。 */}
             {!userId
-              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>B 分析＋通知プラン（¥3,890/月）</strong>以上に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
-              : <>通知の配信には<strong>B 分析＋通知プラン（¥3,890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
+              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
+              : <>通知の配信には<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
             }
           </div>
         )}
@@ -1317,12 +1317,12 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           <div style={{borderRadius:14,padding:"20px",backgroundColor:"#0d4f52",color:"white",textAlign:"center"}}>
             <div style={{fontSize:15,fontWeight:900,marginBottom:6}}>🔒 ここから先は有料コンテンツです</div>
             <p style={{fontSize:12,color:"#a0d4d6",margin:"0 0 14px",lineHeight:1.7}}>
-            軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、分析プラン(A)以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
+            軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、分析見放題プラン(A)以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
             </p>
             <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:380,margin:"0 auto"}}>
               <PlanButton plan="single" stockId={company.id} label={"この銘柄だけ読む（¥500・買い切り）"}
                 style={{display:"block",width:"100%",padding:"13px 16px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:10,fontWeight:900,fontSize:14,border:"none"}} messageStyle={{color:"#fecaca"}} />
-              <PlanButton plan="plan_a" label={"全銘柄が読み放題（分析プラン ¥2,890/月）"}
+              <PlanButton plan="plan_a" label={"全銘柄が読み放題（分析見放題プラン ¥2,890/月）"}
                 style={{display:"block",width:"100%",padding:"12px 16px",backgroundColor:"transparent",color:"#ffffff",borderRadius:10,fontWeight:800,fontSize:13,border:"1.5px solid #66c3c6"}} messageStyle={{color:"#fecaca"}} />
               <a href="/plans" style={{fontSize:12,color:"#a0d4d6",textDecoration:"underline"}}>
                 通知・週刊スライドつきプランも含めて、全プランを比較する →
