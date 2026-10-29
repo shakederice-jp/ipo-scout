@@ -33,6 +33,7 @@ export default async function sitemap() {
     { url: `${baseUrl}/campaign`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.6 },
     // 2026/10/24追加(束C・③): 税金・NISAの無料解説ページ
     { url: `${baseUrl}/tax-nisa`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.6 },
+    { url: `${baseUrl}/install`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.4 },
     { url: `${baseUrl}/ipo-guide`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 },
     // 2026/9/14追加: E-E-A-T対策として新設した「運営者について・分析手法について」ページ
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 },

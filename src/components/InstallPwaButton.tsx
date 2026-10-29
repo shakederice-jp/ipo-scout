@@ -1,108 +1,134 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
-// 2026/9/6新設: トップページに「ホーム画面に追加(PWA化)」の案内バナーを表示し、
-// ユーザーが毎日サイトに戻ってきやすくするための施策。
-// - Android/Chrome/Edge等: ブラウザが発火する`beforeinstallprompt`イベントを捕まえて
-//   独自の「追加する」ボタンを出し、押すとブラウザ標準のインストール確認ダイアログが出る。
-// - iPhoneのSafari: 仕様上`beforeinstallprompt`が発火しないため、代わりに
-//   「共有ボタン→ホーム画面に追加」という手順を文章で案内するだけの表示にする。
-// - すでにホーム画面のアイコンから起動している場合(display-mode: standalone)は表示しない。
-// - 一度✕で閉じたら、そのブラウザでは以後表示しない(localStorageに記録、しつこくしない)。
+// 2026/10/29改修: 「ホーム画面に追加」の案内を、トップページだけの大きな帯から、全ページ共通の
+// 控えめな下部の帯に変更した(前身: 2026/9/6新設のトップ用バナー)。
+// 出す条件(すべて満たしたときだけ):
+//  ・スマホ幅の端末で、まだホーム画面から開いていない(display-mode: standalone ではない)
+//  ・このサイトで2ページ目以降を見たとき(最初の1ページ目では出さない)
+//  ・Xやインスタなどのアプリ内ブラウザではない(そこでは追加ができないため)
+//  ・閉じてから30日以内ではない
+// 表示の中身:
+//  ・Android(Chrome等): ブラウザの「追加する」ボタンを直接出す(押すと標準の確認が出る)
+//  ・iPhone/iPad: 仕様上ボタンで追加できないため、「やり方を見る」から案内ページ(/install)へ
+//  ・Androidで追加ボタンが出せないとき: 同じく案内ページへ
+const DISMISS_KEY = "pwaBannerDismissedAt";
+const VIEWS_KEY = "pwaPageViews";
+const DISMISS_DAYS = 30;
+const HIDE_PATHS = ["/admin", "/install", "/auth"];
+
+type Mode = "native" | "guide";
+
 export default function InstallPwaButton() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isIos, setIsIos] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [mode, setMode] = useState<Mode>("guide");
 
+  // Androidのブラウザが出す「追加できます」の合図を受け取っておく
   useEffect(() => {
-    try {
-      const dismissed = localStorage.getItem("pwaBannerDismissed");
-      if (dismissed) return;
-
-      const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as any).standalone === true;
-      if (isStandalone) return;
-
-      const ua = window.navigator.userAgent;
-      const iosDevice = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
-      setIsIos(iosDevice);
-
-      if (iosDevice) {
-        setVisible(true);
-        return;
-      }
-
-      const handler = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-        setVisible(true);
-      };
-      window.addEventListener("beforeinstallprompt", handler);
-      return () => window.removeEventListener("beforeinstallprompt", handler);
-    } catch {
-      // localStorage/matchMediaが使えない環境では何もしない(バナーを出さないだけ)
-    }
+    const onPrompt = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    const onInstalled = () => { setVisible(false); setDeferredPrompt(null); remember(); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
 
-  const dismiss = () => {
-    setVisible(false);
+  // ページを開くたびに、出してよい条件かを判定する
+  useEffect(() => {
     try {
-      localStorage.setItem("pwaBannerDismissed", "1");
-    } catch {}
-  };
+      if (HIDE_PATHS.some((p) => pathname === p || pathname?.startsWith(p + "/"))) { setVisible(false); return; }
 
-  const handleInstallClick = async () => {
+      const views = Number(sessionStorage.getItem(VIEWS_KEY) || "0") + 1;
+      sessionStorage.setItem(VIEWS_KEY, String(views));
+      if (views < 2) return;
+
+      const at = Number(localStorage.getItem(DISMISS_KEY) || "0");
+      if (at && Date.now() - at < DISMISS_DAYS * 24 * 60 * 60 * 1000) return;
+
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true;
+      if (standalone) return;
+
+      const ua = window.navigator.userAgent;
+      const inApp = /Twitter|FBAN|FBAV|Instagram|Line\/|MicroMessenger|; wv\)/i.test(ua);
+      if (inApp) return;
+
+      const touch = (navigator.maxTouchPoints || 0) > 0;
+      const narrow = window.matchMedia("(max-width: 820px)").matches;
+      if (!touch || !narrow) return;
+
+      const isIos = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && touch);
+      const isAndroid = /Android/.test(ua);
+      if (!isIos && !isAndroid) return;
+
+      setVisible(true);
+    } catch {
+      // 保存領域が使えない環境では、帯を出さないだけ(サイトの動作には影響しない)
+    }
+  }, [pathname]);
+
+  // 追加ボタンを出せるかどうか(合図を受け取れていれば「追加する」、なければ案内ページへ)
+  useEffect(() => { setMode(deferredPrompt ? "native" : "guide"); }, [deferredPrompt]);
+
+  function remember() {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
+  }
+  function dismiss() { setVisible(false); remember(); }
+
+  async function install() {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    try {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+    } catch {}
     setDeferredPrompt(null);
     dismiss();
-  };
+  }
 
   if (!visible) return null;
 
   return (
-    <div style={{
-      margin: "12px 16px 0",
-      borderRadius: 12,
-      padding: "12px 16px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 10,
-      backgroundColor: "#0d4f52",
-      border: "1px solid #0a3d40",
-      flexWrap: "wrap",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}>📲</span>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 900, color: "white" }}>
-            ホーム画面に追加しませんか？
-          </div>
-          <div style={{ fontSize: 11, color: "#a0d4d6", marginTop: 2 }}>
-            {isIos
-              ? "共有ボタン（□に↑のアイコン）から「ホーム画面に追加」を選ぶと、アプリのように開けます。"
-              : "アプリのように、ワンタップで最新のIPO情報にアクセスできるようになります。"}
-          </div>
+    <div
+      role="region"
+      aria-label="ホーム画面への追加のご案内"
+      style={{
+        position: "fixed", left: 8, right: 8, bottom: 8, zIndex: 60,
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <div style={{
+        maxWidth: 520, margin: "0 auto", borderRadius: 14, padding: "10px 12px",
+        display: "flex", alignItems: "center", gap: 10,
+        backgroundColor: "#0d4f52", border: "1px solid #0a3d40",
+        boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon-192.png?v=2" alt="" width={40} height={40} style={{ borderRadius: 9, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: "#ffffff", lineHeight: 1.4 }}>ホーム画面に追加できます</div>
+          <div style={{ fontSize: 11, color: "#a0d4d6", lineHeight: 1.4 }}>タップ1回で、最新のIPO情報へ</div>
         </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        {!isIos && (
-          <button onClick={handleInstallClick} style={{
-            fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#66c3c6",
-            border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer",
-          }}>
-            追加する
-          </button>
+        {mode === "native" ? (
+          <button onClick={install} style={{
+            fontSize: 12, fontWeight: 800, color: "#0d4f52", backgroundColor: "#66c3c6",
+            border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+          }}>追加する</button>
+        ) : (
+          <a href="/install" onClick={remember} style={{
+            fontSize: 12, fontWeight: 800, color: "#0d4f52", backgroundColor: "#66c3c6",
+            borderRadius: 8, padding: "8px 12px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0,
+          }}>やり方を見る</a>
         )}
-        <button onClick={dismiss} style={{
-          fontSize: 12, color: "#a0d4d6", background: "none", border: "none", cursor: "pointer", padding: 4,
-        }}>
-          ✕
-        </button>
+        <button onClick={dismiss} aria-label="閉じる" style={{
+          fontSize: 16, lineHeight: 1, color: "#a0d4d6", background: "none", border: "none", cursor: "pointer", padding: 6, flexShrink: 0,
+        }}>✕</button>
       </div>
     </div>
   );

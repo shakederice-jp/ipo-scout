@@ -25,6 +25,7 @@ export default function Footer() {
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 10, marginBottom: 14 }}>
         <a href="/plans" style={{ fontSize: 12, fontWeight: 800, color: "#ffffff", backgroundColor: "#f59e0b", border: "1px solid #d97706", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>💳 料金・購入</a>
         <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📡 トレンド</a>
+        <a href="/install" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📲 ホーム画面に追加</a>
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 14 }}>
         <a href="/" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ホーム</a>
