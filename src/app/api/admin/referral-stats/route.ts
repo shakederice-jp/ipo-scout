@@ -7,7 +7,7 @@ import { isAdminRequest } from "@/lib/admin-auth";
 // 手段が一切無かったため、まずは「特典が実際に成立した件数」だけでも可視化する。
 export const dynamic = "force-dynamic";
 
-const CAP = 100; // Xのプロフィールで案内している「先着100名限定」の人数
+const CAP = 300; // Xのプロフィールで案内している「先着300名限定」の人数
 
 export async function GET(req: NextRequest) {
   // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一

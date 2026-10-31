@@ -21,7 +21,7 @@ export const CAMPAIGN_URL = `${SITE_URL}/campaign?utm_source=x&utm_medium=social
 
 export function campaignTail(): string | null {
   if ((process.env.X_CAMPAIGN_TAIL ?? "").toLowerCase() === "off") return null;
-  return `🎁友達紹介キャンペーン実施中（先着100名限定）\n登録だけで、有料分析と週刊スライドが2ヶ月読み放題。\n${CAMPAIGN_URL}`;
+  return `🎁友達紹介キャンペーン実施中（先着300名限定）\n登録だけで、有料分析と週刊スライドが2ヶ月読み放題。\n${CAMPAIGN_URL}`;
 }
 
 // 原稿の末尾に案内文を足す。ハッシュタグだけの最後の段落があれば、その手前に入れる。すでに入っていれば何もしない。

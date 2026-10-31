@@ -779,7 +779,7 @@ export default function AdminPage() {
                   </div>
                   <div style={{ flex:1, textAlign:"center", padding:"10px 8px", borderRadius:8, backgroundColor:"#fef2f2", border:"1px solid #fecaca" }}>
                     <div style={{ fontSize:20, fontWeight:900, color:"#b91c1c" }}>{referralStats.remaining}</div>
-                    <div style={{ fontSize:10, color:"#991b1b" }}>「先着100名」残り枠</div>
+                    <div style={{ fontSize:10, color:"#991b1b" }}>「先着300名」残り枠</div>
                   </div>
                 </div>
               ) : (

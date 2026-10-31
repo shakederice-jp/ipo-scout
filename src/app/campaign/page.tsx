@@ -32,7 +32,7 @@ export default function CampaignPage() {
           <a href={joinHref} style={{ display: "inline-block", padding: "14px 34px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
             無料で登録して特典を受け取る →
           </a>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: "12px 0 0" }}>先着100名限定・予告なく終了する場合があります</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: "12px 0 0" }}>先着300名限定・予告なく終了する場合があります</p>
         </div>
       </div>
 

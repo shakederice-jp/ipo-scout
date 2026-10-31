@@ -242,7 +242,7 @@ export default async function Home({
           <a href="/campaign" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
             <div>
               <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>🎁 友達紹介で有料分析＋週刊スライド2ヶ月読み放題</div>
-              <div style={{ fontSize:10, color:"#b91c1c", marginTop:2, fontWeight:700 }}>🎉 先着100名限定キャンペーン実施中</div>
+              <div style={{ fontSize:10, color:"#b91c1c", marginTop:2, fontWeight:700 }}>🎉 先着300名限定キャンペーン実施中</div>
             </div>
             <span style={{ fontSize:16, color:"#dc2626" }}>→</span>
           </a>
