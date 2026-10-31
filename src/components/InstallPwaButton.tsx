@@ -110,7 +110,7 @@ export default function InstallPwaButton() {
         boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png?v=2" alt="" width={40} height={40} style={{ borderRadius: 9, flexShrink: 0 }} />
+        <img src="/icon-192.png?v=3" alt="" width={40} height={40} style={{ borderRadius: 9, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: "#ffffff", lineHeight: 1.4 }}>ホーム画面に追加できます</div>
           <div style={{ fontSize: 11, color: "#a0d4d6", lineHeight: 1.4 }}>タップ1回で、最新のIPO情報へ</div>

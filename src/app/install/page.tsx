@@ -56,7 +56,7 @@ export default function InstallPage() {
 
         <div style={{ ...card, display: "flex", gap: 14, alignItems: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png?v=2" alt="ホーム画面に表示されるアイコン" width={72} height={72} style={{ borderRadius: 16, flexShrink: 0 }} />
+          <img src="/icon-192.png?v=3" alt="ホーム画面に表示されるアイコン" width={72} height={72} style={{ borderRadius: 16, flexShrink: 0 }} />
           <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.8 }}>
             追加すると、ホーム画面にこのアイコンが並びます。タップすると、ブラウザの枠（アドレス欄）がない、アプリのような画面で開きます。
           </div>

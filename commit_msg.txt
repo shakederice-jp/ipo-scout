@@ -1,0 +1,8 @@
+friend: update referral cap to 300 people
+
+- Change "先着100名限定" wording to "先着300名限定" across campaign page, top page, mypage, admin page, and share templates
+- Update the admin dashboard's remaining-slots calculation (CAP constant) from 100 to 300
+- Update the X auto-post campaign tail text to match
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CjJcx8exm9jbFcji6MHeMQ
