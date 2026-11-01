@@ -87,6 +87,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${data.name}${tickerPart}のIPO｜上場日・公募価格・初値シナリオ｜大手町調査室九課`;
   const canonicalId = ticker ?? data.id;
   const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
+  // 2026/11/1追加(集客施策1): 銘柄ごとのシェア画像(会社名・上場日・公募価格・AIスコア入り)。src/app/og/[id]/route.tsx
+  const ogImage = `https://ipo.finance-tower.com/og/${encodeURIComponent(String(canonicalId))}`;
   return {
     title,
     description,
@@ -96,12 +98,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       siteName: "大手町調査室九課",
       locale: "ja_JP",
       type: "article",
-      images: [{ url: "https://ipo.finance-tower.com/ogp.png", width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `${data.name}のIPO分析` }],
     },
     twitter: {
       card: "summary_large_image",
       title, description,
-      images: ["https://ipo.finance-tower.com/ogp.png"],
+      images: [ogImage],
     },
     alternates: { canonical: url },
     // 分析がまだ無い銘柄ページは中身が薄いため、検索結果に出さない(分析ができたら自動で解除される)

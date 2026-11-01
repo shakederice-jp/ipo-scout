@@ -2,6 +2,7 @@
 import KeyFacts from "@/components/KeyFacts";
 import ThreeMinuteCard from "@/components/ThreeMinuteCard";
 import LatestNewsBox from "@/components/LatestNewsBox";
+import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
 import type { LatestNewsEntry } from "@/lib/company-news";
 import type { KeyFactsData } from "@/lib/key-facts";
 import {
@@ -1244,6 +1245,10 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             </div>
           </div>
         )}
+
+        {/* 2026/11/1新設(集客施策2): IPO週報(無料)の申込み欄。未ログインの人にはメールアドレスだけの入力欄、
+            ログイン済みで未登録の人にはボタン、すでに受け取り中の人には何も出さない(compact)。 */}
+        <WeeklyBriefSignup compact style={{marginBottom:0,borderRadius:12,padding:"12px 14px"}}/>
 
         {/* このレポートの読み方（総論→各論→参考資料という設計思想の案内） */}
         <div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 14px",borderRadius:10,

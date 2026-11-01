@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import TrendsLinkCard from "@/components/TrendsLinkCard";
+import WeeklyBriefSignup from "@/components/WeeklyBriefSignup";
 import CalendarClient from "@/components/CalendarClient";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -196,6 +197,9 @@ export default async function Home({
             </div>
             <span style={{ fontSize:16, color:"#66c3c6" }}>→</span>
           </a>
+
+          {/* 2026/11/1新設(集客施策2): IPO週報(無料)のメールアドレスだけの申込み欄 */}
+          <WeeklyBriefSignup compact style={{ marginBottom:0 }} />
 
           {/* 購入パネル */}
           <div style={cardStyle}>

@@ -4,7 +4,7 @@ import { Resend } from "resend";
 import { notifyAdmin, ADMIN_EMAIL } from "@/lib/notify-admin";
 import { canReadPaidAnalysis } from "@/lib/member-auth";
 import { loadBriefData, hasBriefContent, briefSubject, buildBriefHtml } from "@/lib/weekly-brief";
-import { unsubscribeUrl } from "@/lib/weekly-brief-token";
+import { unsubscribeUrl, guestUrl } from "@/lib/weekly-brief-token";
 import { latestPublishedSlide } from "@/lib/weekly-slides-store";
 
 // 2026/10/20新設(案2): 週刊ブリーフ「IPO週報」を、毎週金曜18時に配信する。
@@ -19,6 +19,7 @@ const FROM = "IPO分析レポート <noreply@finance-tower.com>";
 const MAX_RECIPIENTS = 300; // 1回の実行時間(60秒)に収めるための上限。増えたら分割送信にする
 
 export async function GET(req: NextRequest) {
+  const t0 = Date.now();
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -60,10 +61,9 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: true })
     .limit(MAX_RECIPIENTS);
   const ids = (subs ?? []).map((s: any) => s.user_id as string);
-  if (ids.length === 0) return NextResponse.json({ message: "配信希望の会員がいません", sent: 0 });
 
   // 既存の週次通知メール(/api/cron/notify)を受け取っている会員には、重複して送らない
-  const { data: digestUsers } = await supabase
+  const { data: digestUsers } = ids.length === 0 ? { data: [] as any[] } : await supabase
     .from("notification_settings")
     .select("user_id")
     .is("company_id", null)
@@ -71,16 +71,18 @@ export async function GET(req: NextRequest) {
     .in("user_id", ids);
   const skip = new Set((digestUsers ?? []).map((r: any) => r.user_id as string));
 
-  const { data: profiles } = await supabase.from("user_profiles").select("id, plan, free_until").in("id", ids);
+  const { data: profiles } = ids.length === 0 ? { data: [] as any[] } : await supabase.from("user_profiles").select("id, plan, free_until").in("id", ids);
   const profileMap = new Map<string, any>((profiles ?? []).map((p: any) => [p.id, p]));
 
   let sent = 0, skipped = 0, failed = 0;
+  const memberEmails = new Set<string>(); // 会員に送ったメールアドレス(メールだけ登録の人と重複して送らないため)
   for (const id of ids) {
     if (skip.has(id)) { skipped++; continue; }
     try {
       const { data: u } = await supabase.auth.admin.getUserById(id);
       const email = u?.user?.email;
       if (!email) { skipped++; continue; }
+      memberEmails.add(email.toLowerCase());
       const paid = canReadPaidAnalysis(profileMap.get(id));
       const { error } = await resend.emails.send({
         from: FROM,
@@ -95,10 +97,38 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── メールアドレスだけで申し込み(確認メールで本人確認済み)の人へ。無料版を送る ──
+  // 2026/11/1追加(集客施策2)。実行時間(60秒)に収めるため、50秒を超えたら残りは次回に回す。
+  let guestSent = 0, guestSkipped = 0, guestFailed = 0, guestLeft = 0;
+  const { data: guests } = await supabase
+    .from("weekly_brief_guests")
+    .select("id, email")
+    .not("confirmed_at", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(MAX_RECIPIENTS);
+  const guestList = (guests ?? []) as { id: string; email: string }[];
+  for (let i = 0; i < guestList.length; i++) {
+    const g = guestList[i];
+    if (Date.now() - t0 > 50_000) { guestLeft = guestList.length - i; break; }
+    if (memberEmails.has(g.email.toLowerCase())) { guestSkipped++; continue; }
+    try {
+      const { error } = await resend.emails.send({
+        from: FROM,
+        to: g.email,
+        subject,
+        html: buildBriefHtml(data, { paid: false, unsubscribeUrl: guestUrl(g.id, "stop") }),
+      });
+      if (error) { guestFailed++; console.error("IPO週報(メール登録)の送信エラー:", error); } else { guestSent++; }
+    } catch (e) {
+      guestFailed++;
+      console.error("IPO週報(メール登録)の送信失敗:", e);
+    }
+  }
+
   await notifyAdmin(
     "IPO週報の送信結果",
-    `送信: ${sent}件\n重複回避でスキップ: ${skipped}件\n失敗: ${failed}件\n対象期間: ${data.nextMon}〜${data.nextSun}`,
-    failed > 0 ? "warn" : "info"
+    `会員 送信: ${sent}件 / 重複回避でスキップ: ${skipped}件 / 失敗: ${failed}件\nメール登録のみ 送信: ${guestSent}件 / スキップ: ${guestSkipped}件 / 失敗: ${guestFailed}件${guestLeft > 0 ? ` / 時間切れで未送信: ${guestLeft}件` : ""}\n対象期間: ${data.nextMon}〜${data.nextSun}`,
+    failed + guestFailed > 0 || guestLeft > 0 ? "warn" : "info"
   );
-  return NextResponse.json({ success: true, sent, skipped, failed });
+  return NextResponse.json({ success: true, sent, skipped, failed, guestSent, guestSkipped, guestFailed, guestLeft });
 }
