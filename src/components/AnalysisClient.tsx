@@ -1193,6 +1193,16 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
         {/* 2026/10/20新設(「時間のない資産層」向け・案1): 冒頭に「3分で分かる結論カード」を置く。
             注目点2つ・注意点1つ・AIの見立てを、登録済みの分析から自動でまとめる(src/components/ThreeMinuteCard.tsx)。
             有料の中身は、閲覧権(hasAccess)のある人にだけ表示する。 */}
+        {/* 2026/11/1新設: 友達紹介キャンペーンの案内(Xの末尾リンクが押されなかったため、Xから来た人が一番多く見る
+            銘柄ページの冒頭にも、控えめな1行を置く)。対象は、有料の中身を読めず、まだログインしていない人だけ。
+            サイト内のリンクなので、GA4の流入元を上書きしないよう、UTMは付けない。 */}
+        {!hasAccess&&!userId&&(
+          <a href="/campaign" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 14px",borderRadius:12,backgroundColor:"#fef2f2",border:"1.5px solid #dc2626",textDecoration:"none"}}>
+            <span style={{fontSize:12,fontWeight:900,color:"#7f1d1d",lineHeight:1.6}}>🎁 無料登録で、有料分析が2ヶ月間読み放題<span style={{display:"block",fontSize:10,fontWeight:700,color:"#b91c1c"}}>先着300名限定・クレジットカード不要</span></span>
+            <span style={{fontSize:12,fontWeight:900,color:"white",backgroundColor:"#dc2626",borderRadius:20,padding:"6px 12px",whiteSpace:"nowrap"}}>くわしく →</span>
+          </a>
+        )}
+
         <ThreeMinuteCard
           grade={grade}
           score={score}
@@ -1319,6 +1329,15 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             <p style={{fontSize:12,color:"#a0d4d6",margin:"0 0 14px",lineHeight:1.7}}>
             軸別スコア・シナリオ分析・詳細インサイトをご覧いただくには、分析見放題プラン(A)以上へのご加入、またはこの銘柄の単品購入（¥500）が必要です。
             </p>
+            {/* 2026/11/1追加: 未ログインの人には、課金より先に、いちばんハードルの低い「無料登録で2ヶ月読み放題」を見せる */}
+            {!userId&&(
+              <div style={{maxWidth:380,margin:"0 auto 14px"}}>
+                <a href="/campaign" style={{display:"block",padding:"14px 16px",backgroundColor:"#dc2626",color:"white",borderRadius:10,fontWeight:900,fontSize:14,textDecoration:"none",lineHeight:1.5}}>
+                  🎁 無料登録で、全銘柄が2ヶ月間読み放題
+                  <span style={{display:"block",fontSize:11,fontWeight:700,opacity:0.9}}>先着300名限定・クレジットカード不要 →</span>
+                </a>
+              </div>
+            )}
             <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:380,margin:"0 auto"}}>
               <PlanButton plan="single" stockId={company.id} label={"この銘柄だけ読む（¥500・買い切り）"}
                 style={{display:"block",width:"100%",padding:"13px 16px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:10,fontWeight:900,fontSize:14,border:"none"}} messageStyle={{color:"#fecaca"}} />
@@ -1331,9 +1350,11 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             {/* 2026/9/14追加(追記⑫-①、友達紹介プログラムの露出強化): 有料の壁にぶつかった
                 まさにその瞬間に、課金以外の選択肢(友達紹介で有料分析2ヶ月読み放題)も併せて案内する。
                 離脱してしまう前にもう1つの導線を見せる狙い。 */}
+            {userId&&(
             <div style={{marginTop:10,fontSize:11,color:"#a0d4d6"}}>
               または<a href="/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、有料分析が2ヶ月間読み放題になります🎁
             </div>
+            )}
           </div>
         )}
 
