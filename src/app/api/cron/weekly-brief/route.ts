@@ -33,11 +33,11 @@ export async function GET(req: NextRequest) {
   const subject = briefSubject(data);
   // 今週号のPDFスライドが公開済みなら、有料会員向けのメールにだけリンクを付ける(2026/10/20追加)
   const slide = await latestPublishedSlide(supabase).catch(() => null);
-  const slidesUrl = slide && slide.issue_date === data.thisFri ? "https://ipo.finance-tower.com/mypage" : undefined;
+  const slidesUrl = slide && slide.issue_date === data.thisFri ? "https://finance-tower.com/ipo-jp/mypage" : undefined;
 
   // ── プレビュー(送らない) ──
   if (sp.get("preview") === "1") {
-    const html = buildBriefHtml(data, { paid: sp.get("paid") === "1", unsubscribeUrl: "https://ipo.finance-tower.com/mypage" });
+    const html = buildBriefHtml(data, { paid: sp.get("paid") === "1", unsubscribeUrl: "https://finance-tower.com/ipo-jp/mypage" });
     return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         from: FROM,
         to: ADMIN_EMAIL,
         subject: `【テスト・${paid ? "有料版" : "無料版"}】${subject}`,
-        html: buildBriefHtml(data, { paid, unsubscribeUrl: "https://ipo.finance-tower.com/mypage", slidesUrl: paid ? slidesUrl : undefined }),
+        html: buildBriefHtml(data, { paid, unsubscribeUrl: "https://finance-tower.com/ipo-jp/mypage", slidesUrl: paid ? slidesUrl : undefined }),
       });
     }
     return NextResponse.json({ success: true, test: true, sentTo: ADMIN_EMAIL });

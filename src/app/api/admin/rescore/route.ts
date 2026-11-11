@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 let targets=[];
 const $=id=>document.getElementById(id);
 const log=(t,c)=>{const li=document.createElement('li');li.textContent=t;if(c)li.style.color=c;$('log').appendChild(li);return li};
-fetch('/api/admin/rescore?list=1').then(r=>r.json()).then(d=>{targets=d.targets||[];$('count').textContent='対象：'+targets.length+'社';$('start').disabled=targets.length===0;});
+fetch('/ipo-jp/api/admin/rescore?list=1').then(r=>r.json()).then(d=>{targets=d.targets||[];$('count').textContent='対象：'+targets.length+'社';$('start').disabled=targets.length===0;});
 $('start').onclick=async()=>{
   $('start').disabled=true;
   let ok=0,ng=0;
@@ -46,10 +46,10 @@ $('start').onclick=async()=>{
     let saved=false,reason='';
     for(let a=1;a<=3&&!saved;a++){
       try{
-        const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.id,part:'score'})});
+        const r=await fetch('/ipo-jp/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.id,part:'score'})});
         const d=await r.json();
         if(d.error){reason=d.error;continue;}
-        const s=await fetch('/api/admin/rescore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.id,result:d})});
+        const s=await fetch('/ipo-jp/api/admin/rescore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.id,result:d})});
         const sd=await s.json();
         if(sd.ok){saved=true;li.textContent=t.name+'：完了（'+sd.total_score+'点・'+sd.grade+'）';li.style.color='#15803d';}
         else{reason=sd.reason||sd.error||'保存できませんでした';}

@@ -820,7 +820,7 @@ function Closing({ d }: { d: SlidesData }) {
       </Card>
       <Card style={{ backgroundColor: LIGHT }}>
         <Text style={{ fontSize: 14, fontWeight: 700, color: MID }}>次号のお知らせ・友達紹介</Text>
-        <JaText text="次号は、来週の金曜日にお届けします。分析レポートと最新の日程は、サイト（ipo.finance-tower.com）でいつでもご覧いただけます。" size={13.5} width={860} color={DARK} lineHeight={1.7} style={{ marginTop: 4 }} />
+        <JaText text="次号は、来週の金曜日にお届けします。分析レポートと最新の日程は、サイト（finance-tower.com/ipo-jp）でいつでもご覧いただけます。" size={13.5} width={860} color={DARK} lineHeight={1.7} style={{ marginTop: 4 }} />
         <JaText text="友達を紹介すると、あなたも友達も、有料分析と週刊スライドが2ヶ月読み放題になります。招待リンクは、マイページにあります。" size={13.5} width={860} color={DARK} lineHeight={1.7} style={{ marginTop: 4 }} />
       </Card>
     </Slide>

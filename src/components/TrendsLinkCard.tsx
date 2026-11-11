@@ -3,7 +3,7 @@
 export default function TrendsLinkCard({ marginBottom = 0 }: { marginBottom?: number }) {
   return (
     <a
-      href="/trends"
+      href="/ipo-jp/trends"
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px",
         backgroundColor: "#0d4f52", border: "2px solid #0d4f52", textDecoration: "none",

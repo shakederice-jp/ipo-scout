@@ -6,7 +6,7 @@ import { Page, Crumbs, H1, Lead, Card, H2, RelatedLinks, Disclaimer, JsonLd, C }
 // IPOで検索される用語の解説ページ。固定文(src/lib/ipo-terms.ts)なので、表現がぶれない。
 export const dynamic = "force-static";
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 
 export const metadata: Metadata = {
   title: "IPO用語集｜ブックビルディング・仮条件・ロックアップなどの意味｜大手町調査室九課",
@@ -95,7 +95,7 @@ export default function GlossaryPage() {
 function P2() {
   return (
     <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.9, margin: 0 }}>
-      制度や慣行は変わることがあります。申込の前には、<a href="/how-to-apply" style={{ color: C.nav, fontWeight: 700 }}>IPOの申込方法</a>のページと各証券会社の最新の案内もあわせて確認してください。
+      制度や慣行は変わることがあります。申込の前には、<a href="/ipo-jp/how-to-apply" style={{ color: C.nav, fontWeight: 700 }}>IPOの申込方法</a>のページと各証券会社の最新の案内もあわせて確認してください。
     </p>
   );
 }

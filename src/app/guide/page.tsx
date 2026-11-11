@@ -31,7 +31,7 @@ export default function GuidePage() {
             でも、それを読み解くのは専門家でも時間がかかる作業です。<br/>
             大手町調査室九課のAI分析レポートは、その作業を自動化しました。
           </p>
-          <a href="/" style={{ display: "inline-block", padding: "14px 36px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
+          <a href="/ipo-jp" style={{ display: "inline-block", padding: "14px 36px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
             まず無料で試してみる →
           </a>
         </div>
@@ -150,7 +150,7 @@ export default function GuidePage() {
             毎月、日付順で最初の2銘柄の分析レポートは完全無料。<br/>
             登録不要で、今すぐお読みいただけます。
           </p>
-          <a href="/" style={{ display: "inline-block", padding: "14px 40px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
+          <a href="/ipo-jp" style={{ display: "inline-block", padding: "14px 40px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
             IPO銘柄一覧を見る →
           </a>
         </div>

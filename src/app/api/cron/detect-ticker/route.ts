@@ -13,6 +13,7 @@ import {
   describeChecks,
   normalizeName,
 } from "@/lib/ipo-facts";
+import { SELF_URL } from "@/lib/base-path";
 
 // 証券コード(ticker)・公募価格の自動検出バッチ。
 //
@@ -143,7 +144,7 @@ export async function GET(req: NextRequest) {
   // 一緒に更新されるため)。APIが使えなかった場合は、公募価格と騰落率だけ直接保存する。
   const savePrice = async (company: any, price: number): Promise<boolean> => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/set-ipo-price`, {
+      const res = await fetch(`${SELF_URL}/api/admin/set-ipo-price`, {
         method: "POST",
         // 2026/9/26: 管理用APIは認証必須になったため、内部呼び出し用の合言葉を付ける
         headers: { "Content-Type": "application/json", ...internalAuthHeaders() },

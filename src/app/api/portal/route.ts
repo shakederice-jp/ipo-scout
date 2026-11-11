@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
+import { BASE_PATH, PUBLIC_ORIGIN } from "@/lib/base-path";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const origin = (process.env.NODE_ENV === "production" ? PUBLIC_ORIGIN : (req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")) + BASE_PATH;
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,

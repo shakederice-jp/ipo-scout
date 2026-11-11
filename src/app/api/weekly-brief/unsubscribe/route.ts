@@ -10,7 +10,7 @@ function page(title: string, body: string): NextResponse {
 <body style="margin:0;background:#f4fbfc;font-family:'Noto Sans JP',sans-serif;color:#082b2e">
 <div style="max-width:520px;margin:48px auto;padding:0 16px"><div style="background:white;border:1px solid #b3e8ea;border-radius:14px;padding:24px">
 <h1 style="font-size:18px;margin:0 0 12px">${title}</h1><p style="font-size:14px;line-height:1.9;margin:0 0 16px">${body}</p>
-<a href="/" style="color:#0d4f52;font-weight:700">トップページへ</a></div></div></body></html>`;
+<a href="/ipo-jp" style="color:#0d4f52;font-weight:700">トップページへ</a></div></div></body></html>`;
   return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } });
 }
 

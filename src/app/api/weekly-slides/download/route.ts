@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedUser, getServiceSupabase, canReadWeeklySlides } from "@/lib/member-auth";
 import { SLIDES_BUCKET } from "@/lib/weekly-slides-store";
+import { SELF_URL } from "@/lib/base-path";
 
 // 2026/10/20新設(案2): 会員向け。週刊スライドのPDFを開く。
 // 確認するのは「ログイン中」「スライドを読める会員」「公開中の号」の3つ。満たさなければ開けない。
 // PDFそのものはURLを知っても開けないよう、120秒だけ有効な署名つきURLに切り替えて渡す。
 export async function GET(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
-  const origin = new URL(req.url).origin;
+  const origin = SELF_URL; // 親サイト経由のため、リクエストのドメインではなく公開URL(+/ipo-jp)を使う
   if (!id) return NextResponse.json({ error: "id が必要です" }, { status: 400 });
 
   const user = await getVerifiedUser();

@@ -9,7 +9,7 @@
 // ・売買の助言にならないよう、「参考」「判断はご自身で」の注記を付ける。
 import { todayJst, shortDate, yen, pctText } from "@/lib/jp-format";
 
-const SITE_URL = "https://ipo.finance-tower.com";
+const SITE_URL = "https://finance-tower.com/ipo-jp";
 
 export interface BriefCompany {
   id: string;

@@ -7,7 +7,7 @@ import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, J
 // 当サイトに登録された上場済み銘柄の公募価格・初値・公募価格比を一覧にする。登録データから自動で作る。
 export const revalidate = 1800;
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 const hasAnalysis = (c: CompanyListItem) => !!c.ai_summary || c.ai_score != null;
 
 function rate(c: CompanyListItem): number | null {
@@ -91,7 +91,7 @@ export default async function ResultsPage() {
               const label = (<><strong>{c.name}</strong>{c.ticker ? <span style={{ color: "#64748b" }}>（{c.ticker}）</span> : null}</>);
               return [
                 <span key="d" style={{ whiteSpace: "nowrap" }}>{c.listing_date.replace(/-/g, "/")}</span>,
-                hasAnalysis(c) ? <a key="n" href={`/analysis/${companySlug(c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a> : <span key="n">{label}</span>,
+                hasAnalysis(c) ? <a key="n" href={`/ipo-jp/analysis/${companySlug(c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a> : <span key="n">{label}</span>,
                 c.exchange || "-",
                 yen(c.ipo_price) || "-",
                 yen(c.initial_price) || "-",
@@ -105,7 +105,7 @@ export default async function ResultsPage() {
       <Card>
         <H2>初値の結果の見方</H2>
         <P>「公募価格比」は、初値が公募価格より何%高かったか（低かったか）を表します。マイナスなら公募価格を下回った「公募割れ」です。初値は上場日に最初についた価格で、その後の株価とは異なります。</P>
-        <P>用語の意味は<a href="/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で、申込の流れは<a href="/how-to-apply" style={{ color: C.nav, fontWeight: 700 }}>IPOの申込方法</a>で説明しています。これからの上場日は<a href="/schedule" style={{ color: C.nav, fontWeight: 700 }}>上場スケジュール一覧表</a>で確認できます。</P>
+        <P>用語の意味は<a href="/ipo-jp/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で、申込の流れは<a href="/ipo-jp/how-to-apply" style={{ color: C.nav, fontWeight: 700 }}>IPOの申込方法</a>で説明しています。これからの上場日は<a href="/ipo-jp/schedule" style={{ color: C.nav, fontWeight: 700 }}>上場スケジュール一覧表</a>で確認できます。</P>
         <Disclaimer />
       </Card>
 

@@ -9,7 +9,7 @@ import TrendsLinkCard from "@/components/TrendsLinkCard";
 // 登録済みの銘柄から自動で作る(銘柄の追加・上場日の更新は、30分以内に手作業なしで反映される)。
 export const revalidate = 1800;
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 
 function addDays(ymd: string, n: number): string {
   const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
@@ -53,7 +53,7 @@ function NameCell({ c }: { c: CompanyListItem }) {
     </>
   );
   return hasAnalysis(c)
-    ? <a href={`/analysis/${companySlug(c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a>
+    ? <a href={`/ipo-jp/analysis/${companySlug(c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a>
     : <span>{label}</span>;
 }
 
@@ -101,13 +101,13 @@ export default async function SchedulePage() {
         {upcoming.length > 0
           ? `これから上場する${upcoming.length}社を、上場日の早い順に月ごとの表にまとめました。仮条件・ブックビルディング・申込の日程も確認できます。`
           : "上場日が決まっている銘柄が登録され次第、ここに一覧で表示します。"}
-        {" "}カレンダーで見たい方は<a href="/" style={{ color: C.nav, fontWeight: 700 }}>トップページ</a>をご覧ください。（{jpDate(today)}時点）
+        {" "}カレンダーで見たい方は<a href="/ipo-jp" style={{ color: C.nav, fontWeight: 700 }}>トップページ</a>をご覧ください。（{jpDate(today)}時点）
       </Lead>
 
       {/* 2026/10/24追加(束C・⑨): 無料で読める範囲の案内。読点は1文に1つ以下 */}
       <div style={{ backgroundColor: "#e8f9f9", border: "1.5px solid #66c3c6", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#0d4f52", lineHeight: 1.8 }}>
         <strong>毎月2銘柄は無料で読めます。</strong>毎月最初の2銘柄の分析レポートは、登録なしでご覧いただけます。
-        <a href="/plans" style={{ color: C.nav, fontWeight: 800, marginLeft: 6, whiteSpace: "nowrap" }}>プランを見る →</a>
+        <a href="/ipo-jp/plans" style={{ color: C.nav, fontWeight: 800, marginLeft: 6, whiteSpace: "nowrap" }}>プランを見る →</a>
       </div>
 
       {/* 2026/10/24追加(束C・⑨): トップページと同じ「マーケットトレンド」カード */}
@@ -149,7 +149,7 @@ export default async function SchedulePage() {
               pctText(c.price_change_rate) || "-",
             ])}
           />
-          <P>過去の初値は<a href="/results" style={{ color: C.nav, fontWeight: 700 }}>初値の結果一覧</a>にまとめています。</P>
+          <P>過去の初値は<a href="/ipo-jp/results" style={{ color: C.nav, fontWeight: 700 }}>初値の結果一覧</a>にまとめています。</P>
         </Card>
       )}
 
@@ -157,7 +157,7 @@ export default async function SchedulePage() {
         <H2>IPOスケジュールの見方</H2>
         <P>表の「仮条件」は、ブックビルディングで申し込む価格の範囲です。「公募価格」は、その結果を受けて決まる購入時の価格です。「BB開始」はブックビルディング（需要申告）の開始日で、「申込開始」は購入申込などの手続きが始まる日です。</P>
         <P>表に「-」とあるのは、まだ発表されていない項目です。発表され次第、自動で表示が更新されます。銘柄名のリンク先では、目論見書をAIが解析した分析レポートを読めます。</P>
-        <P>IPOで利益が出たときの税金やNISAの基本は、<a href="/tax-nisa" style={{ color: C.nav, fontWeight: 700 }}>税金・NISAの解説ページ</a>にまとめています。</P>
+        <P>IPOで利益が出たときの税金やNISAの基本は、<a href="/ipo-jp/tax-nisa" style={{ color: C.nav, fontWeight: 700 }}>税金・NISAの解説ページ</a>にまとめています。</P>
       </Card>
 
       <Card>

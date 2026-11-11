@@ -33,7 +33,7 @@ export default function InitialPriceForm() {
   const today = new Date().toISOString().split("T")[0];
 
   const loadCompanies = () => {
-    fetch("/api/companies")
+    fetch("/ipo-jp/api/companies")
       .then(r => r.json())
       .then((data: Company[]) => {
         setCompanies(data.sort((a, b) =>
@@ -59,7 +59,7 @@ export default function InitialPriceForm() {
     if (!selected) { setMsg("❌ 銘柄を選択してください"); return; }
     setSaving(true); setMsg("");
     try {
-      const r = await fetch("/api/admin/initial-price", {
+      const r = await fetch("/ipo-jp/api/admin/initial-price", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

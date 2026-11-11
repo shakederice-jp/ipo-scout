@@ -4,7 +4,7 @@
 // 使えるのはCプランの会員だけ(購読リンクごとに会員を確認する。鍵は calendar_feed_tokens テーブル)。
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const SITE_URL = "https://ipo.finance-tower.com";
+const SITE_URL = "https://finance-tower.com/ipo-jp";
 
 type Co = {
   id: string;

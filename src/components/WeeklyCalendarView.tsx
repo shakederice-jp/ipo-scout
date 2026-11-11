@@ -96,7 +96,7 @@ export default function WeeklyCalendarView({
       await Promise.all(
         months.map(async (m) => {
           try {
-            const r = await fetch(`/api/economic-events?month=${m}`);
+            const r = await fetch(`/ipo-jp/api/economic-events?month=${m}`);
             const j = await r.json();
             if (Array.isArray(j)) eAll.push(...j);
           } catch {}
@@ -132,7 +132,7 @@ export default function WeeklyCalendarView({
     return m;
   }, [events]);
 
-  const href = (c: Company) => (level === "beginner" ? `/analysis/${c.id}/beginner` : `/analysis/${c.id}`);
+  const href = (c: Company) => (level === "beginner" ? `/ipo-jp/analysis/${c.id}/beginner` : `/ipo-jp/analysis/${c.id}`);
   const fmtShort = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
   const fri = days[4];
   const rangeLabel = `${weekStart.getFullYear()}年${weekStart.getMonth() + 1}月${weekStart.getDate()}日（月）〜${fri.getMonth() + 1}月${fri.getDate()}日（金）`;
@@ -242,10 +242,10 @@ export default function WeeklyCalendarView({
       {/* 案内 */}
       <div style={{ padding: "10px 14px 14px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 8 }}>
-          <a href="/mypage#weekly-slides" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
+          <a href="/ipo-jp/mypage#weekly-slides" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
             📄 この週のスライドを読む（C フルパックプラン）
           </a>
-          <a href="/mypage#calendar-feed" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
+          <a href="/ipo-jp/mypage#calendar-feed" style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", border: `1.5px solid ${C.teal}`, borderRadius: 20, padding: "6px 14px" }}>
             🗓️ 予定を自動でカレンダーに登録（C フルパックプラン）
           </a>
         </div>

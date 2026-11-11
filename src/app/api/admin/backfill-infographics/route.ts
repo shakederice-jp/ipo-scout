@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       // (上場日・市場・コード・売上・利益・主幹事+AIの一言)をそのまま使う
       // (2026/8/29、ai_summaryだけの短い文章に変更したところ「文字数が減って
       // 冷たい感じになった」とのフィードバックを受け、Xの競合対策で作った文章に戻した)。
-      const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
+      const analysisUrl = `https://finance-tower.com/ipo-jp/analysis/${co.id}`;
       const introText = buildIpoIntroText(co as any, appealNarrative, "新規IPO承認");
       const trendsContent = `${introText}\n\n${analysisUrl}`;
       const { error: trendsError } = await supabase.from("market_trends").upsert({
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         content: trendsContent,
         image_url: imageUrl,
         source_links: [
-          { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },
+          { title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" },
         ],
         fetched_at: new Date().toISOString(),
         external_id: `new-ipo-intro-${co.id}`,
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
         console.error(`market_trends(新規IPO紹介)保存失敗(${co.name}):`, trendsError.message);
       }
 
-      const downloadPath = `/api/download-infographic?url=${encodeURIComponent(imageUrl)}&name=${encodeURIComponent(`${co.name}-infographic.png`)}`;
+      const downloadPath = `/ipo-jp/api/download-infographic?url=${encodeURIComponent(imageUrl)}&name=${encodeURIComponent(`${co.name}-infographic.png`)}`;
 
       if (updateError) {
         results.push({ name: co.name, ok: false, detail: `保存失敗: ${updateError.message}`, url: imageUrl });

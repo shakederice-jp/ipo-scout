@@ -18,7 +18,7 @@ export default function FooterLevelSwitch() {
       const segments = pathname.split("/").filter(Boolean);
       const id = segments[1];
       if (id) {
-        const target = l === "beginner" ? `/analysis/${id}/beginner` : `/analysis/${id}`;
+        const target = l === "beginner" ? `/ipo-jp/analysis/${id}/beginner` : `/ipo-jp/analysis/${id}`;
         if (target !== pathname) router.push(target);
       }
     }

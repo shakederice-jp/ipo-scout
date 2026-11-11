@@ -86,9 +86,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   ).slice(0, 170);
   const title = `${data.name}${tickerPart}のIPO｜上場日・公募価格・初値シナリオ｜大手町調査室九課`;
   const canonicalId = ticker ?? data.id;
-  const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
+  const url = `https://finance-tower.com/ipo-jp/analysis/${canonicalId}`;
   // 2026/11/1追加(集客施策1): 銘柄ごとのシェア画像(会社名・上場日・公募価格・AIスコア入り)。src/app/og/[id]/route.tsx
-  const ogImage = `https://ipo.finance-tower.com/og/${encodeURIComponent(String(canonicalId))}`;
+  const ogImage = `https://finance-tower.com/ipo-jp/og/${encodeURIComponent(String(canonicalId))}`;
   return {
     title,
     description,
@@ -194,7 +194,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
 
   const ticker = co.ticker;
   const canonicalId = ticker ?? company.id;
-  const url = `https://ipo.finance-tower.com/analysis/${canonicalId}`;
+  const url = `https://finance-tower.com/ipo-jp/analysis/${canonicalId}`;
 
   // 2026/9/5追加: dateModifiedが常に「今」(new Date())になっており、実際には
   // 中身が変わっていないアクセスのたびにGoogleへ「更新した」という偽の鮮度シグナルを
@@ -222,13 +222,13 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     "publisher": {
       "@type": "Organization",
       "name": "大手町調査室九課",
-      "url": "https://ipo.finance-tower.com",
+      "url": "https://finance-tower.com/ipo-jp",
     },
     "datePublished": datePublished,
     "dateModified": dateModified,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://ipo.finance-tower.com/analysis/${canonicalId}`,
+      "@id": `https://finance-tower.com/ipo-jp/analysis/${canonicalId}`,
     },
   };
 
@@ -241,7 +241,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "トップ", "item": "https://ipo.finance-tower.com" },
+      { "@type": "ListItem", "position": 1, "name": "トップ", "item": "https://finance-tower.com/ipo-jp" },
       { "@type": "ListItem", "position": 2, "name": company.name, "item": url },
     ],
   };

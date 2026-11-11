@@ -8,6 +8,7 @@ import { getCompanies } from "@/lib/get-companies";
 import { TOP_FAQ } from "@/lib/ipo-faq";
 import { companySlug, todayJst } from "@/lib/jp-format";
 import { Zap, Crown, AlertCircle, User } from "lucide-react";
+import { withBase } from "@/lib/base-path";
 
 // 2026/9/14改修(追記⑩ロングテールキーワード対応): 「IPOカレンダー」「IPOスケジュール」を
 // 前方に出したtitle/descriptionに変更。
@@ -23,18 +24,18 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     openGraph: {
       title, description,
-      url: "https://ipo.finance-tower.com",
+      url: "https://finance-tower.com/ipo-jp",
       siteName: "大手町調査室九課",
       locale: "ja_JP",
       type: "website",
-      images: [{ url: "https://ipo.finance-tower.com/ogp.png", width: 1200, height: 630 }],
+      images: [{ url: "https://finance-tower.com/ipo-jp/ogp.png", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title, description,
-      images: ["https://ipo.finance-tower.com/ogp.png"],
+      images: ["https://finance-tower.com/ipo-jp/ogp.png"],
     },
-    alternates: { canonical: "https://ipo.finance-tower.com" },
+    alternates: { canonical: "https://finance-tower.com/ipo-jp" },
   };
 }
 
@@ -84,14 +85,14 @@ export default async function Home({
       "@type": "ListItem",
       position: i + 1,
       name: `${co.name}（上場日 ${co.listing_date}）`,
-      url: `https://ipo.finance-tower.com/analysis/${companySlug(co)}`,
+      url: `https://finance-tower.com/ipo-jp/analysis/${companySlug(co)}`,
     })),
   };
   const siteLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "大手町調査室九課 IPO分析",
-    url: "https://ipo.finance-tower.com",
+    url: "https://finance-tower.com/ipo-jp",
     inLanguage: "ja",
   };
 
@@ -152,7 +153,7 @@ export default async function Home({
             { href:"/how-to-apply", label:"📝 IPOの申込方法" },
             { href:"/glossary", label:"📖 IPO用語集" },
           ].map((l) => (
-            <a key={l.href} href={l.href} style={{
+            <a key={l.href} href={withBase(l.href)} style={{
               fontSize:12, fontWeight:900, textDecoration:"none", whiteSpace:"nowrap",
               padding:"8px 14px", borderRadius:20,
               backgroundColor: l.primary ? "#0d4f52" : "white",
@@ -179,7 +180,7 @@ export default async function Home({
                 <div key={i}>
                   <h3 style={{ fontSize:13, fontWeight:900, color:"#0d4f52", margin:"0 0 4px" }}>{f.q}</h3>
                   <p style={{ fontSize:12, color:"#334155", lineHeight:1.8, margin:0 }}>{f.a}</p>
-                  {f.href && <a href={f.href} style={{ display:"inline-block", marginTop:4, fontSize:12, fontWeight:700, color:"#0d7c82" }}>{f.linkLabel} →</a>}
+                  {f.href && <a href={withBase(f.href)} style={{ display:"inline-block", marginTop:4, fontSize:12, fontWeight:700, color:"#0d7c82" }}>{f.linkLabel} →</a>}
                 </div>
               ))}
             </div>
@@ -190,7 +191,7 @@ export default async function Home({
         <aside className="top-sidebar" style={{ flex:"0 0 300px", minWidth:280, display:"flex", flexDirection:"column", gap:12 }}>
 
           {/* 料金プランページへのリンク */}
-          <a href="/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
+          <a href="/ipo-jp/plans" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#e8f9f9", textDecoration:"none", border:"1.5px solid #66c3c6" }}>
             <div>
               <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>📋 料金プランを見る</div>
               <div style={{ fontSize:10, color:"#2a7a7e", marginTop:2 }}>無料〜¥4,890/月・有料3プラン比較</div>
@@ -222,7 +223,7 @@ export default async function Home({
           <TrendsLinkCard />
 
 {/* IPO投資ガイドへのリンク */}
-<a href="/ipo-guide" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#f0fdf4", textDecoration:"none", border:"1.5px solid #22c55e" }}>
+<a href="/ipo-jp/ipo-guide" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#f0fdf4", textDecoration:"none", border:"1.5px solid #22c55e" }}>
             <div>
               <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>💡 IPO投資で資産を増やす法則</div>
               <div style={{ fontSize:10, color:"#15803d", marginTop:2 }}>超短期・短期・長期の実践的戦略</div>
@@ -233,7 +234,7 @@ export default async function Home({
                    {/* マイページ（冒頭） 2026/9/12改修: 「マイページ・通知設定」だけでは
                        無料でできることが伝わらなかったため、無料会員登録である旨と
                        使える機能を一言添えた(サイト全体のフリー/有料導線見直しの一環)。 */}
-          <a href="/mypage" style={{ ...cardStyle, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"12px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
+          <a href="/ipo-jp/mypage" style={{ ...cardStyle, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"12px 16px", backgroundColor:"#f59e0b", border:"2px solid #d97706", textDecoration:"none", color:"white", boxShadow:"0 2px 8px rgba(245,158,11,0.25)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, fontWeight:900, fontSize:14 }}>
               <User size={16} color="white" />
               👤 マイページ・通知設定
@@ -243,7 +244,7 @@ export default async function Home({
 
           {/* 2026/9/6追加: 紹介プログラムがマイページの奥にしかなく気づかれにくかったため、
               トップページからも露出させる導線。マイページの「友達招待プログラム」に遷移する。 */}
-          <a href="/campaign" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
+          <a href="/ipo-jp/campaign" style={{ ...cardStyle, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", backgroundColor:"#fef2f2", textDecoration:"none", border:"1.5px solid #dc2626" }}>
             <div>
               <div style={{ fontSize:12, fontWeight:900, color:"#082b2e" }}>🎁 友達紹介で有料分析＋週刊スライド2ヶ月読み放題</div>
               <div style={{ fontSize:10, color:"#b91c1c", marginTop:2, fontWeight:700 }}>🎉 先着300名限定キャンペーン実施中</div>

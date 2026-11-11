@@ -121,7 +121,7 @@ export default function AdminPage() {
 
   // 2026/9/26追加: ページを開いたとき、すでにログイン済み(有効なログイン状態のクッキーあり)かをサーバーに確認する
   useEffect(() => {
-    fetch("/api/admin/session", { cache: "no-store" })
+    fetch("/ipo-jp/api/admin/session", { cache: "no-store" })
       .then(r => r.json())
       .then(d => setAuthed(!!d?.authed))
       .catch(() => {})
@@ -132,7 +132,7 @@ export default function AdminPage() {
     if (!password || loginLoading) return;
     setLoginLoading(true); setLoginError(null);
     try {
-      const res = await fetch("/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ password }) });
+      const res = await fetch("/ipo-jp/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ password }) });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.success) { setPassword(""); setAuthed(true); }
       else setLoginError(data?.error ?? "ログインに失敗しました");
@@ -144,12 +144,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!authed) return;
-    fetch("/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
-    fetch("/api/admin/economic-events").then(r => r.json()).then(data => {
+    fetch("/ipo-jp/api/admin/companies").then(r => r.json()).then(setCompanies).catch(() => {});
+    fetch("/ipo-jp/api/admin/economic-events").then(r => r.json()).then(data => {
       if (Array.isArray(data)) setEconEvents(data);
     }).catch(() => {});
     // 2026/9/6追加: 紹介プログラムの成立件数を管理画面を開くたびに自動取得(手動ボタンは増やさない方針)
-    fetch("/api/admin/referral-stats")
+    fetch("/ipo-jp/api/admin/referral-stats")
       .then(r => r.json()).then(data => { if (!data.error) setReferralStats(data); }).catch(() => {});
   }, [authed]);
 
@@ -179,7 +179,7 @@ export default function AdminPage() {
     if (!cid || !PROG_ORDER.includes(key)) return;
     const item: ProgItem = { status, at: new Date().toISOString(), note: String(note ?? "").slice(0, 300), inferred: false };
     if (selectedIdRef.current === cid) setProgressMap({ ...progressRef.current, [key]: item });
-    fetch("/api/admin/analysis-progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company_id: cid, key, status, note: item.note }) }).catch(() => {});
+    fetch("/ipo-jp/api/admin/analysis-progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company_id: cid, key, status, note: item.note }) }).catch(() => {});
   };
 
   // setStep(各STEPの最後の「✅ …」「❌ …」)から、完了/失敗を自動で記録する
@@ -192,7 +192,7 @@ export default function AdminPage() {
 
   const loadProgress = async (cid: string) => {
     try {
-      const r = await fetch(`/api/admin/analysis-progress?company_id=${encodeURIComponent(cid)}`, { cache: "no-store" });
+      const r = await fetch(`/ipo-jp/api/admin/analysis-progress?company_id=${encodeURIComponent(cid)}`, { cache: "no-store" });
       const d = await r.json();
       if (!r.ok || d.error || selectedIdRef.current !== cid) return;
       const merged: Record<string, ProgItem> = {};
@@ -282,7 +282,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("1", true);
     try {
-      const res = await fetch("/api/edinet", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, company_name:selectedCompany.name, edinet_doc_id:edinetDocId||undefined }) });
+      const res = await fetch("/ipo-jp/api/edinet", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, company_name:selectedCompany.name, edinet_doc_id:edinetDocId||undefined }) });
       const data = await res.json();
       setStep("1", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
     } catch { setStep("1", false, "❌ 通信エラー"); }
@@ -292,7 +292,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("2", true);
     try {
-      const res = await fetch("/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
+      const res = await fetch("/ipo-jp/api/market", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id }) });
       const data = await res.json();
       setStep("2", false, data.error ? `❌ ${data.error}` : `✅ 完了・主幹事:${data.data?.lead_underwriter??"不明"}・競合${data.data?.competitors?.length??0}社・${data.listing_date_note??""}`);
     } catch { setStep("2", false, "❌ 通信エラー"); }
@@ -302,7 +302,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setStep("3", true);
     try {
-      const res = await fetch("/api/structure", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
+      const res = await fetch("/ipo-jp/api/structure", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
       const data = await res.json();
       setStep("3", false, data.error ? `❌ ${data.error}` : `✅ ${data.message}`);
     } catch { setStep("3", false, "❌ 通信エラー"); }
@@ -321,7 +321,7 @@ export default function AdminPage() {
       const p = parts[i];
       setStepResult(prev => ({...prev, "4": `⏳ ${p.label} 生成中 (${i+1}/${parts.length+1})...`}));
       try {
-        const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:p.key }) });
+        const res = await fetch("/ipo-jp/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:p.key }) });
         const data = await res.json();
         if (data.error) { setStep("4", false, `❌ ${p.label}: ${data.error}`); return; }
         Object.assign(merged, data);
@@ -330,7 +330,7 @@ export default function AdminPage() {
     // まずここに注目・初心者向けリライト（別呼び出しにして負荷分散）
     setStepResult(prev => ({...prev, "4": `⏳ まずここに注目（初心者向け）生成中 (4/4)...`}));
     try {
-      const res = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:"insights_beginner", insights:merged.insights ?? [] }) });
+      const res = await fetch("/ipo-jp/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, part:"insights_beginner", insights:merged.insights ?? [] }) });
       const data = await res.json();
       if (!data.error && Array.isArray(data.details_beginner) && Array.isArray(merged.insights)) {
         merged.insights = merged.insights.map((ins: any, i: number) => ({ ...ins, detail_beginner: data.details_beginner[i] ?? "" }));
@@ -345,7 +345,7 @@ export default function AdminPage() {
     const proofNote = pr.skipped ? `・校正スキップ(${pr.skipped})` : `・校正:修正${pr.fixed}件${pr.unresolved.length ? `／要確認${pr.unresolved.length}件` : ""}`;
     setStepResult(prev => ({...prev, "4": "⏳ 保存中..."}));
     try {
-      const saveRes = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
+      const saveRes = await fetch("/ipo-jp/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep("4", false, `❌ 保存エラー: ${saveData.error}`); return; }
       setStep("4", false, `✅ スコア: ${merged.total_score}/100・${merged.grade}ランク${proofNote}　｜　🐦X下書き: ${saveData.x_draft_debug ?? "(情報なし)"}`);
@@ -371,7 +371,7 @@ export default function AdminPage() {
       const p = parts[i];
       setStepResult(prev => ({...prev, "8": [...messages, `⏳ ${p.label} 生成中 (${i+1}/${parts.length})...`].join("\n")}));
       try {
-        const res = await fetch("/api/deep-dive", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, part:p.key }) });
+        const res = await fetch("/ipo-jp/api/deep-dive", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, part:p.key }) });
         const data = await res.json();
         if (data.error) { messages.push(`❌ ${p.label}: ${data.error}`); continue; }
         messages.push(`✅ ${p.label} 完了`);
@@ -391,7 +391,7 @@ export default function AdminPage() {
       for (let part = 1; part <= 2; part++) {
         setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i*2+part}/${axes.length*2}・${axisId}（${part}/2）分析中...`}));
         try {
-          const res = await fetch("/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, part }) });
+          const res = await fetch("/ipo-jp/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, part }) });
           const data = await res.json();
           if (data.error) { setStep(stepNum, false, `❌ ${axisId}: ${data.error}`); return false; }
           combinedText += (part===2?"\n\n":"") + (data.text??"");
@@ -409,7 +409,7 @@ export default function AdminPage() {
     const proofNote = pr.skipped ? `・校正スキップ(${pr.skipped})` : `・校正:修正${pr.fixed}件${pr.unresolved.length ? `／要確認${pr.unresolved.length}件` : ""}`;
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
-      const saveRes = await fetch("/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
+      const saveRes = await fetch("/ipo-jp/api/axes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return false; }
     } catch { setStep(stepNum, false, "❌ 保存通信エラー"); return false; }
@@ -424,7 +424,7 @@ export default function AdminPage() {
     setRedoLoading(scope);
     setRedoResult(prev => ({...prev, [scope]: `⏳ ${label} 保存済みの文章を読み込み中...`}));
     const call = async (body: any) => {
-      const res = await fetch("/api/admin/proofread", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ...body }) });
+      const res = await fetch("/ipo-jp/api/admin/proofread", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ...body }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
       return data;
@@ -472,7 +472,7 @@ export default function AdminPage() {
           const partLabel = subPart === 1 ? "前半" : "後半";
           setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} ${i+1}/${axes.length}・${axisId}(${partLabel})を初心者向けに書き直し中...${attemptLabel}`}));
           try {
-            const res = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, sub_part:subPart }) });
+            const res = await fetch("/ipo-jp/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, single_axis:axisId, sub_part:subPart }) });
             const data = await res.json();
             if (data.error) { lastError = data.error; continue; }
             parts[subPart-1] = data.report_beginner ?? "";
@@ -487,7 +487,7 @@ export default function AdminPage() {
     }
     setStepResult(prev => ({...prev, [stepNum]: `⏳ ${label} 保存中...`}));
     try {
-      const saveRes = await fetch("/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
+      const saveRes = await fetch("/ipo-jp/api/axes-beginner", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, period, save_results:allResults }) });
       const saveData = await saveRes.json();
       if (saveData.error) { setStep(stepNum, false, `❌ 保存エラー: ${saveData.error}`); return false; }
     } catch { setStep(stepNum, false, "❌ 保存通信エラー"); return false; }
@@ -516,7 +516,7 @@ export default function AdminPage() {
       const type = chartTypes[i];
       setVizResult(`⏳ ${labels[type]} 生成中 (${i+1}/${chartTypes.length})...`);
       try {
-        const res = await fetch("/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, chart_type:type }) });
+        const res = await fetch("/ipo-jp/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, chart_type:type }) });
         const data = await res.json();
         if (data.error) { setVizResult(`❌ ${labels[type]}: ${data.error}`); recordProgress("6", "failed", `${labels[type]}: ${data.error}`); setVizLoading(false); return; }
         Object.assign(merged, data.data);
@@ -524,7 +524,7 @@ export default function AdminPage() {
     }
     setVizResult("⏳ 保存中...");
     try {
-      const saveRes = await fetch("/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, save_results:merged }) });
+      const saveRes = await fetch("/ipo-jp/api/visualize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ companyId:selectedCompany.id, save_results:merged }) });
       const saveData = await saveRes.json();
       setVizResult(saveData.success ? "✅ 視覚化データ生成完了" : `❌ 保存エラー: ${saveData.error}`);
       recordProgress("6", saveData.success ? "done" : "failed", saveData.success ? "視覚化データ生成完了" : `保存エラー: ${saveData.error}`);
@@ -536,7 +536,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setIpoPriceLoading(true); setIpoPriceResult(null);
     try {
-      const res = await fetch("/api/admin/set-ipo-price", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ipo_price:ipoPriceInput }) });
+      const res = await fetch("/ipo-jp/api/admin/set-ipo-price", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id, ipo_price:ipoPriceInput }) });
       const data = await res.json();
       setIpoPriceResult(data.error ? `❌ ${data.error}` : "✅ 保存しました");
     } catch { setIpoPriceResult("❌ 通信エラー"); }
@@ -552,17 +552,17 @@ export default function AdminPage() {
     const results: string[] = [];
     for (const c of targets) {
       try {
-        const res = await fetch("/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:c.name }) });
+        const res = await fetch("/ipo-jp/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:c.name }) });
         const data = await res.json();
         if (data.error) results.push(`❌ ${c.name}: ${data.error}`);
         else {
-          await fetch("/api/admin/set-edinet-doc-id", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:c.id, edinet_doc_id:data.doc_id }) });
+          await fetch("/ipo-jp/api/admin/set-edinet-doc-id", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:c.id, edinet_doc_id:data.doc_id }) });
           results.push(`✅ ${c.name}: ${data.doc_id}`);
         }
       } catch { results.push(`❌ ${c.name}: 通信エラー`); }
     }
     setBulkEdinetResult(results.join("\n"));
-    fetch("/api/admin/companies").then(r=>r.json()).then(setCompanies).catch(()=>{});
+    fetch("/ipo-jp/api/admin/companies").then(r=>r.json()).then(setCompanies).catch(()=>{});
     setBulkEdinetLoading(false);
   };
 
@@ -570,7 +570,7 @@ export default function AdminPage() {
     if (!selectedCompany) return;
     setCompLoading(true); setCompResult(null);
     try {
-      const res = await fetch("/api/competitor", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
+      const res = await fetch("/ipo-jp/api/competitor", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_id:selectedCompany.id }) });
       const data = await res.json();
       if (data.error) setCompResult(`❌ ${data.error}`);
       else setCompResult(data.results.map((r:any)=>r.error?`❌ ${r.name}: ${r.error}`:`✅ ${r.name}: 売上${r.revenue}億`).join("\n"));
@@ -581,7 +581,7 @@ export default function AdminPage() {
   const handleAutoFetch = async () => {
     setAutoLoading(true); setAutoResult("IPO情報を取得中...");
     try {
-      const res = await fetch("/api/admin/auto-fetch", { method:"POST" });
+      const res = await fetch("/ipo-jp/api/admin/auto-fetch", { method:"POST" });
       const data = await res.json();
       setAutoResult(data.error ? `❌ ${data.error}` : `✅ ${data.added}件追加・${data.skipped}件スキップ`);
     } catch { setAutoResult("❌ 通信エラー"); }
@@ -591,7 +591,7 @@ export default function AdminPage() {
   const handleTestNotify = async () => {
     setNotifyLoading(true); setNotifyResult(null);
     try {
-      const res = await fetch("/api/admin/send-notify", { method:"POST" });
+      const res = await fetch("/ipo-jp/api/admin/send-notify", { method:"POST" });
       const data = await res.json();
       setNotifyResult(data.error ? `❌ ${data.error}` : `✅ 送信完了・${data.sent}件`);
     } catch { setNotifyResult("❌ 通信エラー"); }
@@ -604,7 +604,7 @@ export default function AdminPage() {
     if (!testPostText.trim()) { setTestPostResult("❌ 投稿文を入力してください"); return; }
     setTestPostLoading(true); setTestPostResult(null);
     try {
-      const res = await fetch("/api/admin/test-x-post", {
+      const res = await fetch("/ipo-jp/api/admin/test-x-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: testPostText }),
@@ -624,7 +624,7 @@ export default function AdminPage() {
   const handleRunAutoPost = async (slot: "morning" | "evening") => {
     setAutoPostLoading(slot); setAutoPostResult(null);
     try {
-      const res = await fetch("/api/admin/run-auto-post", {
+      const res = await fetch("/ipo-jp/api/admin/run-auto-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slot }),
@@ -645,7 +645,7 @@ export default function AdminPage() {
   const handleHealthCheck = async () => {
     setHealthLoading(true); setHealthResult(null);
     try {
-      const res = await fetch("/api/admin/health");
+      const res = await fetch("/ipo-jp/api/admin/health");
       setHealthResult(await res.json());
     } catch(e) { setHealthResult({ ok:false, error:String(e) }); }
     setHealthLoading(false);
@@ -654,7 +654,7 @@ export default function AdminPage() {
   const handleInfographicBackfill = async () => {
     setInfoBackfillLoading(true); setInfoBackfillResult(null);
     try {
-      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({}) });
+      const res = await fetch("/ipo-jp/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({}) });
       setInfoBackfillResult(await res.json());
     } catch(e) { setInfoBackfillResult({ error:String(e) }); }
     setInfoBackfillLoading(false);
@@ -663,7 +663,7 @@ export default function AdminPage() {
   const handleInfographicForceRegen = async () => {
     setInfoForceLoading(true); setInfoForceResult(null);
     try {
-      const res = await fetch("/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ force:true, offset:infoForceOffset }) });
+      const res = await fetch("/ipo-jp/api/admin/backfill-infographics", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ force:true, offset:infoForceOffset }) });
       const data = await res.json();
       setInfoForceResult(data);
       if (typeof data.nextOffset === "number") setInfoForceOffset(data.nextOffset);
@@ -674,7 +674,7 @@ export default function AdminPage() {
   const handleDbCheck = async () => {
     setDbCheckLoading(true); setDbCheckResult(null);
     try {
-      const res = await fetch("/api/cron/db-check");
+      const res = await fetch("/ipo-jp/api/cron/db-check");
       setDbCheckResult(await res.json());
     } catch(e) { setDbCheckResult({ ok:false, error:String(e) }); }
     setDbCheckLoading(false);
@@ -683,7 +683,7 @@ export default function AdminPage() {
   const handleMarketSnapshot = async () => {
     setMarketSnapshotLoading(true); setMarketSnapshotResult(null);
     try {
-      const res = await fetch("/api/cron/market-snapshot");
+      const res = await fetch("/ipo-jp/api/cron/market-snapshot");
       setMarketSnapshotResult(await res.json());
     } catch(e) { setMarketSnapshotResult({ error:String(e) }); }
     setMarketSnapshotLoading(false);
@@ -698,12 +698,12 @@ export default function AdminPage() {
     if (!econDate||!econType) return;
     setEconLoading(true); setEconResult(null);
     try {
-      const res = await fetch("/api/admin/economic-events", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ event_date:econDate, event_type:econType, label:econLabel||null }) });
+      const res = await fetch("/ipo-jp/api/admin/economic-events", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ event_date:econDate, event_type:econType, label:econLabel||null }) });
       const data = await res.json();
       if (data.error) setEconResult(`❌ ${data.error}`);
       else {
         setEconResult("✅ 追加しました"); setEconDate(""); setEconLabel("");
-        const updated = await fetch("/api/admin/economic-events").then(r=>r.json());
+        const updated = await fetch("/ipo-jp/api/admin/economic-events").then(r=>r.json());
         if (Array.isArray(updated)) setEconEvents(updated);
       }
     } catch { setEconResult("❌ 通信エラー"); }
@@ -713,7 +713,7 @@ export default function AdminPage() {
   const handleDeleteEconEvent = async (id: string) => {
     if (!confirm("このイベントを削除しますか？")) return;
     try {
-      await fetch("/api/admin/economic-events", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id }) });
+      await fetch("/ipo-jp/api/admin/economic-events", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id }) });
       setEconEvents(prev=>prev.filter(e=>e.id!==id));
     } catch {}
   };
@@ -727,7 +727,7 @@ export default function AdminPage() {
     if (!manualAddName.trim()) { setManualAddResult("❌ 会社名を入力してください"); return; }
     setManualAddLoading(true); setManualAddResult(null);
     try {
-      const res = await fetch("/api/admin/add-company", {
+      const res = await fetch("/ipo-jp/api/admin/add-company", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -748,7 +748,7 @@ export default function AdminPage() {
         setManualAddResult(`✅ 「${data.company?.name ?? manualAddName}」を登録しました。下の「銘柄分析」で選択して、①から順に実行してください。`);
         setManualAddName(""); setManualAddTicker(""); setManualAddListingDate("");
         setManualAddEdinetDocId(""); setManualAddSector(""); setManualAddBizType(""); setManualAddSummary("");
-        const updated = await fetch("/api/admin/companies").then(r => r.json());
+        const updated = await fetch("/ipo-jp/api/admin/companies").then(r => r.json());
         if (Array.isArray(updated)) setCompanies(updated);
       }
     } catch {
@@ -768,7 +768,7 @@ export default function AdminPage() {
     if (!confirm(`「${target.name}」を削除します。分析データも含めて元に戻せません。本当によろしいですか？`)) return;
     setDeleteCompanyLoading(true); setDeleteCompanyResult(null);
     try {
-      const res = await fetch("/api/admin/delete-company", {
+      const res = await fetch("/ipo-jp/api/admin/delete-company", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company_id: deleteCompanyId, confirm_name: target.name }),
@@ -780,7 +780,7 @@ export default function AdminPage() {
         setDeleteCompanyResult(`✅ 「${data.deleted_name}」を削除しました。`);
         setDeleteCompanyId("");
         if (selectedCompany?.id === deleteCompanyId) setSelectedCompany(null);
-        const updated = await fetch("/api/admin/companies").then(r => r.json());
+        const updated = await fetch("/ipo-jp/api/admin/companies").then(r => r.json());
         if (Array.isArray(updated)) setCompanies(updated);
       }
     } catch {
@@ -886,7 +886,7 @@ export default function AdminPage() {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8, marginBottom:"20px" }}>
           <h1 style={{ fontSize:"18px", fontWeight:900, color:"#082b2e", margin:0 }}>⚙️ 管理画面(日本版)</h1>
           {/* 2026/10/16追加: 米国版の管理画面へ移動するリンク(ログインは各サイトで別々) */}
-          <a href="https://ipo-us.finance-tower.com/admin" style={{ fontSize:"12px", fontWeight:700, color:"#0d4f52", background:"white", border:"1px solid #66c3c6", borderRadius:"999px", padding:"6px 14px", textDecoration:"none" }}>
+          <a href="https://finance-tower.com/ipo-us/admin" style={{ fontSize:"12px", fontWeight:700, color:"#0d4f52", background:"white", border:"1px solid #66c3c6", borderRadius:"999px", padding:"6px 14px", textDecoration:"none" }}>
             🇺🇸 米国版の管理画面へ →
           </a>
         </div>
@@ -1073,7 +1073,7 @@ export default function AdminPage() {
                         ))}
                         {infoBackfillResult.results?.some((r:any)=>r.ok) && (
                           <div style={{ marginTop:6, fontSize:10, color:"#64748b" }}>
-                            生成した画像・記事はこのadmin画面には表示されません。<a href="/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
+                            生成した画像・記事はこのadmin画面には表示されません。<a href="/ipo-jp/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
                           </div>
                         )}
                         {typeof infoBackfillResult.remaining === "number" && (
@@ -1105,7 +1105,7 @@ export default function AdminPage() {
                         ))}
                         {infoForceResult.results?.some((r:any)=>r.ok) && (
                           <div style={{ marginTop:6, fontSize:10, color:"#64748b" }}>
-                            生成した画像・記事はこのadmin画面には表示されません。<a href="/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
+                            生成した画像・記事はこのadmin画面には表示されません。<a href="/ipo-jp/trends" target="_blank" rel="noopener noreferrer" style={{ color:"#66c3c6" }}>マーケットトレンドページ →</a> の「🆕 新規IPO紹介」でご確認ください。
                           </div>
                         )}
                         {infoForceResult.total != null && (
@@ -1350,7 +1350,7 @@ export default function AdminPage() {
                         if(!selectedCompany) return;
                         setEdinetSearchLoading(true); setEdinetSearchResult(null);
                         try {
-                          const res = await fetch("/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:selectedCompany.name }) });
+                          const res = await fetch("/ipo-jp/api/admin/find-edinet-doc", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ company_name:selectedCompany.name }) });
                           const data = await res.json();
                           if(data.error) setEdinetSearchResult(`❌ ${data.error}`);
                           else { setEdinetDocId(data.doc_id); setEdinetSearchResult(`✅ ${data.doc_id}`); }

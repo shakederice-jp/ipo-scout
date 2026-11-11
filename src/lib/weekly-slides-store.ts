@@ -7,7 +7,7 @@ import { renderWeeklySlides, slideCount } from "@/lib/weekly-slides-pdf";
 import type { SlidesData } from "@/lib/weekly-slides-types";
 
 export const SLIDES_BUCKET = "weekly-slides";
-const SITE_URL = "https://ipo.finance-tower.com";
+const SITE_URL = "https://finance-tower.com/ipo-jp";
 const FONT_URL = `${SITE_URL}/fonts/NotoSansJP-Bold.ttf`;
 
 export interface WeeklySlideRow {

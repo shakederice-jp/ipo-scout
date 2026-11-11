@@ -19,7 +19,7 @@ export default function WeeklyBriefSignup({ style, compact }: { style?: React.CS
   const [sentTo, setSentTo] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/weekly-brief", { cache: "no-store" })
+    fetch("/ipo-jp/api/weekly-brief", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setState(!d.loggedIn ? "guest" : d.subscribed ? "on" : "off"))
       .catch(() => setState("guest"));
@@ -29,7 +29,7 @@ export default function WeeklyBriefSignup({ style, compact }: { style?: React.CS
     setBusy(true);
     setMessage(null);
     try {
-      const r = await fetch("/api/weekly-brief", {
+      const r = await fetch("/ipo-jp/api/weekly-brief", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ subscribe }),
@@ -53,7 +53,7 @@ export default function WeeklyBriefSignup({ style, compact }: { style?: React.CS
     setBusy(true);
     setMessage(null);
     try {
-      const r = await fetch("/api/weekly-brief/guest", {
+      const r = await fetch("/ipo-jp/api/weekly-brief/guest", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, website }),
@@ -97,7 +97,7 @@ export default function WeeklyBriefSignup({ style, compact }: { style?: React.CS
           </button>
           <p style={{ flexBasis: "100%", margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.7 }}>
             確認メールのボタンを押すと登録完了です。メールアドレスは週報の配信にのみ使い、いつでも停止できます。
-            会員登録(<a href="/auth" style={{ color: MID, fontWeight: 700 }}>無料</a>)がお済みの方は、ログイン後にこちらで設定できます。
+            会員登録(<a href="/ipo-jp/auth" style={{ color: MID, fontWeight: 700 }}>無料</a>)がお済みの方は、ログイン後にこちらで設定できます。
           </p>
         </form>
       )}

@@ -7,7 +7,7 @@ import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, J
 // 数字(税率・NISAの上限額)は制度改正で変わることがあるため、年1回ほど国税庁・金融庁の案内で見直すこと。
 export const revalidate = 86400;
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 
 export async function generateMetadata(): Promise<Metadata> {
   const title = "IPO株の税金とNISAの基本｜利益・損失の扱いと注意点｜大手町調査室九課";
@@ -119,7 +119,7 @@ export default function TaxNisaPage() {
       <Card>
         <H2>申込の流れや日程を確認する</H2>
         <P>
-          IPOの申込の流れは<a href="/how-to-apply" style={link}>IPOの申込方法</a>に、上場日や申込日程は<a href="/schedule" style={link}>IPOスケジュール</a>にまとめています。
+          IPOの申込の流れは<a href="/ipo-jp/how-to-apply" style={link}>IPOの申込方法</a>に、上場日や申込日程は<a href="/ipo-jp/schedule" style={link}>IPOスケジュール</a>にまとめています。
         </P>
       </Card>
 

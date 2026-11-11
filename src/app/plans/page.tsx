@@ -66,7 +66,7 @@ const faqs = [
   { q: "「無料会員登録」と「無料で読めるレポート」は何が違いますか？", a: "「無料で読めるレポート」は、毎月最初の2銘柄の分析レポートを指し、ログイン不要でどなたでも閲覧できます。一方「無料会員登録」はメールアドレスでのログインを指し、登録すると3銘柄目以降は読めませんが、代わりにお気に入り登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（有料分析が2ヶ月間読み放題）がご利用いただけるようになります。" },
   { q: "決済は安全ですか？", a: "はい。世界標準の決済サービス「Stripe」を使用しています。カード情報の入力はStripeの専用画面で行い、当サービスでは保持しません。会員登録で取得するのもメールアドレスとパスワードだけです。" },
   { q: "プランの変更はできますか？", a: "はい。マイページからいつでもプランの変更・アップグレードが可能です。" },
-  // 2026/10/10: 米国版(ipo-us.finance-tower.com)とのプラン共通化に伴い追加
+  // 2026/10/10: 米国版(finance-tower.com/ipo-us)とのプラン共通化に伴い追加
   { q: "米国版の分析サイトでも使えますか？", a: "はい。料金は日本版と米国版で共通で、プランも共通です。同じメールアドレスで米国版にも登録していただくと、日本版で加入したプラン（A 分析見放題プラン・B 分析見放題＋通知プラン・C フルパックプラン）が米国版でも有効になります。米国版で加入した場合も同様です。解約・変更も両方に反映されます。なおシングルレポートは、購入した銘柄だけが読めます。" },
   { q: "シングルレポートとは何ですか？", a: "サブスク不要で、気になる1銘柄だけを¥500で購入できるプランです。無料枠の2銘柄以外を読みたい場合にご利用ください。" },
 ];
@@ -119,7 +119,7 @@ export default function PlansPage() {
                   </div>
                 ))}
                 {plan.id === "free" ? (
-                  <a href="/" style={{ display: "block", marginTop: 16, padding: "10px", backgroundColor: plan.bg, color: plan.color, borderRadius: 10, fontWeight: 900, fontSize: 13, textDecoration: "none", textAlign: "center", border: `1px solid ${plan.border}` }}>
+                  <a href="/ipo-jp" style={{ display: "block", marginTop: 16, padding: "10px", backgroundColor: plan.bg, color: plan.color, borderRadius: 10, fontWeight: 900, fontSize: 13, textDecoration: "none", textAlign: "center", border: `1px solid ${plan.border}` }}>
                     無料で始める →
                   </a>
                 ) : (
@@ -159,7 +159,7 @@ export default function PlansPage() {
             ))}
           </div>
           <p style={{ fontSize: 11, color: "#64748b", lineHeight: 1.7, margin: "12px 0 0" }}>
-            詳しくは<a href="/privacy" style={{ color: "#047857", fontWeight: 700 }}>プライバシーポリシー</a>をご覧ください。
+            詳しくは<a href="/ipo-jp/privacy" style={{ color: "#047857", fontWeight: 700 }}>プライバシーポリシー</a>をご覧ください。
           </p>
         </div>
 
@@ -257,10 +257,10 @@ export default function PlansPage() {
             毎月最初の2銘柄は完全無料。登録不要ですぐ読めます。
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/" style={{ padding: "12px 28px", backgroundColor: C.teal, color: C.dark, borderRadius: 10, fontWeight: 900, fontSize: 14, textDecoration: "none" }}>
+            <a href="/ipo-jp" style={{ padding: "12px 28px", backgroundColor: C.teal, color: C.dark, borderRadius: 10, fontWeight: 900, fontSize: 14, textDecoration: "none" }}>
               無料で始める →
             </a>
-            <a href="/auth" style={{ padding: "12px 28px", backgroundColor: "rgba(255,255,255,0.1)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)" }}>
+            <a href="/ipo-jp/auth" style={{ padding: "12px 28px", backgroundColor: "rgba(255,255,255,0.1)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)" }}>
               アカウント登録
             </a>
           </div>

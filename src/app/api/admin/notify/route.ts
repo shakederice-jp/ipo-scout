@@ -120,7 +120,7 @@ export async function POST() {
                 </thead>
                 <tbody>${rows.join("")}</tbody>
               </table>
-              <a href="https://ipo.finance-tower.com"
+              <a href="https://finance-tower.com/ipo-jp"
                 style="display:inline-block;padding:12px 24px;background:#66c3c6;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:20px;font-size:14px">
                 分析レポートを確認する →
               </a>

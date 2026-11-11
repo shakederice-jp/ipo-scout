@@ -15,7 +15,7 @@
 //     それまでのログイン状態はすべて無効になる(万一のときはパスワード変更で全員ログアウトできる)。
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
-export const ADMIN_COOKIE = "admin_session";
+export const ADMIN_COOKIE = "admin_session_jp"; // 2026/11/11: 同じドメインの米国版と名前がぶつからないよう変更(ログイン済みの管理者は、いちど再ログインが必要)
 export const ADMIN_SESSION_MAX_AGE_SEC = 14 * 24 * 60 * 60; // ログイン状態の有効期間(14日)
 export const ADMIN_PASSWORD_MIN_LENGTH = 9; // 9文字以上で、英字と数字を両方含むこと
 

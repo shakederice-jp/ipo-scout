@@ -110,7 +110,7 @@ export default function ThreeMinuteCard({
         <div style={{ borderRadius: 10, backgroundColor: "#fffbeb", border: "1px solid #fde68a", padding: "9px 12px", marginBottom: 10 }}>
           <span style={{ fontSize: 11, color: "#92400e", lineHeight: 1.7 }}>
             🔒 注目点と注意点は、有料会員の方が読めます。
-            <a href="/plans" style={{ color: MID, fontWeight: 700, marginLeft: 6, textDecoration: "underline" }}>プランを見る</a>
+            <a href="/ipo-jp/plans" style={{ color: MID, fontWeight: 700, marginLeft: 6, textDecoration: "underline" }}>プランを見る</a>
           </span>
         </div>
       )}

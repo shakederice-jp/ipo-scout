@@ -87,7 +87,7 @@ ${STYLE_GUIDE}
   const content = await generateWithGemini(prompt);
   const sourceLinks = data.map((c: any) => ({
     title: c.name,
-    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    url: `https://finance-tower.com/ipo-jp/analysis/${c.id}`,
     source: "自社DB",
   }));
   return { content, sourceLinks };
@@ -153,7 +153,7 @@ ${listBlock}
   const content = await generateWithGemini(prompt);
   const sourceLinks = data.map((c: any) => ({
     title: c.name,
-    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    url: `https://finance-tower.com/ipo-jp/analysis/${c.id}`,
     source: "自社DB",
   }));
   return { content, sourceLinks };
@@ -271,7 +271,7 @@ ${STYLE_GUIDE}
   const content = await generateWithGemini(prompt);
   const sourceLinks = top3.map((c) => ({
     title: c.name,
-    url: `https://ipo.finance-tower.com/analysis/${c.id}`,
+    url: `https://finance-tower.com/ipo-jp/analysis/${c.id}`,
     source: "自社分析",
   }));
 
@@ -345,7 +345,7 @@ ${STYLE_GUIDE}
   const content = await generateWithGemini(prompt);
   const sourceLinks = events.map((e) => ({
     title: e.name,
-    url: `https://ipo.finance-tower.com/analysis/${e.id}`,
+    url: `https://finance-tower.com/ipo-jp/analysis/${e.id}`,
     source: "自社分析",
   }));
 
@@ -522,7 +522,7 @@ ${CHECKPOINT_STYLE_GUIDE}
   const content = await generateWithGemini(prompt);
   return {
     content,
-    sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+    sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" }],
   };
 }
 
@@ -748,7 +748,7 @@ ${STYLE_GUIDE}
   const content = await generateWithGemini(prompt);
   return {
     content,
-    sourceLinks: [{ title: "IPO投資の基礎知識ガイド", url: "https://ipo.finance-tower.com/ipo-guide", source: "自社ガイド" }],
+    sourceLinks: [{ title: "IPO投資の基礎知識ガイド", url: "https://finance-tower.com/ipo-jp/ipo-guide", source: "自社ガイド" }],
   };
 }
 
@@ -833,7 +833,7 @@ ${STYLE_GUIDE}
     sector: chosen.co.sector || "IPO需給",
     result: {
       content,
-      sourceLinks: [{ title: `${chosen.co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${chosen.co.id}`, source: "自社分析" }],
+      sourceLinks: [{ title: `${chosen.co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${chosen.co.id}`, source: "自社分析" }],
     },
   };
 }
@@ -997,7 +997,7 @@ ${STYLE_GUIDE}
         sector: co.sector || "競合比較",
         result: {
           content,
-          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" }],
         },
       };
     } catch (e) {
@@ -1079,7 +1079,7 @@ ${DEEP_DIVE_TREND_STYLE}
       sector: co.sector || "深掘り解説",
       result: {
         content,
-        sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+        sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" }],
       },
     };
   } catch (e) {
@@ -1178,7 +1178,7 @@ ${STYLE_GUIDE}
         sector: co.sector || "IPO関連ニュース",
         result: {
           content,
-          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" }],
+          sourceLinks: [{ title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" }],
         },
       };
     } catch (e) {
@@ -1329,7 +1329,7 @@ ${STYLE_GUIDE}
         sector: c.co.sector || "IPO値動き",
         result: {
           content,
-          sourceLinks: [{ title: `${c.co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${c.co.id}`, source: "自社分析" }],
+          sourceLinks: [{ title: `${c.co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${c.co.id}`, source: "自社分析" }],
         },
       };
     } catch (e) {

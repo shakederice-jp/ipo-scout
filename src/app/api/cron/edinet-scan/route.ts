@@ -6,6 +6,7 @@ import { xShortPostLinkHtml } from "@/lib/x-short-link";
 import Anthropic from "@anthropic-ai/sdk";
 import { internalAuthHeaders } from "@/lib/admin-auth";
 import { isSameCompanyName, isInvestmentCorporation } from "@/lib/edinet";
+import { SELF_URL } from "@/lib/base-path";
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -240,7 +241,7 @@ const { data: edinetCompanyList } = await supabase
                 `書類ID: ${docId}\n` +
                 `業種: ${analysis.sector}\n\n` +
                 `管理画面から①〜⑥のステップを実行して分析を完成させてください。\n` +
-                `https://ipo.finance-tower.com/admin\n\n` +
+                `https://finance-tower.com/ipo-jp/admin\n\n` +
                 `▼ X速報の原稿(手動で投稿する場合)\n\n${tweetTextHtml}\n\n${await xShortPostLinkHtml(tweetText, { kind: "新規IPO発見", title: companyName })}`,
                 "info"
               );
@@ -297,7 +298,7 @@ for (const date of dates) {
     if (!matched) continue;
 
     try {
-      const priceRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/detect-ipo-price`, {
+      const priceRes = await fetch(`${SELF_URL}/api/admin/detect-ipo-price`, {
         method: "POST",
         // 2026/9/26: 管理用APIは認証必須になったため、内部呼び出し用の合言葉を付ける
         headers: { "Content-Type": "application/json", ...internalAuthHeaders() },

@@ -3,9 +3,13 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { NEXT_COOKIE, safeNext } from "@/lib/post-login";
 import { applyPendingReferral } from "@/lib/referral";
+import { PUBLIC_ORIGIN, withBase } from "@/lib/base-path";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  // 2026/11/11: 親サイト(finance-tower.com)経由で届くため、リクエストのURLのドメインは当てにならない。
+  // 本番は公開ドメインに固定して、/ipo-jp 付きの正しい場所へ戻す。
+  const { searchParams, origin: requestOrigin } = new URL(request.url);
+  const origin = process.env.NODE_ENV === "production" ? PUBLIC_ORIGIN : requestOrigin;
   const code = searchParams.get("code");
   let dest = "/";
 
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const res = NextResponse.redirect(`${origin}${dest}`);
+  const res = NextResponse.redirect(`${origin}${withBase(dest)}`);
   res.cookies.set(NEXT_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 }

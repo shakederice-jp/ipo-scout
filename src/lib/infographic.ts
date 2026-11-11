@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipo.finance-tower.com";
+import { SELF_URL } from "@/lib/base-path";
+
+const APP_URL = SELF_URL; // 2026/11/11: 自分自身のAPIの土台URL(公開ドメイン+/ipo-jp)
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

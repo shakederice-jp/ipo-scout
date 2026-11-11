@@ -7,7 +7,7 @@ import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, J
 // 登録されたロックアップ解除日(90日・180日)から、これから解除を迎える銘柄を日付順に自動で並べる。
 export const revalidate = 1800;
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 const hasAnalysis = (c: CompanyListItem) => !!c.ai_summary || c.ai_score != null;
 
 type Row = { date: string; kind: string; c: CompanyListItem };
@@ -69,7 +69,7 @@ export default async function LockupPage() {
   };
   const mk = (r: Row) => {
     const label = (<><strong>{r.c.name}</strong>{r.c.ticker ? <span style={{ color: "#64748b" }}>（{r.c.ticker}）</span> : null}</>);
-    return hasAnalysis(r.c) ? <a key="n" href={`/analysis/${companySlug(r.c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a> : <span key="n">{label}</span>;
+    return hasAnalysis(r.c) ? <a key="n" href={`/ipo-jp/analysis/${companySlug(r.c)}`} style={{ color: C.nav, textDecoration: "underline" }}>{label}</a> : <span key="n">{label}</span>;
   };
   return (
     <Page>
@@ -126,7 +126,7 @@ export default async function LockupPage() {
             <p style={{ fontSize: 12, color: "#334155", lineHeight: 1.8, margin: 0 }}>{f.a}</p>
           </div>
         ))}
-        <P>ほかの用語は<a href="/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で説明しています。</P>
+        <P>ほかの用語は<a href="/ipo-jp/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で説明しています。</P>
         <Disclaimer />
       </Card>
 

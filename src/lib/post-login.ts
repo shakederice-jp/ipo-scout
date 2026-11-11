@@ -2,7 +2,7 @@
 // 戻り先は「このサイト内のパス」だけを許可する（外部サイトへ飛ばされる悪用を防ぐため）。
 
 // 会員登録→確認メールのリンク→戻り先、という流れで戻り先を覚えておくクッキーの名前
-export const NEXT_COOKIE = "post_auth_next";
+export const NEXT_COOKIE = "post_auth_next_jp"; // 2026/11/11: 米国版と名前がぶつからないよう変更
 
 export function safeNext(raw: string | null | undefined): string | null {
   if (!raw) return null;

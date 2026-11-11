@@ -602,7 +602,7 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
   const toggle=(k:keyof typeof settings)=>setSettings(p=>({...p,[k]:!p[k]}));
   const save=async()=>{
     setStatus("saving");
-    const res=await fetch("/api/notification",{method:"POST",headers:{"Content-Type":"application/json"},
+    const res=await fetch("/ipo-jp/api/notification",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({user_id:userId??"guest",company_id:company.id,...settings})});
     if(!userId){setStatus("needsPlan");return;}
     const data=await res.json();
@@ -624,8 +624,8 @@ function NotifyModal({company,userId,onClose}:{company:IpoCompany;userId:string|
                 「登録は無料・実際の配信にはB以上のプランが必要」の2段階を明示する
                 文言に変更(サイト全体のフリー/有料導線見直しの一環)。 */}
             {!userId
-              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上に加入すると配信が始まります。<a href="/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
-              : <>通知の配信には<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上への加入が必要です。<a href="/" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
+              ? <>通知の設定にはまず<strong>無料会員登録</strong>（ログインのみ・課金不要）が必要です。登録後、<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上に加入すると配信が始まります。<a href="/ipo-jp/auth" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>無料会員登録・ログイン →</a></>
+              : <>通知の配信には<strong>B 分析見放題＋通知プラン（¥3,890/月）</strong>以上への加入が必要です。<a href="/ipo-jp" style={{display:"block",marginTop:6,color:PRIMARY,fontWeight:700}}>プランを確認する →</a></>
             }
           </div>
         )}
@@ -748,7 +748,7 @@ function ReferenceGroupHeader({icon,order,title,subtitle,accent}:{icon:string;or
         <div style={{fontWeight:900,fontSize:15,color:DARK,lineHeight:1.3}}>{title}</div>
         <div style={{fontSize:10,color:MID,marginTop:3}}>{subtitle}</div>
       </div>
-      <a href="/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,
+      <a href="/ipo-jp/ipo-guide" style={{fontSize:10,color:accent,textDecoration:"none",fontWeight:700,
         whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${accent}`,borderRadius:20,padding:"4px 10px",
         backgroundColor:"rgba(255,255,255,0.7)"}}>
         法則を読む →
@@ -766,7 +766,7 @@ function FavoriteCompanyButton({companyId,userId}:{companyId:string;userId:strin
   useEffect(()=>{
     if(!userId){ setStatus("idle"); return; }
     let cancelled=false;
-    fetch(`/api/favorite-companies?companyId=${companyId}`)
+    fetch(`/ipo-jp/api/favorite-companies?companyId=${companyId}`)
       .then(r=>r.json())
       .then(d=>{ if(!cancelled) setStatus(d.favorited?"saved":"idle"); })
       .catch(()=>{ if(!cancelled) setStatus("idle"); });
@@ -775,7 +775,7 @@ function FavoriteCompanyButton({companyId,userId}:{companyId:string;userId:strin
 
   if(!userId){
     return (
-      <a href="/auth" style={{fontSize:11,fontWeight:700,color:"white",textDecoration:"none",backgroundColor:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.5)",borderRadius:20,padding:"6px 12px",display:"inline-flex",alignItems:"center",gap:4}}>
+      <a href="/ipo-jp/auth" style={{fontSize:11,fontWeight:700,color:"white",textDecoration:"none",backgroundColor:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.5)",borderRadius:20,padding:"6px 12px",display:"inline-flex",alignItems:"center",gap:4}}>
         {/* 2026/9/12改修: 「ログインしてお気に入り登録」だけだと、課金が必要だと
             誤解されうるため、無料でできることを明示する文言に変更(サイト全体の
             フリー/有料導線見直しの一環)。 */}
@@ -788,13 +788,13 @@ function FavoriteCompanyButton({companyId,userId}:{companyId:string;userId:strin
     if(status==="saved"){
       setStatus("removing");
       try{
-        await fetch(`/api/favorite-companies?companyId=${companyId}`,{method:"DELETE"});
+        await fetch(`/ipo-jp/api/favorite-companies?companyId=${companyId}`,{method:"DELETE"});
         setStatus("idle");
       }catch{ setStatus("saved"); }
     }else{
       setStatus("saving");
       try{
-        await fetch("/api/favorite-companies",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({companyId})});
+        await fetch("/ipo-jp/api/favorite-companies",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({companyId})});
         setStatus("saved");
       }catch{ setStatus("idle"); }
     }
@@ -821,7 +821,7 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
     setStatus("loading");
     setErrorMsg(null);
     try {
-      const res=await fetch("/api/portfolio",{
+      const res=await fetch("/ipo-jp/api/portfolio",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({companyId}),
@@ -853,7 +853,7 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
 
       {!userId ? (
         <>
-          <a href="/auth" style={{display:"inline-block",padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,color:"white",fontWeight:900,fontSize:12,textDecoration:"none"}}>
+          <a href="/ipo-jp/auth" style={{display:"inline-block",padding:"10px 20px",backgroundColor:PRIMARY,borderRadius:20,color:"white",fontWeight:900,fontSize:12,textDecoration:"none"}}>
             無料登録して追跡を始める
           </a>
           {/* 2026/9/12改修: 「ログインして追跡を始める」だけでは課金要否が伝わらず離脱に
@@ -863,11 +863,11 @@ function VirtualInvestmentTracker({companyId,ipoPrice,userId}:{companyId:string;
         </>
       ) : status==="added" ? (
         <div style={{fontSize:12,color:"#15803d",fontWeight:700}}>
-          ✅ ポートフォリオに追加しました。<a href="/mypage" style={{color:"#15803d",textDecoration:"underline"}}>マイページ</a>で値動きを確認できます。
+          ✅ ポートフォリオに追加しました。<a href="/ipo-jp/mypage" style={{color:"#15803d",textDecoration:"underline"}}>マイページ</a>で値動きを確認できます。
         </div>
       ) : status==="already" ? (
         <div style={{fontSize:12,color:"#0369a1",fontWeight:700}}>
-          すでに追跡中です。<a href="/mypage" style={{color:"#0369a1",textDecoration:"underline"}}>マイページ</a>で確認できます。
+          すでに追跡中です。<a href="/ipo-jp/mypage" style={{color:"#0369a1",textDecoration:"underline"}}>マイページ</a>で確認できます。
         </div>
       ) : (
         <>
@@ -912,7 +912,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
       <div style={{textAlign:"center",padding:24}}>
         <AlertTriangle size={32} color="#f59e0b" style={{margin:"0 auto 12px"}}/>
         <p style={{fontWeight:700,color:"#475569"}}>分析データを取得できませんでした</p>
-        <a href="/" style={{display:"inline-block",marginTop:16,padding:"8px 16px",borderRadius:10,
+        <a href="/ipo-jp" style={{display:"inline-block",marginTop:16,padding:"8px 16px",borderRadius:10,
           backgroundColor:PRIMARY,color:"white",fontWeight:700,fontSize:13,textDecoration:"none"}}>← トップへ戻る</a>
       </div>
     </div>
@@ -1093,7 +1093,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
     <div style={{backgroundColor:"#eef9f9",minHeight:"100vh",fontFamily:"'Noto Sans JP',sans-serif"}}>
      <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",backgroundColor:"#e8f4f5",borderBottom:"1px solid #d0e8ea",flexWrap:"wrap"}}>
         {allCompanies && allCompanies.length > 0 && (
-          <select onChange={e => { if(e.target.value) window.location.href=`/analysis/${e.target.value}`; }}
+          <select onChange={e => { if(e.target.value) window.location.href=`/ipo-jp/analysis/${e.target.value}`; }}
             style={{fontSize:12,padding:"6px 8px",borderRadius:8,border:"1px solid #b3e8ea",color:"#0d4f52",backgroundColor:"white",cursor:"pointer",flex:"1 1 140px",minWidth:0}}>
             <option value="">他の銘柄を選ぶ</option>
             {allCompanies.map((c:any) => (
@@ -1114,7 +1114,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               const score = analysis?.total_score ?? 0;
               const text = `📊【IPO分析】${company.name}（${company.ticker ?? ""}）\n独自AIナインクロスの総合評価：${grade}ランク ${score}点/100点\n\n目論見書をAIが解析した詳細レポートはこちら👇\n#IPO #新規上場 #IPO投資`;
               const shareId = company.ticker ?? company.id;
-              const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://ipo.finance-tower.com/analysis/${shareId}`)}`;
+              const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(`https://finance-tower.com/ipo-jp/analysis/${shareId}`)}`;
               window.open(url, "_blank");
             }}
             style={{display:"flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:8,backgroundColor:"#000000",border:"none",cursor:"pointer",color:"white",fontSize:14,fontWeight:700}}
@@ -1198,7 +1198,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             銘柄ページの冒頭にも、控えめな1行を置く)。対象は、有料の中身を読めず、まだログインしていない人だけ。
             サイト内のリンクなので、GA4の流入元を上書きしないよう、UTMは付けない。 */}
         {!hasAccess&&!userId&&(
-          <a href="/campaign" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 14px",borderRadius:12,backgroundColor:"#fef2f2",border:"1.5px solid #dc2626",textDecoration:"none"}}>
+          <a href="/ipo-jp/campaign" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 14px",borderRadius:12,backgroundColor:"#fef2f2",border:"1.5px solid #dc2626",textDecoration:"none"}}>
             <span style={{fontSize:12,fontWeight:900,color:"#7f1d1d",lineHeight:1.6}}>🎁 無料登録で、有料分析が2ヶ月間読み放題<span style={{display:"block",fontSize:10,fontWeight:700,color:"#b91c1c"}}>先着300名限定・クレジットカード不要</span></span>
             <span style={{fontSize:12,fontWeight:900,color:"white",backgroundColor:"#dc2626",borderRadius:20,padding:"6px 12px",whiteSpace:"nowrap"}}>くわしく →</span>
           </a>
@@ -1259,7 +1259,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             まず「まずここに注目！」と「株価シナリオ」で全体像をつかみ、続く「詳細分析 深掘りレポート」で9軸を掘り下げます。
             その先は<strong style={{color:"#ef4444"}}>⚡超短期</strong>・<strong style={{color:"#d97706"}}>📈短期</strong>・<strong style={{color:"#7c3aed"}}>🌱長期</strong>、
             ご自身の投資スタイルに合わせて参考資料を選んでお読みください（分類の考え方は
-            <a href="/ipo-guide" style={{color:PRIMARY,fontWeight:700}}>実践的法則ページ</a>で解説しています）。
+            <a href="/ipo-jp/ipo-guide" style={{color:PRIMARY,fontWeight:700}}>実践的法則ページ</a>で解説しています）。
           </p>
         </div>
 
@@ -1337,7 +1337,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
             {/* 2026/11/1追加: 未ログインの人には、課金より先に、いちばんハードルの低い「無料登録で2ヶ月読み放題」を見せる */}
             {!userId&&(
               <div style={{maxWidth:380,margin:"0 auto 14px"}}>
-                <a href="/campaign" style={{display:"block",padding:"14px 16px",backgroundColor:"#dc2626",color:"white",borderRadius:10,fontWeight:900,fontSize:14,textDecoration:"none",lineHeight:1.5}}>
+                <a href="/ipo-jp/campaign" style={{display:"block",padding:"14px 16px",backgroundColor:"#dc2626",color:"white",borderRadius:10,fontWeight:900,fontSize:14,textDecoration:"none",lineHeight:1.5}}>
                   🎁 無料登録で、全銘柄が2ヶ月間読み放題
                   <span style={{display:"block",fontSize:11,fontWeight:700,opacity:0.9}}>先着300名限定・クレジットカード不要 →</span>
                 </a>
@@ -1348,7 +1348,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 style={{display:"block",width:"100%",padding:"13px 16px",backgroundColor:"#66c3c6",color:"#082b2e",borderRadius:10,fontWeight:900,fontSize:14,border:"none"}} messageStyle={{color:"#fecaca"}} />
               <PlanButton plan="plan_a" label={"全銘柄が読み放題（分析見放題プラン ¥2,890/月）"}
                 style={{display:"block",width:"100%",padding:"12px 16px",backgroundColor:"transparent",color:"#ffffff",borderRadius:10,fontWeight:800,fontSize:13,border:"1.5px solid #66c3c6"}} messageStyle={{color:"#fecaca"}} />
-              <a href="/plans" style={{fontSize:12,color:"#a0d4d6",textDecoration:"underline"}}>
+              <a href="/ipo-jp/plans" style={{fontSize:12,color:"#a0d4d6",textDecoration:"underline"}}>
                 通知・週刊スライドつきプランも含めて、全プランを比較する →
               </a>
             </div>
@@ -1357,7 +1357,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 離脱してしまう前にもう1つの導線を見せる狙い。 */}
             {userId&&(
             <div style={{marginTop:10,fontSize:11,color:"#a0d4d6"}}>
-              または<a href="/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、有料分析が2ヶ月間読み放題になります🎁
+              または<a href="/ipo-jp/mypage" style={{color:"#66c3c6",fontWeight:700,textDecoration:"underline"}}>友達紹介プログラム</a>で無料会員登録すると、有料分析が2ヶ月間読み放題になります🎁
             </div>
             )}
           </div>
@@ -1596,8 +1596,8 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
                 <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:4}}>
                   {(()=>{
                     const shareId=(company as any).ticker??company.id;
-                    const expertHref=`/analysis/${shareId}`;
-                    const beginnerHref=`/analysis/${shareId}/beginner`;
+                    const expertHref=`/ipo-jp/analysis/${shareId}`;
+                    const beginnerHref=`/ipo-jp/analysis/${shareId}/beginner`;
                     return (
                       <>
                         <a href={beginnerHref} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
@@ -1687,7 +1687,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
               </div>
             )}
             <div style={{display:"flex",justifyContent:"center",marginTop:14}}>
-              <a href="/ipo-guide" style={{fontSize:13,color:"white",textDecoration:"none",fontWeight:900,display:"flex",alignItems:"center",gap:8,padding:"12px 22px",borderRadius:22,backgroundColor:"#f59e0b",boxShadow:"0 3px 8px rgba(245,158,11,0.4)",textAlign:"center"}}>
+              <a href="/ipo-jp/ipo-guide" style={{fontSize:13,color:"white",textDecoration:"none",fontWeight:900,display:"flex",alignItems:"center",gap:8,padding:"12px 22px",borderRadius:22,backgroundColor:"#f59e0b",boxShadow:"0 3px 8px rgba(245,158,11,0.4)",textAlign:"center"}}>
                 <span style={{display:"flex",flexDirection:"column",lineHeight:1.5}}>
                   <span>IPO投資で資産を増やす</span>
                   <span>実践的法則（超短期・短期・長期別）</span>
@@ -1776,7 +1776,7 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           </div>
           {/* 2026/9/14追加: この9軸がなぜ・どう分かれているかを説明する専用ページへの導線。
               まさに9軸が表示されているこの場所からのリンクが最も文脈に合う。 */}
-          <a href="/methodology" style={{display:"block",marginTop:10,fontSize:10,color:"#66c3c6",textDecoration:"none"}}>
+          <a href="/ipo-jp/methodology" style={{display:"block",marginTop:10,fontSize:10,color:"#66c3c6",textDecoration:"none"}}>
             この9軸の見方・分け方を詳しく見る →
           </a>
         </Card>
@@ -1808,13 +1808,13 @@ export default function AnalysisClient({company,initialAnalysis,visualizationDat
           const next=idx<sorted.length-1?sorted[idx+1]:null;
           return (
             <div style={{display:"flex",gap:8,justifyContent:"space-between"}}>
-              <a href={prev?`/analysis/${prev.ticker||prev.id}`:undefined as any}
+              <a href={prev?`/ipo-jp/analysis/${prev.ticker||prev.id}`:undefined as any}
                 style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:prev?"white":"#f1f5f9",border:`1px solid ${prev?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",opacity:prev?1:0.4,pointerEvents:prev?"auto":"none"}}>
                 <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>← 前の銘柄</div>
                 <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{prev?.name??""}</div>
                 <div style={{fontSize:10,color:"#66c3c6"}}>{prev?.listing_date??""}</div>
               </a>
-              <a href={next?`/analysis/${next.ticker||next.id}`:undefined as any}
+              <a href={next?`/ipo-jp/analysis/${next.ticker||next.id}`:undefined as any}
                 style={{flex:1,padding:"12px 16px",borderRadius:12,backgroundColor:next?"white":"#f1f5f9",border:`1px solid ${next?"#b3e8ea":"#e2e8f0"}`,textDecoration:"none",textAlign:"right",opacity:next?1:0.4,pointerEvents:next?"auto":"none"}}>
                 <div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>次の銘柄 →</div>
                 <div style={{fontSize:13,fontWeight:700,color:"#082b2e"}}>{next?.name??""}</div>

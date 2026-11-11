@@ -20,7 +20,7 @@ export default async function sitemap() {
     .eq("is_theme_article", true)
     .order("fetched_at", { ascending: false });
 
-  const baseUrl = "https://ipo.finance-tower.com";
+  const baseUrl = "https://finance-tower.com/ipo-jp";
 
   // 2026/9/5追加: /trends・/plans・/ipo-guideがサイトマップに一件も含まれていなかった
   // 不具合を修正。特に/trendsは1日3回更新される主要ページのため、changeFrequencyを

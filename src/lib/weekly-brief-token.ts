@@ -3,7 +3,7 @@
 // 署名の鍵には、既存の環境変数 CRON_SECRET を使う(新しい設定は要らない)。
 import { createHmac, timingSafeEqual } from "crypto";
 
-const SITE_URL = "https://ipo.finance-tower.com";
+const SITE_URL = "https://finance-tower.com/ipo-jp";
 
 function sign(userId: string): string {
   const secret = process.env.CRON_SECRET ?? "";

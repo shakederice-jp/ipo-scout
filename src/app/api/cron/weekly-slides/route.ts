@@ -11,7 +11,7 @@ import { generateWeeklySlides } from "@/lib/weekly-slides-store";
 //   /api/cron/weekly-slides?dry=1      … 試作のみ。保存せず、チェック結果をJSONで返す
 export const maxDuration = 120;
 
-const SITE_URL = "https://ipo.finance-tower.com";
+const SITE_URL = "https://finance-tower.com/ipo-jp";
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {

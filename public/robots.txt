@@ -41,5 +41,5 @@ Allow: /
 User-agent: Claude-User
 Allow: /
 
-Sitemap: https://ipo.finance-tower.com/sitemap.xml
-Sitemap: https://ipo.finance-tower.com/news-sitemap.xml
+Sitemap: https://finance-tower.com/ipo-jp/sitemap.xml
+Sitemap: https://finance-tower.com/ipo-jp/news-sitemap.xml

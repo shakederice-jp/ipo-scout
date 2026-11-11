@@ -30,9 +30,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const TRENDS_URL = "https://ipo.finance-tower.com/trends";
+const TRENDS_URL = "https://finance-tower.com/ipo-jp/trends";
 // 2026/9/9追記: X投稿フッターに貼るリンクは、記事一覧(/trends)ではなくトップページに変更。
-const SITE_ROOT_URL = "https://ipo.finance-tower.com/";
+const SITE_ROOT_URL = "https://finance-tower.com/ipo-jp/";
 
 // 各特集記事の末尾に固定で付けるリンク。Xはマークダウン記法([text](url))を解釈せず
 // 記号がそのまま文字として表示されてしまうため、あえてマークダウンにはせず、

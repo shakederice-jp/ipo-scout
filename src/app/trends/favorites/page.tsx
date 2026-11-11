@@ -11,7 +11,7 @@ export default function FavoriteArticlesPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/api/favorites");
+        const res = await fetch("/ipo-jp/api/favorites");
         if (res.status === 401) { setStatus("not_logged_in"); return; }
         if (res.status === 403) { setStatus("not_premium"); return; }
         if (!res.ok) { setStatus("error"); return; }
@@ -28,7 +28,7 @@ export default function FavoriteArticlesPage() {
   const handleRemove = async (marketTrendsId: string) => {
     setFavorites(prev => prev.filter(f => f.market_trends_id !== marketTrendsId));
     try {
-      await fetch(`/api/favorites?marketTrendsId=${encodeURIComponent(marketTrendsId)}`, { method: "DELETE" });
+      await fetch(`/ipo-jp/api/favorites?marketTrendsId=${encodeURIComponent(marketTrendsId)}`, { method: "DELETE" });
     } catch {
       // 削除に失敗しても画面上は既に消しているため、ここでは静かに無視する
       // (次回このページを開いたときにDBの実際の状態で再描画される)

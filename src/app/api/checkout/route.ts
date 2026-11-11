@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { OWN_APP, isPaidPlan, syncPlanForUser } from "@/lib/plan-sync";
+import { BASE_PATH, PUBLIC_ORIGIN } from "@/lib/base-path";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -53,7 +54,8 @@ export async function POST(req: NextRequest) {
     const { data: prof } = await admin.from("user_profiles").select("stripe_customer_id").eq("id", user.id).maybeSingle();
     const customerId = (prof as any)?.stripe_customer_id as string | undefined;
 
-    const origin     = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // 2026/11/11: 決済のあとの戻り先。本番は公開ドメイン(finance-tower.com)+/ipo-jp に固定する
+    const origin     = (process.env.NODE_ENV === "production" ? PUBLIC_ORIGIN : (req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")) + BASE_PATH;
     const mode       = plan === "single" ? "payment" : "subscription";
     const successUrl = plan === "single" && stockId
       ? `${origin}/analysis/${stockId}?checkout=success`

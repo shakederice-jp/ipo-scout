@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "運営者について・分析手法について｜大手町調査室九課",
   description: "大手町調査室九課の運営者情報、IPO分析AIが目論見書・EDINETをどう分析しているか、AI分析の限界と注意点について説明します。",
-  alternates: { canonical: "https://ipo.finance-tower.com/about" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/about" },
 };
 
 const S = {
@@ -37,7 +37,7 @@ export default function AboutPage() {
         <h2 style={S.h2}>運営者について</h2>
         <p style={S.p}>
           本サービスは、個人事業主が「大手町調査室九課」の屋号で運営しています。詳しい運営者名・所在地等は
-          <a href="/tokushoho" style={{ color: "#0d4f52", fontWeight: 700 }}>特定商取引法に基づく表記</a>をご覧ください。
+          <a href="/ipo-jp/tokushoho" style={{ color: "#0d4f52", fontWeight: 700 }}>特定商取引法に基づく表記</a>をご覧ください。
           運営者自身も個人投資家としてIPO情報を日々追っており、「目論見書という一次情報を、忙しい個人投資家でも短時間で把握できる形にしたい」という
           動機から本サービスを開発・運営しています。
         </p>
@@ -63,7 +63,7 @@ export default function AboutPage() {
         <p style={S.p}>
           これらはすべて目論見書に記載された数値・事実と、公開されている市場情報にもとづくAIの試算・評価であり、
           運営者独自の非公開情報や内部情報を用いたものではありません。なぜ投資期間ごとに評価軸を分けているのか、各軸が何を見ているのかは、
-          <a href="/methodology" style={{ color: "#0d4f52", fontWeight: 700 }}>9軸分析メソッドのページ</a>で詳しく解説しています。
+          <a href="/ipo-jp/methodology" style={{ color: "#0d4f52", fontWeight: 700 }}>9軸分析メソッドのページ</a>で詳しく解説しています。
         </p>
 
         <h2 style={S.h2}>AIによる分析の限界について</h2>
@@ -78,8 +78,8 @@ export default function AboutPage() {
         <p style={S.p}>
           また、本サービスでは「買うべき」「見送るべき」といった断定的な投資助言は行わず、見つかった事実・懸念点をできるだけ誠実にお伝えする方針で
           分析文を作成しています（強気一辺倒の煽り文句を避け、公募割れ等のリスクについても正直に記載する方針です）。詳しくは
-          <a href="/terms" style={{ color: "#0d4f52", fontWeight: 700 }}>利用規約</a>・
-          <a href="/privacy" style={{ color: "#0d4f52", fontWeight: 700 }}>プライバシーポリシー</a>もあわせてご確認ください。
+          <a href="/ipo-jp/terms" style={{ color: "#0d4f52", fontWeight: 700 }}>利用規約</a>・
+          <a href="/ipo-jp/privacy" style={{ color: "#0d4f52", fontWeight: 700 }}>プライバシーポリシー</a>もあわせてご確認ください。
         </p>
 
         <h2 style={S.h2}>更新頻度</h2>
@@ -90,7 +90,7 @@ export default function AboutPage() {
 
         <h2 style={S.h2}>お問い合わせ</h2>
         <p style={S.p}>
-          分析内容に誤りと思われる点を見つけた場合や、ご意見・ご要望がございましたら、<a href="/contact" style={{ color: "#0d4f52", fontWeight: 700 }}>お問い合わせページ</a>より
+          分析内容に誤りと思われる点を見つけた場合や、ご意見・ご要望がございましたら、<a href="/ipo-jp/contact" style={{ color: "#0d4f52", fontWeight: 700 }}>お問い合わせページ</a>より
           お気軽にご連絡ください。
         </p>
 

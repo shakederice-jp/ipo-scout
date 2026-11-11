@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         // 自動チェックで引っかかった号は、中身を見たうえで公開する(メールの注意書きを確認済みとみなす)
       }
       await setSlideStatus(supabase, id, "published");
-      return page("公開しました", `<p>${row.issue_label} を、会員向けに公開しました。</p><p>有料会員は、マイページの「週刊スライド」から読めます。金曜18時のIPO週報メールにも、リンクが付きます。</p><p><a href="/api/admin/weekly-slides?id=${id}&action=unpublish">公開をやめる</a></p>`);
+      return page("公開しました", `<p>${row.issue_label} を、会員向けに公開しました。</p><p>有料会員は、マイページの「週刊スライド」から読めます。金曜18時のIPO週報メールにも、リンクが付きます。</p><p><a href="/ipo-jp/api/admin/weekly-slides?id=${id}&action=unpublish">公開をやめる</a></p>`);
     }
     if (action === "unpublish") {
       await setSlideStatus(supabase, id, "pending");

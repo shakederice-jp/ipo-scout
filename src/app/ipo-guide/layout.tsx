@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "IPO投資で資産を増やす実践的法則｜超短期・短期・長期戦略",
     description: "超短期・短期・長期、投資スタイル別のIPO投資戦略を解説します。",
-    url: "https://ipo.finance-tower.com/ipo-guide",
+    url: "https://finance-tower.com/ipo-jp/ipo-guide",
     siteName: "大手町調査室九課",
     locale: "ja_JP",
     type: "website",
   },
-  alternates: { canonical: "https://ipo.finance-tower.com/ipo-guide" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/ipo-guide" },
 };
 
 export default function IpoGuideLayout({ children }: { children: React.ReactNode }) {

@@ -5,7 +5,7 @@ import { todayJst, jpDate, companySlug } from "@/lib/jp-format";
 // 銘柄の一覧は登録データから自動で作る(銘柄を追加すると、1時間以内に反映される)。
 export const revalidate = 3600;
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 
 function addDays(ymd: string, n: number): string {
   const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
@@ -24,7 +24,7 @@ export async function GET() {
 
   const body = `# IPO企業情報AI分析レポート（大手町調査室九課）
 
-> 日本の新規上場（IPO）企業の目論見書などをAIが解析し、上場日・仮条件・公募価格・ブックビルディングと申込の日程・ロックアップ解除日・初値の結果を銘柄ごとにまとめた日本語サイトです。運営は大手町調査室九課（ピークアンドバレー合同会社）。米国のIPOを扱う姉妹サイトは別ドメイン（https://ipo-us.finance-tower.com）です。
+> 日本の新規上場（IPO）企業の目論見書などをAIが解析し、上場日・仮条件・公募価格・ブックビルディングと申込の日程・ロックアップ解除日・初値の結果を銘柄ごとにまとめた日本語サイトです。運営は大手町調査室九課（ピークアンドバレー合同会社）。米国のIPOを扱う姉妹サイトは別ドメイン（https://finance-tower.com/ipo-us）です。
 
 ## 主なページ
 - [IPOスケジュール（上場予定の一覧表）](${BASE}/schedule): 上場予定の銘柄を月ごとにまとめた表。上場日・仮条件・公募価格・BB開始日・申込開始日。30分ごとに自動更新。

@@ -30,7 +30,7 @@ export async function GET() {
 
   const urlEntries = (articles ?? [])
     .map((a) => {
-      const loc = `https://ipo.finance-tower.com/trends/${a.id}`;
+      const loc = `https://finance-tower.com/ipo-jp/trends/${a.id}`;
       return `  <url>
     <loc>${loc}</loc>
     <news:news>

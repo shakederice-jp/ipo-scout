@@ -1,5 +1,6 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
+import { BASE_PATH } from "@/lib/base-path";
 
 export const runtime = "edge";
 
@@ -161,7 +162,7 @@ export async function GET(req: NextRequest) {
   // AIスコアの円バッジのサイズ。このアプリの一番の売りのため、大きく目立たせる。
   const CIRCLE_SIZE = 176;
 
-  const fontUrl = new URL("/fonts/NotoSansJP-Bold.ttf", req.url).toString();
+  const fontUrl = new URL(BASE_PATH + "/fonts/NotoSansJP-Bold.ttf", req.url).toString();
   const fontData = await fetch(fontUrl).then((res) => res.arrayBuffer());
 
   // ひとことインサイト(hook)の引用カード。ai_summary等の「この銘柄の魅力」を短く見せる。

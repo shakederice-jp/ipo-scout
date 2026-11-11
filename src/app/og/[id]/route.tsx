@@ -1,12 +1,13 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
+import { BASE_PATH } from "@/lib/base-path";
 
 export const runtime = "edge";
 
 // 2026/11/1新設(集客施策1): 銘柄ごとのシェア画像(OGP画像)を自動で作る。
 // X・LINE・Facebookなどにこのサイトの銘柄ページのURLを貼ったとき、
 // 会社名・証券コード・上場日・公募価格(または仮条件)・AI総合スコアが入った画像が出る。
-// 例: https://ipo.finance-tower.com/og/1234  (1234 は証券コード。UUIDでも可)
+// 例: https://finance-tower.com/ipo-jp/og/1234  (1234 は証券コード。UUIDでも可)
 // ・登録済みの公開情報(スコアと等級は、ページの説明文にも載せているもの)だけを使う。分析の本文は載せない。
 // ・会社が見つからない/取得に失敗したときは、共通のOGP画像(/ogp.png)に切り替える(シェアが壊れないように)。
 // ・日本語フォントは、既存の /api/og-infographic と同じく public/fonts のNotoSansJPを使う。
@@ -43,13 +44,14 @@ async function loadCompany(id: string) {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const fallback = () => Response.redirect(new URL("/ogp.png", req.url), 302);
+  // 2026/11/11: Response.redirect は Next.js 上で「immutable」エラーになるため、同じ動きを手で組み立てる
+  const fallback = () => new Response(null, { status: 302, headers: { Location: new URL(BASE_PATH + "/ogp.png", req.url).toString() } });
 
   try {
     const co = await loadCompany(id);
     if (!co) return fallback();
 
-    const fontData = await fetch(new URL("/fonts/NotoSansJP-Bold.ttf", req.url)).then((r) => r.arrayBuffer());
+    const fontData = await fetch(new URL(BASE_PATH + "/fonts/NotoSansJP-Bold.ttf", req.url)).then((r) => r.arrayBuffer());
 
     const score = co.score != null && Number.isFinite(Number(co.score)) ? Math.round(Number(co.score)) : null;
     const grade = typeof co.grade === "string" && co.grade ? co.grade : null;
@@ -106,7 +108,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 ))}
               </div>
             ) : null}
-            <div style={{ display: "flex", fontSize: 24, color: "#b3e8ea" }}>初値シナリオ・9軸スコアを無料で確認 ｜ ipo.finance-tower.com</div>
+            <div style={{ display: "flex", fontSize: 24, color: "#b3e8ea" }}>初値シナリオ・9軸スコアを無料で確認 ｜ finance-tower.com/ipo-jp</div>
           </div>
         </div>
       ),

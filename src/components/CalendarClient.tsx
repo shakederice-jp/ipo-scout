@@ -111,7 +111,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
   const [weekAnchor, setWeekAnchor] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/companies")
+    fetch("/ipo-jp/api/companies")
       .then(r => r.json())
       .then(data => { setCompanies(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -121,7 +121,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
   useEffect(() => {
     const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
 
-    fetch(`/api/calendar-notes?month=${monthKey}`)
+    fetch(`/ipo-jp/api/calendar-notes?month=${monthKey}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -132,7 +132,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
       })
       .catch(() => {});
 
-    fetch(`/api/economic-events?month=${monthKey}`)
+    fetch(`/ipo-jp/api/economic-events?month=${monthKey}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setEvents(data); })
       .catch(() => {});
@@ -141,7 +141,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
   // 週間表示から呼ばれる: 指定された月のメモを読み込み、すでにあるメモに足す
   const loadNotesForMonths = (months: string[]) => {
     months.forEach(m => {
-      fetch(`/api/calendar-notes?month=${m}`)
+      fetch(`/ipo-jp/api/calendar-notes?month=${m}`)
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -177,7 +177,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
     if (!selectedDate) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/calendar-notes", {
+      const res = await fetch("/ipo-jp/api/calendar-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
     if (!selectedDate) return;
     setSaving(true);
     try {
-      await fetch("/api/calendar-notes", {
+      await fetch("/ipo-jp/api/calendar-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note_date: selectedDate, memo: null, pnl: null }),
@@ -508,7 +508,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                 const dd = new Date(a.date);
                 const near = a.days <= 30;
                 return (
-                  <a key={i} href={level === "beginner" ? `/analysis/${a.company.id}/beginner` : `/analysis/${a.company.id}`} style={{
+                  <a key={i} href={level === "beginner" ? `/ipo-jp/analysis/${a.company.id}/beginner` : `/ipo-jp/analysis/${a.company.id}`} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
                     padding:"10px 12px", borderRadius:10, textDecoration:"none",
                     backgroundColor: near ? "#fef2f2" : "#f8fafc",
@@ -542,7 +542,7 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
               </h2>
               <span style={{ fontSize:11, color:C.muted }}>{loading ? (lang === "ja" ? "読み込み中..." : "Loading...") : `（${monthSorted.length}${lang === "en" ? " co." : "社"}）`}</span>
             </div>
-            <a href="/guide" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", backgroundColor:C.teal, borderRadius:20, textDecoration:"none", marginBottom:8 }}>
+            <a href="/ipo-jp/guide" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", backgroundColor:C.teal, borderRadius:20, textDecoration:"none", marginBottom:8 }}>
               <span style={{ fontSize:11, fontWeight:700, color:"white" }}>📖 このサイトの効果的な使い方</span>
               <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)" }}>→</span>
             </a>
@@ -676,10 +676,10 @@ export default function CalendarClient({ initialCompanies = [] }: CalendarClient
                     </p>
                   )}
                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, flexWrap:"wrap" }}>
-                    <a href={`/analysis/${company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
+                    <a href={`/ipo-jp/analysis/${company.id}/beginner`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor:"white", color: isFree ? C.nav : "#92400e", border:`1.5px solid ${isFree ? C.teal : "#f59e0b"}` }}>
                       {lang === "ja" ? "📖 初心者向け分析" : "📖 Beginner"}
                     </a>
-                    <a href={`/analysis/${company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
+                    <a href={`/ipo-jp/analysis/${company.id}`} style={{ padding:"7px 16px", borderRadius:8, fontSize:12, fontWeight:700, textDecoration:"none", backgroundColor: isFree ? C.teal : "#f59e0b", color:"white" }}>
                       {lang === "ja" ? "🎓 中・上級者向け分析" : "🎓 Expert"}
                     </a>
                   </div>

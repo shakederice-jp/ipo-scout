@@ -6,7 +6,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
   const [copied, setCopied] = useState(false);
   
   const referralCode = "A375D106";
-  const referralUrl = `https://ipo.finance-tower.com?ref=${referralCode}`;
+  const referralUrl = `https://finance-tower.com/ipo-jp?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralUrl);

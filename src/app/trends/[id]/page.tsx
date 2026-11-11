@@ -122,8 +122,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!article) return { title: "記事が見つかりません" };
 
   const { title, description } = buildSeoMeta(article.title, article.content as string);
-  const url = `https://ipo.finance-tower.com/trends/${id}`;
-  const image = article.image_url || "https://ipo.finance-tower.com/ogp.png";
+  const url = `https://finance-tower.com/ipo-jp/trends/${id}`;
+  const image = article.image_url || "https://finance-tower.com/ipo-jp/ogp.png";
 
   return {
     title,
@@ -152,8 +152,8 @@ export default async function TrendArticlePage({ params }: { params: Promise<{ i
   const article = await fetchArticle(id);
   if (!article) notFound();
 
-  const url = `https://ipo.finance-tower.com/trends/${id}`;
-  const image = article.image_url || "https://ipo.finance-tower.com/ogp.png";
+  const url = `https://finance-tower.com/ipo-jp/trends/${id}`;
+  const image = article.image_url || "https://finance-tower.com/ipo-jp/ogp.png";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -165,8 +165,8 @@ export default async function TrendArticlePage({ params }: { params: Promise<{ i
     publisher: {
       "@type": "Organization",
       name: "大手町調査室九課",
-      url: "https://ipo.finance-tower.com",
-      logo: { "@type": "ImageObject", url: "https://ipo.finance-tower.com/ogp.png" },
+      url: "https://finance-tower.com/ipo-jp",
+      logo: { "@type": "ImageObject", url: "https://finance-tower.com/ipo-jp/ogp.png" },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   };

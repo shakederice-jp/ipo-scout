@@ -1,3 +1,4 @@
+import { SELF_URL } from "@/lib/base-path";
 import { NextResponse } from "next/server";
 
 // 2026/9/19追加: 管理画面から、cronの時刻を待たずにX投稿(1日2回・メール送信方式)をその場で1回試すための
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     if (slot !== "morning" && slot !== "evening") {
       return NextResponse.json({ error: "slotが不正です" }, { status: 400 });
     }
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipo.finance-tower.com";
+    const baseUrl = SELF_URL;
     const res = await fetch(`${baseUrl}/api/cron/auto-post?slot=${slot}&force=1`, {
       method: "GET",
       headers: {

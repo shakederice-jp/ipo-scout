@@ -23,47 +23,47 @@ export default function Footer() {
       {/* 2026/10/24改修(束C・⑨): ヘッダーから移した入口。表示の切替(📖/🎓)・料金と購入・トレンド。 */}
       <FooterLevelSwitch />
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 10, marginBottom: 14 }}>
-        <a href="/plans" style={{ fontSize: 12, fontWeight: 800, color: "#ffffff", backgroundColor: "#f59e0b", border: "1px solid #d97706", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>💳 料金・購入</a>
-        <a href="/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📡 トレンド</a>
-        <a href="/install" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📲 ホーム画面に追加</a>
+        <a href="/ipo-jp/plans" style={{ fontSize: 12, fontWeight: 800, color: "#ffffff", backgroundColor: "#f59e0b", border: "1px solid #d97706", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>💳 料金・購入</a>
+        <a href="/ipo-jp/trends" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📡 トレンド</a>
+        <a href="/ipo-jp/install" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", backgroundColor: "#e0f7f8", border: "1px solid #66c3c6", borderRadius: 18, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap" as const }}>📲 ホーム画面に追加</a>
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 14 }}>
-        <a href="/" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ホーム</a>
-        <a href="/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
+        <a href="/ipo-jp" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ホーム</a>
+        <a href="/ipo-jp/ipo-guide" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>実践的法則ガイド</a>
         {/* 2026/10/18新設(SEO対応): 新設ページへの内部リンク。全ページ共通のフッターに置くことで、
             どのページからでも1クリックで到達でき、検索エンジンにも各ページの存在が伝わりやすくなる。 */}
-        <a href="/schedule" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>上場スケジュール</a>
-        <a href="/results" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>初値の結果</a>
-        <a href="/lockup" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ロックアップ解除</a>
-        <a href="/how-to-apply" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPOの申込方法</a>
+        <a href="/ipo-jp/schedule" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>上場スケジュール</a>
+        <a href="/ipo-jp/results" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>初値の結果</a>
+        <a href="/ipo-jp/lockup" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>ロックアップ解除</a>
+        <a href="/ipo-jp/how-to-apply" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPOの申込方法</a>
         {/* 2026/10/24新設(束C・③): 税金・NISAの無料解説ページ */}
-        <a href="/tax-nisa" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>税金・NISA</a>
-        <a href="/glossary" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPO用語集</a>
+        <a href="/ipo-jp/tax-nisa" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>税金・NISA</a>
+        <a href="/ipo-jp/glossary" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>IPO用語集</a>
         {/* 2026/9/14新設: E-E-A-T対策として新設した「運営者について・分析手法について」ページへの
             導線。法的表記の行(下)ではなく、この主要リンク行に置くことで信頼性シグナルとしての
             露出を優先した。 */}
-        <a href="/about" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>運営者について</a>
+        <a href="/ipo-jp/about" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>運営者について</a>
         {/* 2026/9/14新設: 9軸分析メソッドの専用ページへの導線 */}
-        <a href="/methodology" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>9軸分析メソッド</a>
+        <a href="/ipo-jp/methodology" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>9軸分析メソッド</a>
         {/* 2026/9/12改修: 「マイページ」だけだと、押した先で急に「ログインが必要」と
             出るまで無料か有料か分からなかったため、無料で登録できることを明示
             (サイト全体のフリー/有料導線見直しの一環)。 */}
-        <a href="/mypage" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>マイページ（無料登録）</a>
+        <a href="/ipo-jp/mypage" style={{ fontSize: 12, fontWeight: 700, color: "#0d4f52", textDecoration: "none", whiteSpace: "nowrap" as const }}>マイページ（無料登録）</a>
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 10 }}>
-        <a href="/tokushoho" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>特定商取引法に基づく表記</a>
+        <a href="/ipo-jp/tokushoho" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>特定商取引法に基づく表記</a>
         <span style={{ color: "#e2e8f0" }}>|</span>
-        <a href="/privacy" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>プライバシーポリシー</a>
+        <a href="/ipo-jp/privacy" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>プライバシーポリシー</a>
         <span style={{ color: "#e2e8f0" }}>|</span>
         {/* 2026/9/12新設: 転載・スクレイピング禁止等を明記した利用規約ページへのリンクを追加 */}
-        <a href="/terms" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>利用規約</a>
+        <a href="/ipo-jp/terms" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>利用規約</a>
         <span style={{ color: "#e2e8f0" }}>|</span>
-        <a href="/contact" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>お問い合わせ</a>
+        <a href="/ipo-jp/contact" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>お問い合わせ</a>
       </div>
       <p style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>
         本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br />
         最終的な投資判断はご自身の責任のもとで行ってください。<br />
-        © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製・スクレイピングを禁じます（<a href="/terms" style={{ color: "#94a3b8" }}>利用規約</a>）。
+        © 2026 大手町調査室九課｜本サービスのコンテンツ・AI分析結果の無断転載・複製・スクレイピングを禁じます（<a href="/ipo-jp/terms" style={{ color: "#94a3b8" }}>利用規約</a>）。
       </p>
     </footer>
   );

@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
             <p style={{ fontSize:"13px", color:"#b91c1c", lineHeight:1.8, margin:"0 0 16px" }}>
               再設定のリンクが確認できませんでした。リンクの有効期限が切れたか、メールを開いたブラウザが、再設定を申し込んだブラウザと異なる可能性があります。お手数ですが、もう一度お試しください。
             </p>
-            <a href="/auth" style={{ display:"block", textAlign:"center", padding:"12px", backgroundColor:"#66c3c6", color:"white", borderRadius:"8px", fontWeight:"900", fontSize:"14px", textDecoration:"none" }}>
+            <a href="/ipo-jp/auth" style={{ display:"block", textAlign:"center", padding:"12px", backgroundColor:"#66c3c6", color:"white", borderRadius:"8px", fontWeight:"900", fontSize:"14px", textDecoration:"none" }}>
               ログイン画面へ戻る
             </a>
           </div>
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
         {done && (
           <div>
             <p style={{ fontSize:"13px", color:"#2a7a7e", lineHeight:1.8, margin:"0 0 16px" }}>パスワードを変更しました。そのままご利用いただけます。</p>
-            <a href="/" style={{ display:"block", textAlign:"center", padding:"12px", backgroundColor:"#66c3c6", color:"white", borderRadius:"8px", fontWeight:"900", fontSize:"14px", textDecoration:"none" }}>
+            <a href="/ipo-jp" style={{ display:"block", textAlign:"center", padding:"12px", backgroundColor:"#66c3c6", color:"white", borderRadius:"8px", fontWeight:"900", fontSize:"14px", textDecoration:"none" }}>
               トップページへ
             </a>
           </div>

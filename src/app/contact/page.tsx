@@ -21,7 +21,7 @@ export default function ContactPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/contact", {
+      const res = await fetch("/ipo-jp/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -62,7 +62,7 @@ export default function ContactPage() {
           いただいた内容はサービス改善の参考とさせていただきます。<br/>
           引き続きどうぞよろしくお願いいたします。
         </p>
-        <a href="/" style={{ display: "inline-block", padding: "12px 28px", backgroundColor: C.teal, color: "white", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+        <a href="/ipo-jp" style={{ display: "inline-block", padding: "12px 28px", backgroundColor: C.teal, color: "white", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
           トップページへ戻る
         </a>
       </div>

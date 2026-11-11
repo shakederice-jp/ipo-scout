@@ -1,6 +1,7 @@
 // 2026/10/18新設(SEO・GEO対応): /schedule・/results・/lockup・/how-to-apply・/glossary で共通の
 // 見た目の部品。サーバー側で描画される(JavaScriptが動かなくても中身が読める)。
 import type { CSSProperties, ReactNode } from "react";
+import { withBase } from "@/lib/base-path";
 
 export const C = { nav: "#0d4f52", teal: "#66c3c6", dark: "#082b2e", mid: "#2a7a7e", border: "#b3e8ea", soft: "#e8f9f9", bg: "#f4fbfc" };
 
@@ -18,7 +19,7 @@ export function Crumbs({ items }: { items: { label: string; href?: string }[] })
       {items.map((it, i) => (
         <span key={i}>
           {i > 0 && <span style={{ margin: "0 6px" }}>›</span>}
-          {it.href ? <a href={it.href} style={{ color: C.mid, textDecoration: "none" }}>{it.label}</a> : <span>{it.label}</span>}
+          {it.href ? <a href={withBase(it.href)} style={{ color: C.mid, textDecoration: "none" }}>{it.label}</a> : <span>{it.label}</span>}
         </span>
       ))}
     </nav>
@@ -86,7 +87,7 @@ export function RelatedLinks({ current }: { current?: string }) {
       <H2>あわせて読みたいページ</H2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {items.map((i) => (
-          <a key={i.href} href={i.href} style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", padding: "7px 12px", borderRadius: 18, border: `1.5px solid ${C.teal}`, backgroundColor: "white", whiteSpace: "nowrap" }}>{i.label}</a>
+          <a key={i.href} href={withBase(i.href)} style={{ fontSize: 12, fontWeight: 700, color: C.nav, textDecoration: "none", padding: "7px 12px", borderRadius: 18, border: `1.5px solid ${C.teal}`, backgroundColor: "white", whiteSpace: "nowrap" }}>{i.label}</a>
         ))}
       </div>
     </Card>

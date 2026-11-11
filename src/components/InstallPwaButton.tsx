@@ -110,7 +110,7 @@ export default function InstallPwaButton() {
         boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png?v=3" alt="" width={40} height={40} style={{ borderRadius: 9, flexShrink: 0 }} />
+        <img src="/ipo-jp/icon-192.png?v=3" alt="" width={40} height={40} style={{ borderRadius: 9, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: "#ffffff", lineHeight: 1.4 }}>ホーム画面に追加できます</div>
           <div style={{ fontSize: 11, color: "#a0d4d6", lineHeight: 1.4 }}>タップ1回で、最新のIPO情報へ</div>
@@ -121,7 +121,7 @@ export default function InstallPwaButton() {
             border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
           }}>追加する</button>
         ) : (
-          <a href="/install" onClick={remember} style={{
+          <a href="/ipo-jp/install" onClick={remember} style={{
             fontSize: 12, fontWeight: 800, color: "#0d4f52", backgroundColor: "#66c3c6",
             borderRadius: 8, padding: "8px 12px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0,
           }}>やり方を見る</a>

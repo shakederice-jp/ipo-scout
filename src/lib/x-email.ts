@@ -17,7 +17,7 @@ import { appendCampaignTail, createXShortLink } from "./x-short-link";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const SITE_URL = "https://ipo.finance-tower.com";
+export const SITE_URL = "https://finance-tower.com/ipo-jp";
 
 const supabaseForEmail = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,7 +33,7 @@ export const SLOT_LABEL: Record<EmailSlot, string> = {
 
 // ---------- リンク(X経由と分かる印=utmを付ける) ----------
 
-// 例: withXUtm("https://ipo.finance-tower.com/lockup", "lockup") → ...?utm_source=x&utm_medium=social&utm_campaign=lockup
+// 例: withXUtm("https://finance-tower.com/ipo-jp/lockup", "lockup") → ...?utm_source=x&utm_medium=social&utm_campaign=lockup
 export function withXUtm(url: string, campaign: string): string {
   const [base, hash] = url.split("#");
   const sep = base.includes("?") ? "&" : "?";

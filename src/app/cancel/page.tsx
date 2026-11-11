@@ -16,7 +16,7 @@ export default function CancelPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/portal", { method: "POST" });
+      const res = await fetch("/ipo-jp/api/portal", { method: "POST" });
       const body = await res.json();
       if (!res.ok) {
         setError(body.error ?? "手続き画面の起動に失敗しました");
@@ -35,7 +35,7 @@ export default function CancelPage() {
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "32px 16px 48px" }}>
 
         <div style={{ marginBottom: 20 }}>
-          <a href="/mypage" style={{ fontSize: 12, color: PRIMARY, textDecoration: "none" }}>← マイページに戻る</a>
+          <a href="/ipo-jp/mypage" style={{ fontSize: 12, color: PRIMARY, textDecoration: "none" }}>← マイページに戻る</a>
         </div>
 
         <h1 style={{ fontSize: 20, fontWeight: 900, color: DARK, marginBottom: 8 }}>解約・プラン変更のお手続き</h1>
@@ -101,7 +101,7 @@ export default function CancelPage() {
 
         <div style={{ marginTop: 24, padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10, fontSize: 11, color: MID, lineHeight: 1.7 }}>
           💡 ログインしていない場合や、まだプランにご加入されていない場合は、お手続きを進めることができません。ご不明な点は
-          <a href="/contact" style={{ color: PRIMARY, fontWeight: 700 }}>お問い合わせ</a>
+          <a href="/ipo-jp/contact" style={{ color: PRIMARY, fontWeight: 700 }}>お問い合わせ</a>
           からご連絡ください。
         </div>
 

@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "大手町発マーケットトレンド｜IPO最新ニュース",
     description: "IPO・スタートアップ・資金調達の最新動向を1日3回チェック。投資スタイル別の視点も交えてお届けします。",
-    url: "https://ipo.finance-tower.com/trends",
+    url: "https://finance-tower.com/ipo-jp/trends",
     siteName: "大手町調査室九課",
     locale: "ja_JP",
     type: "website",
   },
-  alternates: { canonical: "https://ipo.finance-tower.com/trends" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/trends" },
 };
 
 export default function TrendsLayout({ children }: { children: React.ReactNode }) {

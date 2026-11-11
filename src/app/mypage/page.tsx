@@ -60,7 +60,7 @@ export default function MyPage() {
     // 管理者プレビューモード（URLに?admin=1がある場合）
     const isAdminPreview = new URLSearchParams(window.location.search).get("admin") === "1";
     
-    fetch("/api/mypage", { cache: "no-store" })
+    fetch("/ipo-jp/api/mypage", { cache: "no-store" })
       .then(r => r.json())
       .then(d => {
         if (d.error && isAdminPreview) {
@@ -115,14 +115,14 @@ export default function MyPage() {
     try {
       const tasks: Promise<Response>[] = [];
       if (hasInvestment) {
-        tasks.push(fetch("/api/portfolio", {
+        tasks.push(fetch("/ipo-jp/api/portfolio", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ companyId }),
         }));
       }
       if (hasFavorite) {
-        tasks.push(fetch(`/api/favorite-companies?companyId=${companyId}`, { method: "DELETE" }));
+        tasks.push(fetch(`/ipo-jp/api/favorite-companies?companyId=${companyId}`, { method: "DELETE" }));
       }
       const results = await Promise.all(tasks);
       if (results.some((r) => !r.ok)) {
@@ -146,7 +146,7 @@ export default function MyPage() {
     setSavingNotify(true);
     setNotifySaveResult(null);
     try {
-      const res = await fetch("/api/notification", {
+      const res = await fetch("/ipo-jp/api/notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -170,13 +170,13 @@ export default function MyPage() {
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.href = "/ipo-jp";
   };
   const handleOpenPortal = async () => {
     setPortalLoading(true);
     setPortalError(null);
     try {
-      const res = await fetch("/api/portal", { method: "POST" });
+      const res = await fetch("/ipo-jp/api/portal", { method: "POST" });
       const body = await res.json();
       if (!res.ok) {
         setPortalError(body.error ?? "ポータルの起動に失敗しました");
@@ -206,14 +206,14 @@ export default function MyPage() {
         <p style={{ color: "#94a3b8", fontSize: 12, lineHeight: 1.8, marginBottom: 20 }}>
           無料会員登録（メールアドレスのみ・課金不要）だけで、お気に入り銘柄の登録・100万円投資シミュレーション・カレンダーメモ・友達紹介特典（有料分析が2ヶ月間読み放題）がご利用いただけます。
         </p>
-        <a href="/auth" style={{ padding: "10px 24px", backgroundColor: PRIMARY, color: "white", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>ログイン / 無料会員登録</a>
+        <a href="/ipo-jp/auth" style={{ padding: "10px 24px", backgroundColor: PRIMARY, color: "white", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>ログイン / 無料会員登録</a>
       </div>
     </div>
   );
 
   const profile = data.profile ?? {};
   const plan = PLAN_LABELS[profile.plan ?? "free"] ?? PLAN_LABELS.free;
-  const referralUrl = `https://ipo.finance-tower.com/?ref=${profile.referral_code ?? ""}`;
+  const referralUrl = `https://finance-tower.com/ipo-jp/?ref=${profile.referral_code ?? ""}`;
   const completedReferrals = (data.referralLogs ?? []).filter((r: any) => r.status === "completed").length;
   const freeMonthsEarned = completedReferrals * 2;
 
@@ -340,11 +340,11 @@ export default function MyPage() {
           {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
             <div style={{ marginTop: 10, padding: "10px 12px", backgroundColor: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
               紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC フルパックプラン（¥4,890/月）があります。自動で課金されることはありません。
-              <a href="/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
+              <a href="/ipo-jp/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
             </div>
           )}
 
-<a href="/cancel"
+<a href="/ipo-jp/cancel"
             style={{ display: "block", textAlign: "center", width: "100%", marginTop: 16, padding: "12px", backgroundColor: "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 13, boxSizing: "border-box" }}>
             🔓 プラン変更・解約はこちら
           </a>
@@ -379,7 +379,7 @@ export default function MyPage() {
                   return (
                     <div key={item.companyId}
                       style={{ padding: "12px 14px", backgroundColor: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                      <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                      <a href={`/ipo-jp/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
                         <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
                           {[c.exchange, c.sector].filter(Boolean).join("・")}
@@ -409,7 +409,7 @@ export default function MyPage() {
                   <div key={item.companyId}
                     style={{ padding: "12px 14px", backgroundColor: isGain ? "#f0fdf4" : "#fef2f2", borderRadius: 10, border: `1px solid ${isGain ? "#bbf7d0" : "#fecaca"}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                      <a href={`/ipo-jp/analysis/${item.companyId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: DARK }}>{c.name ?? "不明"}</div>
                         <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
                           公募¥{entryPrice?.toLocaleString()} → 現在¥{currentPrice?.toLocaleString()}
@@ -417,7 +417,7 @@ export default function MyPage() {
                         </div>
                       </a>
                       <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                        <a href={`/analysis/${item.companyId}`} style={{ textDecoration: "none" }}>
+                        <a href={`/ipo-jp/analysis/${item.companyId}`} style={{ textDecoration: "none" }}>
                           <div style={{ fontSize: 14, fontWeight: 900, color: isGain ? "#15803d" : "#b91c1c" }}>
                             {isGain ? "+" : ""}{pnlPercent}%
                           </div>
@@ -544,7 +544,7 @@ export default function MyPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {data.purchases.map((p: any) => (
-                <a key={p.id} href={`/analysis/${p.company_id}`}
+                <a key={p.id} href={`/ipo-jp/analysis/${p.company_id}`}
                   style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", backgroundColor: LIGHT, borderRadius: 8, border: `1px solid ${BORDER}`, textDecoration: "none" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>{p.ipo_companies?.name ?? "不明"}</div>

@@ -20,7 +20,7 @@ function page(title: string, body: string): NextResponse {
 <body style="margin:0;background:#f4fbfc;font-family:'Noto Sans JP',sans-serif;color:#082b2e">
 <div style="max-width:520px;margin:48px auto;padding:0 16px"><div style="background:white;border:1px solid #b3e8ea;border-radius:14px;padding:24px">
 <h1 style="font-size:18px;margin:0 0 12px">${title}</h1><p style="font-size:14px;line-height:1.9;margin:0 0 16px">${body}</p>
-<a href="/" style="color:#0d4f52;font-weight:700">トップページへ</a></div></div></body></html>`;
+<a href="/ipo-jp" style="color:#0d4f52;font-weight:700">トップページへ</a></div></div></body></html>`;
   return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } });
 }
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 <p>IPO週報(無料)のお申し込みありがとうございます。<br/>下のボタンを押すと登録が完了します。</p>
 <p style="margin:24px 0"><a href="${link}" style="background:#66c3c6;color:#082b2e;font-weight:900;text-decoration:none;padding:12px 24px;border-radius:10px;display:inline-block">登録を完了する</a></p>
 <p style="font-size:12px;color:#64748b">毎週金曜18時に、来週のIPO予定と今週の初値結果をお届けします。<br/>このメールに心当たりがない場合は、何もせずこのメールを破棄してください(ボタンを押さない限り、週報は届きません)。</p>
-<p style="font-size:12px;color:#64748b">大手町調査室九課 / ipo.finance-tower.com</p></div>`,
+<p style="font-size:12px;color:#64748b">大手町調査室九課 / finance-tower.com/ipo-jp</p></div>`,
   });
   if (mailErr) {
     console.error("IPO週報(メール登録)の確認メール送信エラー:", mailErr);
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
     if (error) return page("登録できませんでした", "時間をおいて、もう一度お試しください。");
     return page(
       "IPO週報の登録が完了しました",
-      `次の金曜18時から、IPO週報をお届けします。<br/><br/>🎁 <a href="/campaign" style="color:#b91c1c;font-weight:700">無料会員登録で、有料分析が2ヶ月間読み放題(先着300名限定)</a>`
+      `次の金曜18時から、IPO週報をお届けします。<br/><br/>🎁 <a href="/ipo-jp/campaign" style="color:#b91c1c;font-weight:700">無料会員登録で、有料分析が2ヶ月間読み放題(先着300名限定)</a>`
     );
   }
   const { error } = await supabase.from("weekly_brief_guests").delete().eq("id", g);

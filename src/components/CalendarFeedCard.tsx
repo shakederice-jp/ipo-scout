@@ -16,7 +16,7 @@ export default function CalendarFeedCard({ style }: { style?: React.CSSPropertie
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/calendar/feed", { cache: "no-store" })
+    fetch("/ipo-jp/api/calendar/feed", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setSt(d))
       .catch(() => setSt(null));
@@ -38,7 +38,7 @@ export default function CalendarFeedCard({ style }: { style?: React.CSSPropertie
     if (!confirm("購読リンクを作り直します。これまでのリンクは使えなくなるため、カレンダーに登録し直す必要があります。よろしいですか？")) return;
     setBusy(true);
     try {
-      const r = await fetch("/api/calendar/feed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ regenerate: true }) });
+      const r = await fetch("/ipo-jp/api/calendar/feed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ regenerate: true }) });
       setSt(await r.json());
     } finally {
       setBusy(false);
@@ -87,7 +87,7 @@ export default function CalendarFeedCard({ style }: { style?: React.CSSPropertie
           <p style={{ fontSize: 12, color: "#92400e", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 10px", margin: "0 0 10px" }}>
             🔒 この機能は、{c.letter} {c.name}（{c.price}{c.period}）の会員向けです。
           </p>
-          <a href="/plans" style={{ display: "inline-block", padding: "9px 18px", border: `1.5px solid ${PRIMARY}`, color: MID, borderRadius: 8, fontWeight: 900, fontSize: 12, textDecoration: "none" }}>
+          <a href="/ipo-jp/plans" style={{ display: "inline-block", padding: "9px 18px", border: `1.5px solid ${PRIMARY}`, color: MID, borderRadius: 8, fontWeight: 900, fontSize: 12, textDecoration: "none" }}>
             プランを見る →
           </a>
         </div>

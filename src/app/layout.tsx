@@ -40,8 +40,8 @@ const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "大手町調査室九課",
-  url: "https://ipo.finance-tower.com",
-  logo: "https://ipo.finance-tower.com/ogp.png",
+  url: "https://finance-tower.com/ipo-jp",
+  logo: "https://finance-tower.com/ipo-jp/ogp.png",
   description: "目論見書等の公開情報をAIが解析し、IPO投資判断に役立つ分析レポートを提供するサービス。",
 };
 
@@ -53,13 +53,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
         {/* 2026/9/6追加: 「ホーム画面に追加(PWA化)」対応。manifest・アイコン・テーマカラーを設定し、
             Service Workerを登録する(オフラインキャッシュ等は行わず、インストール可能にするための最低限の対応)。 */}
-        <link rel="manifest" href="/manifest.json?v=3" />
+        <link rel="manifest" href="/ipo-jp/manifest.json?v=3" />
         <meta name="theme-color" content="#0d4f52" />
         {/* 2026/10/29追加: ホーム画面に追加したときのアイコン名(iPhone用)と、新アイコン(?v=3は古いアイコンの記憶を避けるための印) */}
         <meta name="apple-mobile-web-app-title" content="AI×IPO" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
-        <link rel="icon" href="/icon-192.png?v=3" type="image/png" />
+        <link rel="apple-touch-icon" href="/ipo-jp/apple-touch-icon.png?v=3" />
+        <link rel="icon" href="/ipo-jp/icon-192.png?v=3" type="image/png" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
         <Script id="ga4-init" strategy="afterInteractive">{`
@@ -78,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-              navigator.serviceWorker.register('/sw.js').catch(function () {});
+              navigator.serviceWorker.register('/ipo-jp/sw.js').catch(function () {});
             });
           }
         `}</Script>

@@ -206,7 +206,7 @@ export async function runCompanyNews(opts: { limit?: number; onlyId?: string; dr
       .map((h) =>
         `■ ${escapeHtml(h.name)}\n` +
         h.items.map((i) => `  ・${i.published_on} ${escapeHtml(i.headline)}\n    ${escapeHtml(i.source_url)}`).join("\n") +
-        `\n  分析ページ: https://ipo.finance-tower.com/analysis/${h.id}`
+        `\n  分析ページ: https://finance-tower.com/ipo-jp/analysis/${h.id}`
       )
       .join("\n\n");
     await notifyAdmin("重要な新情報あり（再分析の検討）", `分析ページの「最新情報」欄に、決算・増資・株価の急変などの新情報が追加されました。分析内容の見直しが必要かご確認ください。\n\n${body}`, "warn");

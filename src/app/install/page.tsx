@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "ホーム画面に追加する方法（iPhone・Android）｜大手町調査室九課",
   description: "IPO企業情報AI分析レポートをスマホのホーム画面に追加して、アプリのようにワンタップで開く方法を、iPhoneとAndroidに分けてご案内します。",
-  alternates: { canonical: "https://ipo.finance-tower.com/install" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/install" },
 };
 
 const C = { dark: "#0d4f52", mid: "#66c3c6", pale: "#e0f7f8", pale2: "#f4fbfc", line: "#b3e8ea", text: "#0f2a2c" };
@@ -56,7 +56,7 @@ export default function InstallPage() {
 
         <div style={{ ...card, display: "flex", gap: 14, alignItems: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png?v=3" alt="ホーム画面に表示されるアイコン" width={72} height={72} style={{ borderRadius: 16, flexShrink: 0 }} />
+          <img src="/ipo-jp/icon-192.png?v=3" alt="ホーム画面に表示されるアイコン" width={72} height={72} style={{ borderRadius: 16, flexShrink: 0 }} />
           <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.8 }}>
             追加すると、ホーム画面にこのアイコンが並びます。タップすると、ブラウザの枠（アドレス欄）がない、アプリのような画面で開きます。
           </div>
@@ -105,7 +105,7 @@ export default function InstallPage() {
         </section>
 
         <p style={{ marginTop: 24, textAlign: "center" }}>
-          <a href="/" style={{ fontSize: 14, fontWeight: 800, color: C.dark }}>← トップページへ戻る</a>
+          <a href="/ipo-jp" style={{ fontSize: 14, fontWeight: 800, color: C.dark }}>← トップページへ戻る</a>
         </p>
       </div>
     </div>

@@ -12,7 +12,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "9軸分析メソッドとは｜投資期間別スコアリングの仕組み｜大手町調査室九課",
   description: "大手町調査室九課のIPO分析は、超短期・短期・長期の3つの投資期間ごとに3つずつ、計9つの評価軸でスコアリングします。9軸分析メソッドの考え方と各軸の意味を解説します。",
-  alternates: { canonical: "https://ipo.finance-tower.com/methodology" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/methodology" },
 };
 
 const S = {

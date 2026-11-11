@@ -8,8 +8,10 @@
 // 必要がある。https://www.bing.com/indexnow で発行したキーではなく、今回は
 // ランダムな32桁の16進文字列を独自に生成して使っている(IndexNow仕様上、発行元は問わない)。
 const INDEXNOW_KEY = "f9f89f83906d0db7dc761119d834ea00";
-const SITE_HOST = "ipo.finance-tower.com";
-const KEY_LOCATION = `https://${SITE_HOST}/${INDEXNOW_KEY}.txt`;
+// 2026/11/11: サブディレクトリ化により、ホストは finance-tower.com。キーのファイルは /ipo-jp/ の下に置いてあり、
+// IndexNowの仕様では、キーのファイルがあるフォルダ以下のURLだけが通知の対象になる(=この日本版のページだけ)。
+const SITE_HOST = "finance-tower.com";
+const KEY_LOCATION = `https://${SITE_HOST}/ipo-jp/${INDEXNOW_KEY}.txt`;
 
 /**
  * 指定したURL(最大10,000件、通常は数件〜数十件程度を想定)をIndexNowに通知する。

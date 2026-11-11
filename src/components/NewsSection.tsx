@@ -9,7 +9,7 @@ export default function NewsSection() {
   const [openCategory, setOpenCategory] = useState<string>("ipo");
 
   useEffect(() => {
-    fetch("/api/news")
+    fetch("/ipo-jp/api/news")
       .then(r => r.json())
       .then(data => { setNewsData(data); setLoading(false); })
       .catch(() => setLoading(false));

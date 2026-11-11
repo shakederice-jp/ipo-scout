@@ -7,7 +7,7 @@ import { Page, Crumbs, H1, Lead, Card, H2, P, Table, RelatedLinks, Disclaimer, J
 // 証券会社ごとの抽選方式・ポイント制度・必要資金の扱いは変わるため、断定せず公式サイトでの確認を促す。
 export const dynamic = "force-static";
 
-const BASE = "https://ipo.finance-tower.com";
+const BASE = "https://finance-tower.com/ipo-jp";
 
 export const metadata: Metadata = {
   title: "IPOの申込方法｜口座開設から抽選・当選後・売り方までの流れ｜大手町調査室九課",
@@ -66,7 +66,7 @@ export default function HowToApplyPage() {
       <JsonLd data={breadcrumb} />
       <Crumbs items={[{ label: "トップ", href: "/" }, { label: "IPOの申込方法" }]} />
       <H1>IPOの申込方法｜口座開設から抽選・当選後・売り方までの流れ</H1>
-      <Lead>IPO（新規上場株）は、証券会社の口座があれば個人でも申し込めます。申込から売却までの流れと、当選確率・必要資金・注意点を初心者向けに説明します。用語の意味は<a href="/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で確認できます。</Lead>
+      <Lead>IPO（新規上場株）は、証券会社の口座があれば個人でも申し込めます。申込から売却までの流れと、当選確率・必要資金・注意点を初心者向けに説明します。用語の意味は<a href="/ipo-jp/glossary" style={{ color: C.nav, fontWeight: 700 }}>IPO用語集</a>で確認できます。</Lead>
 
       <Card>
         <H2>IPOの申込から売却までの6ステップ</H2>
@@ -78,7 +78,7 @@ export default function HowToApplyPage() {
             </li>
           ))}
         </ol>
-        <P>これからの日程は<a href="/schedule" style={{ color: C.nav, fontWeight: 700 }}>上場スケジュール一覧表</a>で、過去の初値は<a href="/results" style={{ color: C.nav, fontWeight: 700 }}>初値の結果一覧</a>で確認できます。</P>
+        <P>これからの日程は<a href="/ipo-jp/schedule" style={{ color: C.nav, fontWeight: 700 }}>上場スケジュール一覧表</a>で、過去の初値は<a href="/ipo-jp/results" style={{ color: C.nav, fontWeight: 700 }}>初値の結果一覧</a>で確認できます。</P>
       </Card>
 
       <Card>
@@ -115,8 +115,8 @@ export default function HowToApplyPage() {
 
       <Card>
         <H2>申込の前に知っておきたい注意点</H2>
-        <P>IPOの株は、値上がりするとは限りません。公募価格を下回る「公募割れ」になることもあります。赤字の会社やベンチャーキャピタルの持ち株が多い会社では、ロックアップ解除の前後に株価が動きやすいとされています。解除日は<a href="/lockup" style={{ color: C.nav, fontWeight: 700 }}>ロックアップ解除予定</a>のページで確認できます。</P>
-        <P>当サイトでは、目論見書をAIが解析した分析レポートを銘柄ごとに掲載しています。申込の判断材料のひとつとして、<a href="/" style={{ color: C.nav, fontWeight: 700 }}>トップページの銘柄一覧</a>からご覧ください。</P>
+        <P>IPOの株は、値上がりするとは限りません。公募価格を下回る「公募割れ」になることもあります。赤字の会社やベンチャーキャピタルの持ち株が多い会社では、ロックアップ解除の前後に株価が動きやすいとされています。解除日は<a href="/ipo-jp/lockup" style={{ color: C.nav, fontWeight: 700 }}>ロックアップ解除予定</a>のページで確認できます。</P>
+        <P>当サイトでは、目論見書をAIが解析した分析レポートを銘柄ごとに掲載しています。申込の判断材料のひとつとして、<a href="/ipo-jp" style={{ color: C.nav, fontWeight: 700 }}>トップページの銘柄一覧</a>からご覧ください。</P>
         <Disclaimer />
       </Card>
 

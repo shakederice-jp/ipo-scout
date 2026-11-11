@@ -8,7 +8,7 @@ import { syncPlanForUser } from "@/lib/plan-sync";
 // POST … { regenerate: true }          鍵を作り直す(リンクが人に知られた場合など。古いリンクは使えなくなる)
 export const dynamic = "force-dynamic";
 
-const HOST = "ipo.finance-tower.com";
+const HOST = "finance-tower.com/ipo-jp";
 const makeUrls = (token: string) => ({
   webcal: `webcal://${HOST}/api/calendar/ics/${token}`,
   https: `https://${HOST}/api/calendar/ics/${token}`,

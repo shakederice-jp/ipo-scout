@@ -14,7 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 import { xIntentUrl } from "./x-serialize";
 
-export const SITE_URL = "https://ipo.finance-tower.com";
+export const SITE_URL = "https://finance-tower.com/ipo-jp";
 export const CAMPAIGN_URL = `${SITE_URL}/campaign?utm_source=x&utm_medium=social&utm_campaign=referral`;
 
 // ---------- キャンペーンの案内文 ----------
@@ -48,7 +48,7 @@ export interface XShortLinkInput {
   imageUrl?: string | null;
 }
 
-// 原稿を保存して、短いリンク(https://ipo.finance-tower.com/x/xxxx)を返す。保存できなければ null。
+// 原稿を保存して、短いリンク(https://finance-tower.com/ipo-jp/x/xxxx)を返す。保存できなければ null。
 export async function createXShortLink(input: XShortLinkInput): Promise<string | null> {
   try {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

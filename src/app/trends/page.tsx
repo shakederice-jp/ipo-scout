@@ -158,7 +158,7 @@ export default function TrendsPage() {
   const handleFavorite = async (t: any) => {
     setFavoriteStatus(prev => ({ ...prev, [t.id]: "saving" }));
     try {
-      const res = await fetch("/api/favorites", {
+      const res = await fetch("/ipo-jp/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -464,7 +464,7 @@ export default function TrendsPage() {
                             📋 文章をコピー(X投稿用)
                           </button>
                           <a
-                            href={`/api/download-infographic?url=${encodeURIComponent(t.image_url)}&name=${encodeURIComponent(`${t.title}.png`)}`}
+                            href={`/ipo-jp/api/download-infographic?url=${encodeURIComponent(t.image_url)}&name=${encodeURIComponent(`${t.title}.png`)}`}
                             style={{ fontSize: 11, padding: "6px 12px", borderRadius: 20, border: "1px solid #66c3c6",
                               backgroundColor: "white", color: "#0d4f52", fontWeight: 700, textDecoration: "none" }}>
                             🖼 画像を保存
@@ -584,7 +584,7 @@ export default function TrendsPage() {
             </div>
           </div>
 
-          <a href="/trends/favorites" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #f59e0b" }}>
+          <a href="/ipo-jp/trends/favorites" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #f59e0b" }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 900, color: "#082b2e" }}>⭐ お気に入り記事</div>
               <div style={{ fontSize: 10, color: "#d97706", marginTop: 2 }}>保存した記事を読み返す(無料会員から利用可)</div>
@@ -592,7 +592,7 @@ export default function TrendsPage() {
             <span style={{ fontSize: 16, color: "#f59e0b" }}>→</span>
           </a>
 
-          <a href="/" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #66c3c6" }}>
+          <a href="/ipo-jp" style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", textDecoration: "none", border: "1.5px solid #66c3c6" }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 900, color: "#082b2e" }}>📋 IPO分析レポートトップ</div>
               <div style={{ fontSize: 10, color: "#2a7a7e", marginTop: 2 }}>銘柄一覧・カレンダーを見る</div>

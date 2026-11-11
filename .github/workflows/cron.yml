@@ -19,75 +19,75 @@ jobs:
     if: github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run DB Check
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/db-check -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/db-check -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   edinet-scan:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run EDINET Scan
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/edinet-scan -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   detect-ticker:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Detect Ticker (証券コード自動検出)
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ticker -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/detect-ticker -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   verify-exchange:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Verify Exchange (上場市場クロスチェック)
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/verify-exchange -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/verify-exchange -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   detect-ipo-price:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 10 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run Detect IPO Price
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/detect-ipo-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   track-stock-price:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Track Stock Price (100万円投資シミュレーション用)
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/track-stock-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/track-stock-price -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   daily-reminder:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Run Daily Reminder
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/daily-reminder -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/daily-reminder -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   generate-x-drafts:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 20 * * 0-4' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Generate X Post Drafts
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/generate-x-drafts -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/generate-x-drafts -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   detect-scraping:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Detect Paid Content Scraping
-        run: "curl -X GET https://ipo.finance-tower.com/api/cron/detect-scraping -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET https://finance-tower.com/ipo-jp/api/cron/detect-scraping -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   auto-post-morning:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 21 * * 0-4' || github.event_name == 'workflow_dispatch'
     steps:
       - name: X Post Mail (Morning / 毎朝7時JSTの便)
-        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=morning' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET 'https://finance-tower.com/ipo-jp/api/cron/auto-post?slot=morning' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 
   auto-post-evening:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 7 * * 1-5' || github.event_name == 'workflow_dispatch'
     steps:
       - name: X Post Mail (Evening / 毎夕17時JSTの便)
-        run: "curl -X GET 'https://ipo.finance-tower.com/api/cron/auto-post?slot=evening' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
+        run: "curl -X GET 'https://finance-tower.com/ipo-jp/api/cron/auto-post?slot=evening' -H 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'"
 

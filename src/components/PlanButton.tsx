@@ -40,7 +40,7 @@ export function PlanButton({
     setAlready(false);
     setBusy(auto ? "auto" : "click");
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/ipo-jp/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan, stockId: stockId ?? null }),
@@ -55,7 +55,7 @@ export function PlanButton({
           return;
         }
         const back = `${window.location.pathname}?buy=${plan}`;
-        window.location.href = `/auth?next=${encodeURIComponent(back)}`;
+        window.location.href = `/ipo-jp/auth?next=${encodeURIComponent(back)}`;
         return; // 画面が切り替わるまで「接続中…」のままにする
       }
       if (res.status === 409) {
@@ -131,7 +131,7 @@ export function PlanButton({
           {already ? (
             <>
               {" "}
-              <a href="/mypage" style={{ textDecoration: "underline", fontWeight: 700, color: "inherit" }}>
+              <a href="/ipo-jp/mypage" style={{ textDecoration: "underline", fontWeight: 700, color: "inherit" }}>
                 マイページを開く →
               </a>
             </>

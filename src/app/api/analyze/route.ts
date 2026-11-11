@@ -346,7 +346,7 @@ export async function POST(req: NextRequest) {
       // 早くBing・Yandex等に認識してもらうため、IndexNowでURLを通知しておく(Googleは
       // IndexNowに対応していないため、あくまで補助的な施策。失敗しても後続処理は続行させる
       // fire-and-forget方式にしている)。
-      pingIndexNow([`https://ipo.finance-tower.com/analysis/${(co as any).ticker ?? co.id}`]);
+      pingIndexNow([`https://finance-tower.com/ipo-jp/analysis/${(co as any).ticker ?? co.id}`]);
 
       // X投稿ドラフトを作成 + 2営業日後・4営業日後の再掲を予約
       // ↓ なぜ動いた/動かなかったのかをadmin画面で見えるようにするための診断メモ
@@ -438,7 +438,7 @@ export async function POST(req: NextRequest) {
           // insertではなくupsertで上書きする(重複記事にならないように)。
           // 失敗した場合はadmin画面のSTEP4結果表示(xDraftDebug)にも理由を出す
           // (Vercelのログを見られないユーザーでも原因が分かるようにするため)。
-          const analysisUrl = `https://ipo.finance-tower.com/analysis/${co.id}`;
+          const analysisUrl = `https://finance-tower.com/ipo-jp/analysis/${co.id}`;
           // 本文はX投稿でも使っている「上場日・市場・コード・売上・利益・主幹事+AIの一言」の
           // 詳しい紹介文(initialText)をそのまま使う。2026/8/29、ai_summaryだけの短い文章に
           // 変更したところ「文字数が減って冷たい感じになった」とのフィードバックを受け、
@@ -461,7 +461,7 @@ export async function POST(req: NextRequest) {
               content: trendsContent,
               image_url: imageUrl,
               source_links: [
-                { title: `${co.name}の詳細分析ページ`, url: `https://ipo.finance-tower.com/analysis/${co.id}`, source: "自社分析" },
+                { title: `${co.name}の詳細分析ページ`, url: `https://finance-tower.com/ipo-jp/analysis/${co.id}`, source: "自社分析" },
               ],
               fetched_at: new Date().toISOString(),
               external_id: `new-ipo-intro-${co.id}`,

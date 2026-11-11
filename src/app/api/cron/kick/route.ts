@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { notifyAdmin } from "@/lib/notify-admin";
+import { BASE_PATH } from "@/lib/base-path";
 
 // 2026/10/21新設: 外部の定時実行サービス(cron-job.org)から、既存の定期実行APIを呼び出すための「取り次ぎ口」。
 // 背景: GitHub Actionsの定時実行が、数時間遅れることがある(朝7時のXメールが9時過ぎに届いた)。
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "job が不正です", jobs: Object.keys(JOBS) }, { status: 400 });
   }
 
-  const target = `${url.origin}${path}`;
+  const target = `${url.origin}${BASE_PATH}${path}`; // 2026/11/11: /ipo-jp 以下で公開されるため、パスの前に付ける
   const startedAt = new Date().toISOString();
   after(async () => {
     try {

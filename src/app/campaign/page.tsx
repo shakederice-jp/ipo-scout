@@ -8,7 +8,7 @@ import { PLAN_CATALOG } from "@/lib/plan-catalog";
 export const metadata: Metadata = {
   title: "友達紹介キャンペーン｜大手町調査室九課",
   description: "無料会員登録で、有料のIPO分析ページと週刊スライド(PDF)が2ヶ月間読み放題。友達を紹介すると、さらに2ヶ月延びます。",
-  alternates: { canonical: "https://ipo.finance-tower.com/campaign" },
+  alternates: { canonical: "https://finance-tower.com/ipo-jp/campaign" },
 };
 
 const C = { teal: "#66c3c6", nav: "#0d4f52", dark: "#082b2e", light: "#f0fafa", border: "#b3e8ea", mid: "#2a7a7e" };
@@ -16,7 +16,7 @@ const C = { teal: "#66c3c6", nav: "#0d4f52", dark: "#082b2e", light: "#f0fafa", 
 export default function CampaignPage() {
   const c = PLAN_CATALOG.plan_c;
   // 登録画面へ。公式コードを付けて渡す(ReferralCapture が預かり、友達の招待コードがあればそちらを優先する)
-  const joinHref = `/auth?ref=${OFFICIAL_REFERRAL_CODE}&utm_source=campaign&utm_medium=page&utm_campaign=referral`;
+  const joinHref = `/ipo-jp/auth?ref=${OFFICIAL_REFERRAL_CODE}&utm_source=campaign&utm_medium=page&utm_campaign=referral`;
 
   return (
     <div style={{ backgroundColor: C.light, minHeight: "100vh", fontFamily: "'Noto Sans JP',sans-serif" }}>
@@ -75,7 +75,7 @@ export default function CampaignPage() {
           <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.9, margin: 0 }}>
             特典の期間が終わっても、自動で課金されることはありません。続けて読みたい場合だけ、プランをお選びください。
             分析・通知・週刊スライド・予定の自動登録がそろった{c.letter} {c.name}は、{c.price}{c.period}です。
-            <a href="/plans" style={{ color: C.nav, fontWeight: 700, marginLeft: 6 }}>料金プランを見る →</a>
+            <a href="/ipo-jp/plans" style={{ color: C.nav, fontWeight: 700, marginLeft: 6 }}>料金プランを見る →</a>
           </p>
         </section>
 
@@ -84,7 +84,7 @@ export default function CampaignPage() {
             無料で登録して特典を受け取る →
           </a>
           <p style={{ fontSize: 11, color: "#64748b", lineHeight: 1.8, margin: "14px 0 0" }}>
-            すでに会員の方は、<a href="/mypage" style={{ color: C.nav, fontWeight: 700 }}>マイページ</a>から招待リンクを取得できます。<br />
+            すでに会員の方は、<a href="/ipo-jp/mypage" style={{ color: C.nav, fontWeight: 700 }}>マイページ</a>から招待リンクを取得できます。<br />
             本サービスは情報提供を目的としたもので、投資の勧誘ではありません。
           </p>
         </div>
