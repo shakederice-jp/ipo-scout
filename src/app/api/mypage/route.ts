@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
 import { syncPlanForUser } from "@/lib/plan-sync";
+import { ensureReferralProfile } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,8 +32,18 @@ export async function GET() {
   // 2026/10/10: 日本版・米国版は共通のプラン。マイページを開いたときはStripeの契約に合わせて最新にする
   await syncPlanForUser(session.user, { force: true });
 
-  const { data: profile } = await serviceSupabase
-    .from("user_profiles").select("*").eq("id", userId).single();
+  let { data: profile } = await serviceSupabase
+    .from("user_profiles").select("*").eq("id", userId).maybeSingle();
+  // 2026/11/13追加: 会員情報の行や紹介コードがまだ無い会員には、ここで作る(無いと招待リンクが「?ref=」と空になり、紹介が成立しない)
+  if (!profile || !profile.referral_code) {
+    try {
+      await ensureReferralProfile(session.user);
+      const again = await serviceSupabase.from("user_profiles").select("*").eq("id", userId).maybeSingle();
+      profile = again.data;
+    } catch (e) {
+      console.error("ensureReferralProfile failed", e);
+    }
+  }
 
   const { data: referralLogs } = await serviceSupabase
     .from("referral_logs").select("*").eq("referrer_user_id", userId);

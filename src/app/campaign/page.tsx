@@ -6,8 +6,8 @@ import { PLAN_CATALOG } from "@/lib/plan-catalog";
 // Xなどからのリンク先。ここから登録すると、運営の公式コードが自動で適用され、2ヶ月の特典が付く。
 // 登録後は、マイページで自分専用の招待リンクを取得して、友達に共有できる(友達が登録すると、さらに2ヶ月延びる)。
 export const metadata: Metadata = {
-  title: "友達紹介キャンペーン｜大手町調査室九課",
-  description: "無料会員登録で、有料のIPO分析ページと週刊スライド(PDF)が2ヶ月間読み放題。友達を紹介すると、さらに2ヶ月延びます。",
+  title: "紹介キャンペーン｜大手町調査室九課",
+  description: "無料会員登録で、有料のIPO分析ページと週刊スライド(PDF)が2ヶ月間読み放題。友達やSNSで紹介すると、さらに2ヶ月延びます。",
   alternates: { canonical: "https://finance-tower.com/ipo-jp/campaign" },
 };
 
@@ -24,7 +24,7 @@ export default function CampaignPage() {
         <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.teal, letterSpacing: "0.1em", marginBottom: 14 }}>CAMPAIGN</div>
           <h1 style={{ fontSize: "clamp(22px,4vw,34px)", fontWeight: 900, color: "white", lineHeight: 1.5, margin: "0 0 14px" }}>
-            友達紹介キャンペーン<br />有料分析＋週刊スライドが2ヶ月読み放題
+            紹介キャンペーン<br />有料分析＋週刊スライドが2ヶ月読み放題
           </h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.78)", lineHeight: 1.9, margin: "0 0 24px" }}>
             無料会員に登録するだけで、特典がつきます。クレジットカードの入力は要りません。
@@ -32,7 +32,7 @@ export default function CampaignPage() {
           <a href={joinHref} style={{ display: "inline-block", padding: "14px 34px", backgroundColor: C.teal, color: C.dark, borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
             無料で登録して特典を受け取る →
           </a>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: "12px 0 0" }}>先着300名限定・予告なく終了する場合があります</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: "12px 0 0" }}>先着300名に達した時点で終了します（予告なく終了する場合があります）</p>
         </div>
       </div>
 
@@ -55,8 +55,8 @@ export default function CampaignPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[
               { n: "①", t: "上のボタンから、メールアドレスで無料会員登録", d: "届いた確認メールのリンクを押すと、登録が完了して特典が始まります。" },
-              { n: "②", t: "マイページで、自分専用の招待リンクを取得", d: "「友達招待プログラム」に、X・LINE・メールで送れる招待文も用意してあります。" },
-              { n: "③", t: "友達が登録すると、あなたの特典がさらに2ヶ月延びる", d: "友達にも、同じ2ヶ月の特典がつきます。" },
+              { n: "②", t: "マイページで、自分専用の招待リンクを取得", d: "「友達招待プログラム」に、X・LINE・メールで送れる招待文と、X・Instagram向けの投稿文・バナーも用意してあります。" },
+              { n: "③", t: "紹介した人が登録するたびに、あなたの特典が2ヶ月ずつ延びる", d: "友達・知人だけでなく、X・InstagramなどSNSでの紹介も対象です。登録した方にも同じ2ヶ月の特典がつきます。あなたの特典に人数の上限はありません。" },
             ].map((s) => (
               <div key={s.n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontWeight: 900, color: C.nav, fontSize: 15 }}>{s.n}</span>

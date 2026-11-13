@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useReferralStatus } from "@/components/ReferralStatus";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { User, CreditCard, Gift, Bell, ShoppingBag, Calendar, Copy, Check, LogOut, TrendingUp, Trash2 } from "lucide-react";
 import { CheckoutButton } from "@/components/CheckoutButton";
@@ -49,6 +50,8 @@ export default function MyPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [igCopied, setIgCopied] = useState(false);
+  const refStatus = useReferralStatus();
   const [notifyState, setNotifyState] = useState<any>(null);
   const [savingNotify, setSavingNotify] = useState(false);
   const [notifySaveResult, setNotifySaveResult] = useState<string | null>(null);
@@ -223,16 +226,26 @@ export default function MyPage() {
   const inviteMessage =
     `📊 IPOの目論見書をAIが読み込んで分析してくれる「IPO企業情報AI分析レポート」を使っています。\n` +
     `初心者向け・中上級者向けどちらの分析も見られて、毎月最初の2社ぶんは無料。公募価格で100万円投資していたら今いくらか、というシミュレーションも見られて面白いです。\n\n` +
-    `このリンクから登録すると、お互いに有料分析が2ヶ月間読み放題になります🎁（先着300名限定）\n${referralUrl}`;
+    `このリンクから登録すると、お互いに有料分析が2ヶ月間読み放題になります🎁（先着300名・なくなり次第終了）\n${referralUrl}`;
+  // 2026/11/13改修: SNSで不特定多数に紹介してもよい。広告(PR)と分かるよう「#PR」と「紹介特典あり」を必ず入れる(ステルスマーケティング対策)。
   const inviteMessageX =
-    `📊 目論見書をAIが解析して初心者にも分かりやすく教えてくれる「IPO企業情報AI分析レポート」を使ってます。毎月2社は無料、100万円投資シミュレーションも面白い。\n` +
-    `このリンクから登録で、お互い有料分析が2ヶ月読み放題🎁（先着300名限定）\n${referralUrl}\n#IPO投資`;
+    `📊 目論見書をAIが解析してくれる「IPO企業情報AI分析レポート」を使っています。\n` +
+    `このリンクから登録で、お互い有料分析が2ヶ月読み放題🎁（先着300名）\n※私にも紹介特典があります\n${referralUrl}\n#PR #IPO投資`;
+  const inviteCaptionInstagram =
+    `【PR】紹介特典あり\n` +
+    `IPO（新規上場株）の目論見書をAIが読み込んで、初心者にも分かりやすく分析してくれる「IPO企業情報AI分析レポート」を使っています📊\n` +
+    `毎月最初の2社は無料。公募価格で100万円投資していたら今いくら？のシミュレーションも見られます。\n\n` +
+    `プロフィールのリンク（またはストーリーズのリンク）から登録すると、お互いに有料分析が2ヶ月間読み放題になります🎁（先着300名・なくなり次第終了）\n` +
+    `※私にも紹介特典が付きます。\n\n` +
+    `招待コード：${profile.referral_code ?? ""}\n` +
+    `（登録画面の「紹介コード」欄に入れてもOK）\n` +
+    `#PR #IPO #IPO投資 #新規上場 #投資初心者`;
   const inviteSubjectEmail = `「IPO企業情報AI分析レポート」のご紹介`;
   const inviteBodyEmail =
     `いつもお世話になっております。\n\n` +
     `IPO(新規上場株)の投資判断に役立つ「IPO企業情報AI分析レポート」というサービスを使っているのでご紹介します。\n\n` +
     `企業が金融庁に提出する目論見書をAIが読み込み、財務状況やリスクを初心者にも分かりやすくまとめてくれるサービスです。毎月最初の2社は無料で読めます。「公募価格で100万円投資していたら今いくらになっているか」を自動で計算してくれる機能もあり、なかなか面白いです。\n\n` +
-    `以下の招待リンクから登録いただくと、お互いに有料分析が2ヶ月間読み放題になる特典が付きます（先着300名限定）。よろしければ試してみてください。\n\n${referralUrl}`;
+    `以下の招待リンクから登録いただくと、お互いに有料分析が2ヶ月間読み放題になる特典が付きます（先着300名・なくなり次第終了）。よろしければ試してみてください。\n\n${referralUrl}`;
 
   const handleShareX = () => {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(inviteMessageX)}`, "_blank", "noopener,noreferrer");
@@ -242,6 +255,11 @@ export default function MyPage() {
   };
   const handleShareEmail = () => {
     window.location.href = `mailto:?subject=${encodeURIComponent(inviteSubjectEmail)}&body=${encodeURIComponent(inviteBodyEmail)}`;
+  };
+  const handleCopyInstagram = () => {
+    navigator.clipboard.writeText(inviteCaptionInstagram);
+    setIgCopied(true);
+    setTimeout(() => setIgCopied(false), 2000);
   };
   const handleCopyInvite = () => {
     // 2026/9/6: handleCopy()は既存の「招待URLコピー」ボタン用のcopiedを更新してしまうため、
@@ -447,9 +465,15 @@ export default function MyPage() {
               打ち出したのにあわせ、アプリ側の招待プログラムにも同じ訴求を表示する。
               (実際の残り人数を数える仕組みはまだ無く、あくまで訴求文言としての表示) */}
           <div style={{ marginBottom: 12 }}>
-            <span style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: "white", backgroundColor: "#dc2626", borderRadius: 6, padding: "3px 10px" }}>
-              🎉 先着300名限定キャンペーン実施中
-            </span>
+            {refStatus && !refStatus.open ? (
+              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: "white", backgroundColor: "#64748b", borderRadius: 6, padding: "3px 10px" }}>
+                先着300名に達したため、紹介特典の受付は終了しました
+              </span>
+            ) : (
+              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: "white", backgroundColor: "#dc2626", borderRadius: 6, padding: "3px 10px" }}>
+                🎉 先着300名限定キャンペーン実施中{refStatus ? `（残り${refStatus.remaining}名）` : ""}
+              </span>
+            )}
           </div>
           <div style={{ backgroundColor: LIGHT, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: MID, marginBottom: 6, fontWeight: 700 }}>あなたの招待URL</div>
@@ -487,11 +511,43 @@ export default function MyPage() {
             </div>
           </div>
 
+          {/* 2026/11/13追加: 友達・知人だけでなく、X・InstagramなどのSNSで不特定多数に紹介してもよい。投稿文・キャプション・バナー画像を用意した。 */}
+          <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${PRIMARY}`, backgroundColor: "white" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: DARK, marginBottom: 4 }}>📣 SNSで広く紹介してもOKです（X・Instagramなど）</div>
+            <p style={{ fontSize: 11, color: "#475569", lineHeight: 1.8, margin: "0 0 10px" }}>
+              友達・知人だけでなく、不特定多数の方に向けた投稿でも対象です。紹介リンクから登録した人が1人増えるごとに、あなたの読み放題期間が<strong>2ヶ月ずつ延びます（人数の上限はありません）</strong>。
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+              <button onClick={handleCopyInstagram}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#f58529,#dd2a7b,#8134af)", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                {igCopied ? <><Check size={14} />Instagram用キャプションをコピーしました</> : <><Copy size={14} />Instagram用のキャプションをコピー</>}
+              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a href="/ipo-jp/referral-banner-wide-jp.png" download
+                  style={{ flex: 1, textAlign: "center", padding: "8px", borderRadius: 8, border: `1px solid ${BORDER}`, color: MID, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>
+                  🖼 バナー（横長・X向け）
+                </a>
+                <a href="/ipo-jp/referral-banner-square-jp.png" download
+                  style={{ flex: 1, textAlign: "center", padding: "8px", borderRadius: 8, border: `1px solid ${BORDER}`, color: MID, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>
+                  🖼 バナー（正方形・Instagram向け）
+                </a>
+              </div>
+            </div>
+            <ul style={{ margin: 0, padding: "0 0 0 16px", fontSize: 10.5, color: "#64748b", lineHeight: 1.9 }}>
+              <li>Instagramの投稿文のURLはタップできません。プロフィールのリンク欄、またはストーリーズのリンクスタンプに、上の招待URLを入れてください。</li>
+              <li>紹介特典がもらえる投稿は広告（PR）にあたるため、投稿には「#PR」「紹介特典あり」を入れてください（用意した投稿文・キャプションには入っています）。</li>
+            </ul>
+          </div>
+
           <InfoRow label="招待コード" value={<span style={{ fontFamily: "monospace", letterSpacing: 2 }}>{profile.referral_code ?? "-"}</span>} />
           <InfoRow label="招待済み人数" value={`${completedReferrals}名`} />
           <InfoRow label="獲得した読み放題期間" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
-            💡 友達が登録すると、あなたと友達の両方が<strong>有料分析と週刊スライドを2ヶ月間読み放題</strong>になります（通知・予定の自動登録は対象外）（<strong>先着300名限定</strong>・予告なく終了する場合があります）
+            💡 紹介リンクから登録した人が増えるたびに、あなたと登録した人の両方が<strong>有料分析と週刊スライドを2ヶ月間読み放題</strong>になります（通知・予定の自動登録は対象外）。<br />
+            ・友達・知人だけでなく、X・InstagramなどのSNSで不特定多数に紹介した場合も対象です。<br />
+            ・あなたの特典に、人数の上限はありません（1人ごとに2ヶ月ずつ延びます）。<br />
+            ・<strong>先着300名</strong>に達した時点で、新しい紹介への特典は自動的に終了します（すでに付いた特典はそのまま使えます）。<br />
+            ・対象は、メール確認済みで、登録から14日以内の新しい会員です（1人1回・ご自身のコードは使えません）。
           </div>
         </Section>
 

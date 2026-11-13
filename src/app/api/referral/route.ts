@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedUser, getServiceSupabase } from "@/lib/member-auth";
-import { applyReferral, applyPendingReferral } from "@/lib/referral";
+import { applyReferral, applyPendingReferral, ensureReferralProfile } from "@/lib/referral";
 
 // 紹介コードの適用 & 自分の紹介コードの取得。
 // 2026/9/26修正: 以前はブラウザから送られてきた user_id をそのまま信じていたため、架空のIDで何度でも
@@ -14,6 +14,7 @@ const LEGACY_ERROR: Record<string, string> = {
   invalid_code: "invalid code",
   self_referral: "self referral",
   already_referred: "already referred",
+  cap_reached: "cap_reached",
 };
 
 export async function POST(req: NextRequest) {
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const user = await getVerifiedUser();
   if (!user) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+
+  // 2026/11/13追加: 会員情報や紹介コードがまだ無い会員には、ここで作る(src/lib/referral.ts の ensureReferralProfile)
+  try { await ensureReferralProfile(user); } catch (e) { console.error("ensureReferralProfile failed", e); }
 
   const { data } = await getServiceSupabase()
     .from("user_profiles")

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useReferralStatus } from "@/components/ReferralStatus";
 import { NEXT_COOKIE } from "@/lib/post-login";
 
 export default function AuthPage() {
@@ -11,6 +12,7 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refCode, setRefCode] = useState("");
+  const refStatus = useReferralStatus();
 
   const supabase = createSupabaseBrowserClient();
 
@@ -99,6 +101,7 @@ export default function AuthPage() {
               : json?.error === "invalid code" ? " 紹介コードが見つかりませんでした（登録自体は完了しています）。"
               : json?.error === "self referral" ? " ご自身の紹介コードは利用できません（登録自体は完了しています）。"
               : json?.error === "already referred" ? " このアカウントは既に紹介特典を利用済みです。"
+              : json?.error === "cap_reached" ? " 紹介特典は先着の上限に達したため終了しました（登録自体は完了しています）。"
               : " 紹介コードの適用に失敗しました（登録自体は完了しています）。";
           } catch {
             referralNote = " 紹介コードの適用中に通信エラーが発生しました（登録自体は完了しています）。";
@@ -182,9 +185,15 @@ export default function AuthPage() {
               placeholder="お持ちの方はコードを入力"
               style={{ width:"100%", padding:"10px", borderRadius:"8px", border:"1px solid #b3e8ea", boxSizing:"border-box", fontSize:"14px" }}
             />
-            <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
-              紹介コードを入力して登録すると、あなたと紹介者の両方が有料分析を2ヶ月間読み放題になります
-            </p>
+            {refStatus && !refStatus.open ? (
+  <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
+    紹介特典は、先着の上限に達したため受付を終了しました（登録自体は通常どおりできます）
+  </p>
+) : (
+  <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
+    紹介コードを入力して登録すると、あなたと紹介者の両方が有料分析を2ヶ月間読み放題になります（先着300名・SNSで紹介されたリンクも対象です）
+  </p>
+)}
           </div>
         )}
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminRequest } from "@/lib/admin-auth";
+import { REFERRAL_CAP } from "@/lib/referral";
 
 // 2026/9/6新設: 紹介プログラムの実績を管理画面で見えるようにするための集計API。
 // これまで「何人がリンクを踏んで、何人が登録し、何人に特典が付いたか」を確認する
 // 手段が一切無かったため、まずは「特典が実際に成立した件数」だけでも可視化する。
 export const dynamic = "force-dynamic";
 
-const CAP = 300; // Xのプロフィールで案内している「先着300名限定」の人数
+const CAP = REFERRAL_CAP; // 「先着300名」の人数(2026/11/13から、上限に達すると紹介特典を自動で停止する)
 
 export async function GET(req: NextRequest) {
   // 2026/9/26: パスワードの直書きをやめ、サーバー側のログイン判定(src/lib/admin-auth.ts)に統一

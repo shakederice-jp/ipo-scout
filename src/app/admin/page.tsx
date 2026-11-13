@@ -118,6 +118,18 @@ export default function AdminPage() {
   const [deleteCompanyResult, setDeleteCompanyResult] = useState<string | null>(null);
   const [econResult, setEconResult] = useState<string | null>(null);
   const [referralStats, setReferralStats] = useState<{ completed: number; cap: number; remaining: number } | null>(null);
+  // 2026/11/13追加: 紹介機能の診断(どこで止まっているかを調べる)
+  const [refDiag, setRefDiag] = useState<any | null>(null);
+  const [refDiagLoading, setRefDiagLoading] = useState(false);
+  const runRefDiag = async () => {
+    setRefDiagLoading(true); setRefDiag(null);
+    try {
+      const r = await fetch("/ipo-jp/api/admin/referral-diagnose", { cache: "no-store" });
+      const d = await r.json();
+      setRefDiag(r.ok ? d : { error: d?.error ?? "診断に失敗しました" });
+    } catch { setRefDiag({ error: "通信エラーです" }); }
+    setRefDiagLoading(false);
+  };
 
   // 2026/9/26追加: ページを開いたとき、すでにログイン済み(有効なログイン状態のクッキーあり)かをサーバーに確認する
   useEffect(() => {
@@ -945,6 +957,31 @@ export default function AdminPage() {
               <p style={{ fontSize:10, color:"#94a3b8", margin:"10px 0 0" }}>
                 ※「特典成立数」は紹介コードが正しく適用され、紹介した人・された人の両方に「有料分析2ヶ月読み放題」が付与された件数です。
               </p>
+              <div style={{ marginTop:12, paddingTop:12, borderTop:"1px solid #e2e8f0" }}>
+                <button onClick={runRefDiag} disabled={refDiagLoading}
+                  style={{ padding:"8px 14px", backgroundColor: refDiagLoading ? "#94a3b8" : "#0f766e", color:"white", border:"none", borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12 }}>
+                  {refDiagLoading ? "診断中..." : "🔍 紹介機能を診断する（どこで止まっているか調べる）"}
+                </button>
+                {refDiag && (
+                  <div style={{ marginTop:10, fontSize:11, color:"#334155", lineHeight:1.9 }}>
+                    {refDiag.error ? <div style={{ color:"#b91c1c" }}>❌ {refDiag.error}</div> : (<>
+                      {refDiag.problems?.length > 0
+                        ? <div style={{ padding:"8px 10px", backgroundColor:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, marginBottom:8 }}>
+                            <div style={{ fontWeight:900, color:"#991b1b", marginBottom:2 }}>見つかった問題</div>
+                            {refDiag.problems.map((t: string, i: number) => <div key={i}>・{t}</div>)}
+                          </div>
+                        : <div style={{ padding:"8px 10px", backgroundColor:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:8, marginBottom:8, color:"#166534", fontWeight:700 }}>✅ 設定面の問題は見つかりませんでした</div>}
+                      {refDiag.notes?.map((t: string, i: number) => <div key={i}>・{t}</div>)}
+                      <div style={{ marginTop:6, color:"#475569" }}>
+                        会員 {refDiag.members?.total}人（メール確認済み {refDiag.members?.confirmed}人）／会員情報 {refDiag.profiles?.total}行（紹介コードなし {refDiag.profiles?.withoutCode}人・読み放題期間中 {refDiag.profiles?.freeUntilActive}人）<br />
+                        特典成立 {refDiag.referral?.completed}件／先着の上限 {refDiag.referral?.cap}名／最後の成立 {refDiag.referral?.lastAt ? new Date(refDiag.referral.lastAt).toLocaleString("ja-JP") : "なし"}<br />
+                        紹介コードで登録したが特典が未適用: {refDiag.referral?.pendingUnapplied}人（確認メール未クリック: {refDiag.referral?.pendingUnconfirmed}人）<br />
+                        適用結果の内訳: {Object.keys(refDiag.referral?.results ?? {}).length ? Object.entries(refDiag.referral.results).map(([k, v]) => `${k} ${v}件`).join(" / ") : "なし"}
+                      </div>
+                    </>)}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 手動実行ツール */}
