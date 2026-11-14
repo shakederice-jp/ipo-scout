@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { NEXT_COOKIE, safeNext } from "@/lib/post-login";
 import { applyPendingReferral } from "@/lib/referral";
+import { pullFreeUntilFromOtherApp } from "@/lib/cross-app";
 import { PUBLIC_ORIGIN, withBase } from "@/lib/base-path";
 
 export async function GET(request: NextRequest) {
@@ -12,6 +13,8 @@ export async function GET(request: NextRequest) {
   const origin = process.env.NODE_ENV === "production" ? PUBLIC_ORIGIN : requestOrigin;
   const code = searchParams.get("code");
   let dest = "/";
+  // 2026/11/14追加: リンクが使えなかった(別の端末・ブラウザで開いた/期限切れ等)ときに、ログイン画面で案内を出すための印
+  let linkFailed = !code;
 
   if (code) {
     const cookieStore = await cookies();
@@ -29,7 +32,8 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-    const { data } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError || !data?.user) linkFailed = true;
 
     // 購入ボタンから会員登録した人は、確認メールのリンクを押したあと元の画面（料金ページなど）へ戻す
     try {
@@ -49,8 +53,14 @@ export async function GET(request: NextRequest) {
       } catch (e) {
         console.error("referral apply failed", e);
       }
+      // 2026/11/14: もう一方のサイトで付いた紹介特典の無料期間があれば、この会員にも引き継ぐ
+      await pullFreeUntilFromOtherApp(data.user);
     }
   }
+
+  // 確認メールのリンクを別のブラウザで押した場合などは、メールの確認自体は済んでいるので、ログイン画面で案内する
+  // (直接このURLを開いただけで code が無い場合は、何もせずトップへ)
+  if (linkFailed && dest === "/" && (code || searchParams.get("error_code") || searchParams.get("error"))) dest = "/auth?verified=1";
 
   const res = NextResponse.redirect(`${origin}${withBase(dest)}`);
   res.cookies.set(NEXT_COOKIE, "", { path: "/", maxAge: 0 });

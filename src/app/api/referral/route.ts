@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedUser, getServiceSupabase } from "@/lib/member-auth";
 import { applyReferral, applyPendingReferral, ensureReferralProfile } from "@/lib/referral";
+import { pullFreeUntilFromOtherApp } from "@/lib/cross-app";
 
 // 紹介コードの適用 & 自分の紹介コードの取得。
 // 2026/9/26修正: 以前はブラウザから送られてきた user_id をそのまま信じていたため、架空のIDで何度でも
@@ -41,6 +42,8 @@ export async function GET() {
 
   // 2026/11/13追加: 会員情報や紹介コードがまだ無い会員には、ここで作る(src/lib/referral.ts の ensureReferralProfile)
   try { await ensureReferralProfile(user); } catch (e) { console.error("ensureReferralProfile failed", e); }
+  // 2026/11/14: もう一方のサイトで付いた無料期間があれば引き継ぐ
+  await pullFreeUntilFromOtherApp(user);
 
   const { data } = await getServiceSupabase()
     .from("user_profiles")

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
 import { syncPlanForUser } from "@/lib/plan-sync";
 import { ensureReferralProfile } from "@/lib/referral";
+import { pullFreeUntilFromOtherApp } from "@/lib/cross-app";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,6 +32,8 @@ export async function GET() {
 
   // 2026/10/10: 日本版・米国版は共通のプラン。マイページを開いたときはStripeの契約に合わせて最新にする
   await syncPlanForUser(session.user, { force: true });
+  // 2026/11/14: 日米で紹介特典を共通にした。もう一方のサイトで付いた無料期間があれば引き継ぐ
+  await pullFreeUntilFromOtherApp(session.user);
 
   let { data: profile } = await serviceSupabase
     .from("user_profiles").select("*").eq("id", userId).maybeSingle();
@@ -50,7 +53,7 @@ export async function GET() {
     .from("referral_logs").select("id").eq("referee_user_id", userId).eq("status", "completed").limit(1);
 
   const { data: referralLogs } = await serviceSupabase
-    .from("referral_logs").select("*").eq("referrer_user_id", userId);
+    .from("referral_logs").select("*").eq("referrer_user_id", userId).neq("referee_user_id", userId);
 
   const { data: purchases } = await serviceSupabase
     .from("purchased_stocks")

@@ -13,6 +13,9 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [refCode, setRefCode] = useState("");
   const refStatus = useReferralStatus();
+  // 2026/11/14追加: 登録メールを送った直後の案内表示用 / メールのリンクを押して戻ってきた人への案内用
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
 
   const supabase = createSupabaseBrowserClient();
 
@@ -22,6 +25,7 @@ export default function AuthPage() {
       // トップページ等を見てから登録画面に来た場合はURLに?refが付いていない。
       // その場合は、ReferralCapture.tsx がlayout側で保存しておいたコードを
       // localStorageから拾う(URL側にあれば従来通りそちらを優先)。
+      if (new URLSearchParams(window.location.search).get("verified")) setVerified(true);
       const urlRef = new URLSearchParams(window.location.search).get("ref");
       // 2026/10/24(束A・⑤): 運営の公式コード(/campaign経由)の場合は、友達の紹介コードがすでに預かってあればそちらを優先する
       let friendCode: string | null = null;
@@ -51,7 +55,7 @@ export default function AuthPage() {
   }, []);
 
   const handleSubmit = async () => {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true); setError(null); setMessage(null); setSentTo(null);
     // パスワードを忘れた場合: 再設定用のメールを送る。メールのリンクを押すと、ログイン状態になって
     // 新しいパスワードを入れる画面(/auth/reset)へ進む(戻り先は post_auth_next クッキーで覚えておく)
     if (mode === "forgot") {
@@ -110,7 +114,8 @@ export default function AuthPage() {
           referralNote = " 紹介コードを受け付けました。メール内のリンクから登録を完了すると、あなたと紹介者様の有料分析が2ヶ月間読み放題になります。";
         }
       }
-      setMessage(`確認メールを送信しました。メールをご確認ください。${referralNote}`);
+      setSentTo(email.trim());
+      setMessage(referralNote.trim() || null);
     }
     } else {
       const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -143,7 +148,7 @@ export default function AuthPage() {
         ) : (
         <div style={{ display:"flex", marginBottom:"24px", borderRadius:"8px", overflow:"hidden", border:"1px solid #b3e8ea" }}>
           {(["login", "signup"] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(null); setMessage(null); }}
+            <button key={m} onClick={() => { setMode(m); setError(null); setMessage(null); setSentTo(null); }}
               style={{ flex:1, padding:"10px", border:"none", cursor:"pointer", fontWeight:"700", fontSize:"13px",
                 backgroundColor: mode === m ? "#66c3c6" : "white",
                 color: mode === m ? "white" : "#2a7a7e" }}>
@@ -191,9 +196,44 @@ export default function AuthPage() {
   </p>
 ) : (
   <p style={{ fontSize:"11px", color:"#66c3c6", margin:"6px 0 0", fontWeight:"700" }}>
-    紹介コードを入力して登録すると、あなたと紹介者の両方が有料分析を2ヶ月間読み放題になります（先着300名・SNSで紹介されたリンクも対象です）
+    紹介コードを入力して登録すると、あなたと紹介者の両方が有料分析を2ヶ月間読み放題になります（先着300名・SNSで紹介されたリンクも対象。日本版・米国版どちらのコードでもOKで、2ヶ月は両方のサイトに反映されます）
   </p>
 )}
+          </div>
+        )}
+
+
+        {sentTo && mode === "signup" && (
+          <div style={{ background:"#fffbea", border:"2px solid #f5c542", borderRadius:"12px", padding:"14px", margin:"0 0 16px" }}>
+            <div style={{ fontSize:"14px", fontWeight:"900", color:"#111", marginBottom:"6px" }}>📧 確認メールを送りました（まだ登録は完了していません）</div>
+            <p style={{ fontSize:"12px", color:"#334155", lineHeight:1.8, margin:"0 0 6px", wordBreak:"break-all" }}>{sentTo} 宛にメールを送りました。次の3ステップで登録が完了します。</p>
+            <ol style={{ margin:"0 0 8px", paddingLeft:"20px", fontSize:"12px", color:"#334155", lineHeight:1.9 }}>
+              <li>メールアプリを開き、差出人「大手町調査室九課」（noreply@finance-tower.com）のメールを開く</li>
+              <li>メール内の「登録を完了する」ボタン（英語の場合は「Confirm your mail」のリンク）を押す</li>
+              <li>画面が開いたら、このページに戻って「ログイン」から、登録したメールアドレスとパスワードでログイン</li>
+            </ol>
+            <p style={{ fontSize:"11px", color:"#64748b", lineHeight:1.8, margin:"0 0 10px" }}>
+              ・数分たってもメールが届かない場合は、「迷惑メール」「プロモーション」フォルダもご確認ください。<br/>
+              ・メール内のボタンは、登録に使ったのと同じスマホ・同じブラウザで押すとスムーズです。
+            </p>
+            <button type="button" onClick={() => { setMode("login"); setSentTo(null); setMessage(null); setError(null); }}
+              style={{ width:"100%", padding:"10px", backgroundColor:"white", color:"#2a7a7e", border:"1px solid #2a7a7e", borderRadius:"8px", cursor:"pointer", fontWeight:"900", fontSize:"13px" }}>
+              ボタンを押したら、ここからログイン →
+            </button>
+          </div>
+        )}
+        {mode === "signup" && !sentTo && (
+          <div style={{ background:"#f4fbfc", border:"1px solid #b3c7e0", borderRadius:"10px", padding:"10px 12px", margin:"0 0 16px", fontSize:"12px", color:"#2a7a7e", lineHeight:1.8 }}>
+            <b>登録の流れ（3ステップ・約1分）</b><br/>
+            ① メールアドレスとパスワードを入れて「登録する」<br/>
+            ② 届いた確認メールの「登録を完了する」ボタンを押す<br/>
+            ③ ログインして完了
+          </div>
+        )}
+        {verified && mode === "login" && (
+          <div style={{ background:"#ecfdf5", border:"1px solid #6ee7b7", borderRadius:"10px", padding:"10px 12px", margin:"0 0 16px", fontSize:"12px", color:"#065f46", lineHeight:1.8 }}>
+            ✅ メールの確認が済みました。登録したメールアドレスとパスワードで、ログインしてください。<br/>
+            <span style={{ fontSize:"11px", color:"#047857" }}>ログインできない場合は、下の「パスワードを忘れた方はこちら」から再設定できます。</span>
           </div>
         )}
 

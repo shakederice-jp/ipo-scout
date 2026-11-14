@@ -18,6 +18,7 @@
 import type { User } from "@supabase/supabase-js";
 import { randomInt } from "crypto";
 import { getServiceSupabase } from "@/lib/member-auth";
+import { callOtherApp, findUserByEmail, mirrorFreeUntilToOtherApp, setFreeUntilMax } from "@/lib/cross-app";
 
 export const REFERRAL_FREE_MONTHS = 2;
 
@@ -94,7 +95,7 @@ export async function ensureReferralProfile(user: { id: string; email?: string |
 
 // 紹介した人に「無料期間+2ヶ月・紹介人数+1」を付ける。紹介が同時に何件も入っても取りこぼさないよう、
 // 読み取った値が変わっていたら読み直してやり直す。
-async function grantToReferrer(referrerId: string): Promise<boolean> {
+export async function grantToReferrer(referrerId: string): Promise<boolean> {
   const admin = getServiceSupabase();
   for (let i = 0; i < 8; i++) {
     const { data: cur } = await admin.from("user_profiles").select("free_until, referral_count").eq("id", referrerId).maybeSingle();
@@ -130,7 +131,7 @@ export function normalizeReferralCode(code: unknown): string | null {
   return /^[A-Z0-9_-]{4,20}$/.test(c) ? c : null;
 }
 
-function addMonthsFrom(base: string | null | undefined, months: number): string {
+export function addMonthsFrom(base: string | null | undefined, months: number): string {
   const now = new Date();
   const b = base ? new Date(base) : now;
   const start = Number.isFinite(b.getTime()) && b > now ? b : now; // 無料期間が残っていれば、その続きから延長
@@ -149,14 +150,23 @@ export async function applyReferral(user: User, rawCode: unknown): Promise<Refer
   }
 
   const admin = getServiceSupabase();
+  const myEmail = (user.email ?? "").trim().toLowerCase();
 
-  const { data: referrer } = await admin
+  // 紹介コードの持ち主を探す。まずこのサイトの会員、いなければ もう一方のサイトの会員
+  // (2026/11/14: 日米で紹介特典を共通にした。どちらのサイトのコードでも、どちらのサイトでも使える)
+  const { data: localReferrer } = await admin
     .from("user_profiles")
     .select("id, free_until, referral_count")
     .eq("referral_code", code)
     .maybeSingle();
-  if (!referrer) return { ok: false, reason: "invalid_code" };
-  if (referrer.id === user.id) return { ok: false, reason: "self_referral" };
+  let remoteReferrer: { email: string | null } | null = null;
+  if (!localReferrer) {
+    const r = await callOtherApp<{ found?: boolean; email?: string | null }>("find_code", { code });
+    if (!r?.found) return { ok: false, reason: "invalid_code" };
+    remoteReferrer = { email: r.email ?? null };
+  }
+  if (localReferrer && localReferrer.id === user.id) return { ok: false, reason: "self_referral" };
+  if (remoteReferrer?.email && remoteReferrer.email.trim().toLowerCase() === myEmail) return { ok: false, reason: "self_referral" };
 
   const { data: existing } = await admin
     .from("referral_logs")
@@ -164,37 +174,71 @@ export async function applyReferral(user: User, rawCode: unknown): Promise<Refer
     .eq("referee_user_id", user.id)
     .limit(1);
   if (existing && existing.length > 0) return { ok: false, reason: "already_referred" };
+  // 同じメールの会員が、もう一方のサイトで紹介特典を受けていたら、2回目は付けない
+  const otherSide = await callOtherApp<{ referred?: boolean }>("already_referred", { email: user.email });
+  if (otherSide?.referred) return { ok: false, reason: "already_referred" };
 
   // 先着の上限(300名)に達していたら、特典は付けない
   if (!(await getReferralStatus()).open) return { ok: false, reason: "cap_reached" };
 
   // 紹介の記録を先に保存する。保存できなかった場合は特典を付けない(二重付与・記録漏れの防止)。
-  const { error: logError } = await admin.from("referral_logs").insert({
-    referrer_user_id: referrer.id,
-    referee_user_id: user.id,
-    referrer_code: code,
-    status: "completed",
-  });
+  // 紹介者がこのサイトの会員ならその会員ID。もう一方のサイトの会員の場合は、このサイトに同じメールの会員がいればそのID、
+  // いなければ空(null)で保存する(空が許されない設計だった場合に備え、最後は紹介された本人のIDで保存する)。
+  let referrerLogId: string | null = localReferrer?.id ?? null;
+  if (!referrerLogId && remoteReferrer?.email) referrerLogId = (await findUserByEmail(remoteReferrer.email))?.id ?? null;
+  const candidates: (string | null)[] = referrerLogId ? [referrerLogId] : [null, user.id];
+  let logError: unknown = new Error("no attempt");
+  for (const rid of candidates) {
+    const r = await admin.from("referral_logs").insert({
+      referrer_user_id: rid,
+      referee_user_id: user.id,
+      referrer_code: code,
+      status: "completed",
+    });
+    logError = r.error;
+    if (!logError) break;
+  }
   if (logError) return { ok: false, reason: "save_failed" };
 
   // 紹介された人(本人)。会員情報の行がまだ無い場合に備えて、先に作ってから無料期間を付ける。
   // 付けられなかったときは、紹介の記録を取り消して「もう一度試せる」状態に戻す(記録だけ残って特典が付かない、を防ぐ)。
   const meProfile = await ensureReferralProfile(user);
+  const meNext = addMonthsFrom(meProfile?.free_until, REFERRAL_FREE_MONTHS);
   const { data: meDone, error: meErr } = await admin
     .from("user_profiles")
-    .update({ free_until: addMonthsFrom(meProfile?.free_until, REFERRAL_FREE_MONTHS) })
+    .update({ free_until: meNext })
     .eq("id", user.id)
     .select("id");
   if (meErr || !meDone || meDone.length === 0) {
     console.error("referral grant (referee) failed", meErr?.message ?? "no profile row");
-    await admin.from("referral_logs").delete().eq("referee_user_id", user.id).eq("referrer_user_id", referrer.id);
+    await admin.from("referral_logs").delete().eq("referee_user_id", user.id).eq("referrer_code", code);
     return { ok: false, reason: "save_failed" };
   }
+  // 本人の特典を、もう一方のサイトの同じメールの会員にも反映する(まだ会員でなければ、登録したときに引き継がれる)
+  await mirrorFreeUntilToOtherApp(user.email, meNext);
 
   // 紹介した人(運営の公式コードの場合は、運営側に特典を付けない)。人数の上限は設けない。
-  if (!(code === OFFICIAL_REFERRAL_CODE)) {
-    const granted = await grantToReferrer(referrer.id);
-    if (!granted) console.error("referral: referrer grant did not apply", referrer.id);
+  if (code !== OFFICIAL_REFERRAL_CODE) {
+    if (localReferrer) {
+      const granted = await grantToReferrer(localReferrer.id);
+      if (!granted) {
+        console.error("referral: referrer grant did not apply", localReferrer.id);
+      } else {
+        // 紹介者の無料期間も、もう一方のサイトの同じメールの会員に反映する
+        const { data: rp } = await admin.from("user_profiles").select("free_until").eq("id", localReferrer.id).maybeSingle();
+        const { data: ru } = await admin.auth.admin.getUserById(localReferrer.id);
+        await mirrorFreeUntilToOtherApp(ru?.user?.email, rp?.free_until);
+      }
+    } else if (remoteReferrer) {
+      // 紹介者はもう一方のサイトの会員: 向こうで特典を付けてもらい、このサイトに同じメールの会員がいれば、こちらにも反映する
+      const g = await callOtherApp<{ ok?: boolean; email?: string | null; free_until?: string | null }>("grant_referrer", { code });
+      if (!g?.ok) {
+        console.error("referral: remote referrer grant did not apply");
+      } else if (g.email && g.free_until) {
+        const u = await findUserByEmail(g.email);
+        if (u && u.email_confirmed_at) await setFreeUntilMax(u.id, g.free_until);
+      }
+    }
   }
 
   return { ok: true };
