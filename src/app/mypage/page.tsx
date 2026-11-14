@@ -318,7 +318,7 @@ export default function MyPage() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f4fbfc", fontFamily: "'Noto Sans JP',sans-serif" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px 48px" }}>
+      <div className="mp-wrap" style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         {/* ヘッダー */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -332,51 +332,28 @@ export default function MyPage() {
           </button>
         </div>
 
+        {/* 2026/11/14追加: PC表示(幅1024px以上)では2列にし、「プラン・契約状況」「通知設定」「購入済みレポート」を右の列にまとめる。
+            スマホ・タブレットは従来どおり1列で、元の並び順(order)のまま表示する。 */}
+        <style>{`
+          .mp-cols { display: flex; flex-direction: column; }
+          .mp-left, .mp-right { display: contents; }
+          @media (min-width: 1024px) {
+            .mp-wrap { max-width: 1120px !important; }
+            .mp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); column-gap: 24px; align-items: start; }
+            .mp-left, .mp-right { display: block; min-width: 0; }
+          }
+        `}</style>
+        <div className="mp-cols">
+          <div className="mp-left">
+        <div style={{ order: 1 }}>
         {/* 1. アカウント情報 */}
         <Section icon={<User size={16} />} title="アカウント情報">
           <InfoRow label="メールアドレス" value={data.email ?? "-"} />
           <InfoRow label="登録日" value={profile.created_at ? new Date(profile.created_at).toLocaleDateString("ja-JP") : "-"} />
           <InfoRow label="ユーザーID" value={<span style={{ fontSize: 10, color: "#94a3b8" }}>{profile.id?.slice(0, 8)}...</span>} />
         </Section>
-
-       {/* 2. プラン・契約状況 */}
-       <Section icon={<CreditCard size={16} />} title="プラン・契約状況">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, padding: "6px 14px", borderRadius: 20, backgroundColor: plan.bg, color: plan.color }}>
-              {plan.label}
-            </span>
-          </div>
-          {profile.subscription_end_at && (
-            <InfoRow label="次回更新日" value={new Date(profile.subscription_end_at).toLocaleDateString("ja-JP")} />
-          )}
-          {profile.free_until && new Date(profile.free_until) > new Date() && (
-            <div style={{ marginBottom: 14, padding: "10px 12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
-              🎁 <strong>紹介特典で、有料分析と週刊スライドが読み放題です</strong>（{new Date(profile.free_until).toLocaleDateString("ja-JP")} まで）
-              {data.referredByFriend && <div style={{ fontSize: 11 }}>紹介リンクから登録したため、2ヶ月ぶんが付いています。</div>}
-            </div>
-          )}
-          {/* 2026/10/24追加(束A・⑤): 紹介特典の終了が近い(14日以内)人に、続けて読む場合のプランを案内する */}
-          {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
-            <div style={{ marginTop: 10, padding: "10px 12px", backgroundColor: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
-              紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC フルパックプラン（¥4,890/月）があります。自動で課金されることはありません。
-              <a href="/ipo-jp/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
-            </div>
-          )}
-
-<a href="/ipo-jp/cancel"
-            style={{ display: "block", textAlign: "center", width: "100%", marginTop: 16, padding: "12px", backgroundColor: "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 13, boxSizing: "border-box" }}>
-            🔓 プラン変更・解約はこちら
-          </a>
-
-<div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
-            <CheckoutButton availablePlans={["plan_a", "plan_b", "plan_c"]} defaultPlan="plan_c" />
-            <p style={{ fontSize: 11, color: "#64748b", marginTop: 10, lineHeight: 1.6 }}>
-              💡 特定の1銘柄だけ読みたい場合は、各銘柄の分析ページから「シングルレポートを購入」できます。
-            </p>
-          </div>
-        </Section>
-
+        </div>
+        <div style={{ order: 3 }}>
         {/* 2.5 マイポートフォリオ（100万円投資シミュレーション） 2026/9/6新設、2026/9/12改修:
             従来の「マイポートフォリオ」(virtual_investments、追跡開始が必要)と
             「お気に入り銘柄」(favorite_companies、上場前から登録可)を1つの一覧に統合。
@@ -459,7 +436,8 @@ export default function MyPage() {
             </div>
           </Section>
         )}
-
+        </div>
+        <div style={{ order: 4 }}>
         {/* 3. 友達招待プログラム */}
         <Section icon={<Gift size={16} />} title="友達招待プログラム">
           {/* 2026/9/6追加: X(旧Twitter)のプロフィールで「先着300名限定」特典を
@@ -566,7 +544,8 @@ export default function MyPage() {
             ・対象は、メール確認済みで、登録から14日以内の新しい会員です（1人1回・ご自身のコードは使えません）。
           </div>
         </Section>
-
+        </div>
+        <div style={{ order: 5 }}>
         {/* 3.5 IPO週報(2026/10/20新設・案2): 毎週金曜18時の無料メール。受け取る／止めるをここで切り替える */}
         <WeeklyBriefSignup style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
 
@@ -577,58 +556,8 @@ export default function MyPage() {
         {/* 3.7 予定の自動登録(2026/10/24新設・束A①): カレンダー購読リンク。Cプランの会員だけ */}
         <div id="calendar-feed" />
         <CalendarFeedCard style={{ borderRadius: 16, padding: 20, marginBottom: 16 }} />
-
-        {/* 4. 通知設定 */}
-        <Section icon={<Bell size={16} />} title="通知設定">
-          <p style={{ fontSize: 11, color: "#64748b", marginBottom: 14 }}>毎週金曜18時に翌週のIPOイベントをメールでお知らせします。</p>
-          {[
-            { key: "notify_bb",      label: "🟦 BB開始日" },
-            { key: "notify_apply",   label: "📝 申込開始日" },
-            { key: "notify_listing", label: "🔴 上場日" },
-            { key: "notify_daily_reminder", label: "⏰ 前日リマインダー（毎日12時・翌日分のみ）" },
-            { key: "notify_lockup_90",  label: "🔓 ロックアップ90日解除" },
-            { key: "notify_lockup_180", label: "🔓 ロックアップ180日解除" },
-            { key: "method_email",   label: "📧 メール通知" },
-          ].map(({ key, label }) => (
-            <div key={key} onClick={() => toggleNotify(key)}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${LIGHT}`, cursor: "pointer" }}>
-              <span style={{ fontSize: 13, color: DARK }}>{label}</span>
-              <div style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: notifyState?.[key] ? PRIMARY : "#e2e8f0", position: "relative", transition: "background 0.2s" }}>
-                <div style={{ position: "absolute", top: 2, left: notifyState?.[key] ? 18 : 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "white", transition: "left 0.2s" }} />
-              </div>
-            </div>
-          ))}
-          <button onClick={handleSaveNotify} disabled={savingNotify}
-            style={{ width: "100%", marginTop: 14, padding: "10px", backgroundColor: savingNotify ? "#94a3b8" : PRIMARY, color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-            {savingNotify ? "保存中..." : "通知設定を保存する"}
-          </button>
-          {notifySaveResult && (
-            <p style={{ marginTop: 10, fontSize: 12, textAlign: "center", color: notifySaveResult.startsWith("❌") ? "#dc2626" : "#15803d", fontWeight: 700 }}>
-              {notifySaveResult}
-            </p>
-          )}
-        </Section>
-
-        {/* 5. 購入済みレポート */}
-        <Section icon={<ShoppingBag size={16} />} title="購入済みレポート">
-          {data.purchases.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", padding: "16px 0" }}>購入済みのレポートはありません</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {data.purchases.map((p: any) => (
-                <a key={p.id} href={`/ipo-jp/analysis/${p.company_id}`}
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", backgroundColor: LIGHT, borderRadius: 8, border: `1px solid ${BORDER}`, textDecoration: "none" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>{p.ipo_companies?.name ?? "不明"}</div>
-                    <div style={{ fontSize: 10, color: "#64748b" }}>{p.ipo_companies?.listing_date} · ¥{p.amount?.toLocaleString()}</div>
-                  </div>
-                  <span style={{ fontSize: 11, color: PRIMARY, fontWeight: 700 }}>レポートを見る →</span>
-                </a>
-              ))}
-            </div>
-          )}
-        </Section>
-
+        </div>
+        <div style={{ order: 8 }}>
         {/* 6. カレンダーメモ・損益履歴 */}
         <Section icon={<Calendar size={16} />} title="IPOカレンダー 損益履歴（直近3ヶ月）">
           {Object.keys(pnlByMonth).length === 0 ? (
@@ -663,6 +592,103 @@ export default function MyPage() {
             </>
           )}
         </Section>
+        </div>
+          </div>
+          <div className="mp-right">
+        <div style={{ order: 2 }}>
+       {/* 2. プラン・契約状況 */}
+       <Section icon={<CreditCard size={16} />} title="プラン・契約状況">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, padding: "6px 14px", borderRadius: 20, backgroundColor: plan.bg, color: plan.color }}>
+              {plan.label}
+            </span>
+          </div>
+          {profile.subscription_end_at && (
+            <InfoRow label="次回更新日" value={new Date(profile.subscription_end_at).toLocaleDateString("ja-JP")} />
+          )}
+          {profile.free_until && new Date(profile.free_until) > new Date() && (
+            <div style={{ marginBottom: 14, padding: "10px 12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
+              🎁 <strong>紹介特典で、有料分析と週刊スライドが読み放題です</strong>（{new Date(profile.free_until).toLocaleDateString("ja-JP")} まで）
+              {data.referredByFriend && <div style={{ fontSize: 11 }}>紹介リンクから登録したため、2ヶ月ぶんが付いています。</div>}
+            </div>
+          )}
+          {/* 2026/10/24追加(束A・⑤): 紹介特典の終了が近い(14日以内)人に、続けて読む場合のプランを案内する */}
+          {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
+            <div style={{ marginTop: 10, padding: "10px 12px", backgroundColor: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
+              紹介特典の期間は、まもなく終わります。続けて読みたい場合は、分析・通知・週刊スライド・予定の自動登録がそろったC フルパックプラン（¥4,890/月）があります。自動で課金されることはありません。
+              <a href="/ipo-jp/plans" style={{ display: "block", marginTop: 4, color: "#0d4f52", fontWeight: 700 }}>料金プランを見る →</a>
+            </div>
+          )}
+
+<a href="/ipo-jp/cancel"
+            style={{ display: "block", textAlign: "center", width: "100%", marginTop: 16, padding: "12px", backgroundColor: "white", color: DARK, border: `1px solid ${BORDER}`, borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 13, boxSizing: "border-box" }}>
+            🔓 プラン変更・解約はこちら
+          </a>
+
+<div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${LIGHT}` }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 12 }}>プランに加入・アップグレード</p>
+            <CheckoutButton availablePlans={["plan_a", "plan_b", "plan_c"]} defaultPlan="plan_c" />
+            <p style={{ fontSize: 11, color: "#64748b", marginTop: 10, lineHeight: 1.6 }}>
+              💡 特定の1銘柄だけ読みたい場合は、各銘柄の分析ページから「シングルレポートを購入」できます。
+            </p>
+          </div>
+        </Section>
+        </div>
+        <div style={{ order: 6 }}>
+        {/* 4. 通知設定 */}
+        <Section icon={<Bell size={16} />} title="通知設定">
+          <p style={{ fontSize: 11, color: "#64748b", marginBottom: 14 }}>毎週金曜18時に翌週のIPOイベントをメールでお知らせします。</p>
+          {[
+            { key: "notify_bb",      label: "🟦 BB開始日" },
+            { key: "notify_apply",   label: "📝 申込開始日" },
+            { key: "notify_listing", label: "🔴 上場日" },
+            { key: "notify_daily_reminder", label: "⏰ 前日リマインダー（毎日12時・翌日分のみ）" },
+            { key: "notify_lockup_90",  label: "🔓 ロックアップ90日解除" },
+            { key: "notify_lockup_180", label: "🔓 ロックアップ180日解除" },
+            { key: "method_email",   label: "📧 メール通知" },
+          ].map(({ key, label }) => (
+            <div key={key} onClick={() => toggleNotify(key)}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${LIGHT}`, cursor: "pointer" }}>
+              <span style={{ fontSize: 13, color: DARK }}>{label}</span>
+              <div style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: notifyState?.[key] ? PRIMARY : "#e2e8f0", position: "relative", transition: "background 0.2s" }}>
+                <div style={{ position: "absolute", top: 2, left: notifyState?.[key] ? 18 : 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "white", transition: "left 0.2s" }} />
+              </div>
+            </div>
+          ))}
+          <button onClick={handleSaveNotify} disabled={savingNotify}
+            style={{ width: "100%", marginTop: 14, padding: "10px", backgroundColor: savingNotify ? "#94a3b8" : PRIMARY, color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+            {savingNotify ? "保存中..." : "通知設定を保存する"}
+          </button>
+          {notifySaveResult && (
+            <p style={{ marginTop: 10, fontSize: 12, textAlign: "center", color: notifySaveResult.startsWith("❌") ? "#dc2626" : "#15803d", fontWeight: 700 }}>
+              {notifySaveResult}
+            </p>
+          )}
+        </Section>
+        </div>
+        <div style={{ order: 7 }}>
+        {/* 5. 購入済みレポート */}
+        <Section icon={<ShoppingBag size={16} />} title="購入済みレポート">
+          {data.purchases.length === 0 ? (
+            <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", padding: "16px 0" }}>購入済みのレポートはありません</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {data.purchases.map((p: any) => (
+                <a key={p.id} href={`/ipo-jp/analysis/${p.company_id}`}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", backgroundColor: LIGHT, borderRadius: 8, border: `1px solid ${BORDER}`, textDecoration: "none" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>{p.ipo_companies?.name ?? "不明"}</div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>{p.ipo_companies?.listing_date} · ¥{p.amount?.toLocaleString()}</div>
+                  </div>
+                  <span style={{ fontSize: 11, color: PRIMARY, fontWeight: 700 }}>レポートを見る →</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </Section>
+        </div>
+          </div>
+        </div>
 
       </div>
     </div>
