@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { notifyAdmin } from "@/lib/notify-admin";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = "IPO分析レポート <onboarding@resend.dev>";
+const FROM = "IPO分析レポート <noreply@finance-tower.com>";
 const ADMIN_EMAIL = "otemachi.sec9@gmail.com";
 
 export async function POST(req: NextRequest) {

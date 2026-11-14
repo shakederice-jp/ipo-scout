@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 export const ADMIN_EMAIL = 'shakederice@gmail.com';
-export const MAIL_FROM = 'IPO分析レポート <onboarding@resend.dev>';
+export const MAIL_FROM = 'IPO分析レポート <noreply@finance-tower.com>';
 const FROM = MAIL_FROM;
 
 export function escapeHtml(s: string): string {
