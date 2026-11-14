@@ -181,6 +181,10 @@ export async function applyReferral(user: User, rawCode: unknown): Promise<Refer
   // 先着の上限(300名)に達していたら、特典は付けない
   if (!(await getReferralStatus()).open) return { ok: false, reason: "cap_reached" };
 
+  // 2026/11/14追加: 紹介の記録(referral_logs)は会員情報(user_profiles)の行を参照している場合があるため、記録の前に、本人の会員情報の行を必ず作っておく
+  // (米国版では、マイページを開く前の新規会員に行が無く、記録の保存に失敗して特典が付かなかった)
+  const meProfile = await ensureReferralProfile(user);
+
   // 紹介の記録を先に保存する。保存できなかった場合は特典を付けない(二重付与・記録漏れの防止)。
   // 紹介者がこのサイトの会員ならその会員ID。もう一方のサイトの会員の場合は、このサイトに同じメールの会員がいればそのID、
   // いなければ空(null)で保存する(空が許されない設計だった場合に備え、最後は紹介された本人のIDで保存する)。
@@ -198,11 +202,13 @@ export async function applyReferral(user: User, rawCode: unknown): Promise<Refer
     logError = r.error;
     if (!logError) break;
   }
-  if (logError) return { ok: false, reason: "save_failed" };
+  if (logError) {
+    console.error("referral log insert failed", (logError as any)?.message ?? logError);
+    return { ok: false, reason: "save_failed" };
+  }
 
   // 紹介された人(本人)。会員情報の行がまだ無い場合に備えて、先に作ってから無料期間を付ける。
   // 付けられなかったときは、紹介の記録を取り消して「もう一度試せる」状態に戻す(記録だけ残って特典が付かない、を防ぐ)。
-  const meProfile = await ensureReferralProfile(user);
   const meNext = addMonthsFrom(meProfile?.free_until, REFERRAL_FREE_MONTHS);
   const { data: meDone, error: meErr } = await admin
     .from("user_profiles")
