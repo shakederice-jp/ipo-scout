@@ -349,11 +349,10 @@ export default function MyPage() {
             <InfoRow label="次回更新日" value={new Date(profile.subscription_end_at).toLocaleDateString("ja-JP")} />
           )}
           {profile.free_until && new Date(profile.free_until) > new Date() && (
-            <InfoRow label="有料分析 読み放題の終了日" value={
-              <span style={{ color: "#15803d", fontWeight: 700 }}>
-                {new Date(profile.free_until).toLocaleDateString("ja-JP")}（紹介特典）
-              </span>
-            } />
+            <div style={{ marginBottom: 14, padding: "10px 12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: 12, color: "#166534", lineHeight: 1.8 }}>
+              🎁 <strong>紹介特典で、有料分析と週刊スライドが読み放題です</strong>（{new Date(profile.free_until).toLocaleDateString("ja-JP")} まで）
+              {data.referredByFriend && <div style={{ fontSize: 11 }}>紹介リンクから登録したため、2ヶ月ぶんが付いています。</div>}
+            </div>
           )}
           {/* 2026/10/24追加(束A・⑤): 紹介特典の終了が近い(14日以内)人に、続けて読む場合のプランを案内する */}
           {profile.free_until && new Date(profile.free_until) > new Date() && (new Date(profile.free_until).getTime() - Date.now()) < 14 * 86400000 && (
@@ -541,10 +540,16 @@ export default function MyPage() {
           </div>
 
           <InfoRow label="招待コード" value={<span style={{ fontFamily: "monospace", letterSpacing: 2 }}>{profile.referral_code ?? "-"}</span>} />
-          <InfoRow label="招待済み人数" value={`${completedReferrals}名`} />
-          <InfoRow label="獲得した読み放題期間" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
+          <InfoRow label="あなたが紹介した人数" value={`${completedReferrals}名`} />
+          <InfoRow label="紹介で延びた期間（紹介した分）" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
+          <InfoRow label="読み放題の終了日" value={profile.free_until && new Date(profile.free_until) > new Date()
+            ? <span style={{ color: "#15803d", fontWeight: 900 }}>{new Date(profile.free_until).toLocaleDateString("ja-JP")}</span>
+            : <span style={{ color: "#64748b" }}>なし</span>} />
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
-            💡 紹介リンクから登録した人が増えるたびに、あなたと登録した人の両方が<strong>有料分析と週刊スライドを2ヶ月間読み放題</strong>になります（通知・予定の自動登録は対象外）。<br />
+            🎁 <strong>しくみ（どちらも2ヶ月）</strong><br />
+            ・<strong>紹介リンクから登録した人</strong>：登録（メール確認）のときに、有料分析と週刊スライドが2ヶ月間読み放題になります。<br />
+            ・<strong>紹介したあなた</strong>：1人登録されるごとに、読み放題の終了日が2ヶ月ずつ延びます。<br />
+            ・通知・予定の自動登録は対象外です。<br />
             ・友達・知人だけでなく、X・InstagramなどのSNSで不特定多数に紹介した場合も対象です。<br />
             ・あなたの特典に、人数の上限はありません（1人ごとに2ヶ月ずつ延びます）。<br />
             ・<strong>先着300名</strong>に達した時点で、新しい紹介への特典は自動的に終了します（すでに付いた特典はそのまま使えます）。<br />

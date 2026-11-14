@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   // 1. 会員(認証)
   let authTotal = 0, authConfirmed = 0, pendingUnapplied = 0, pendingUnconfirmed = 0;
   const results: Record<string, number> = {};
+  const recentUsers: { id: string; email: string; created_at: string; confirmed: boolean; pending: string | null; result: string | null }[] = [];
   try {
     for (let page = 1; page <= 20; page++) {
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
       const users = data?.users ?? [];
       for (const u of users) {
         authTotal++;
+        recentUsers.push({ id: u.id, email: u.email ?? "", created_at: u.created_at ?? "", confirmed: !!u.email_confirmed_at, pending: (u.user_metadata as any)?.pending_referral_code ?? null, result: (u.user_metadata as any)?.referral_result ?? null });
         if (u.email_confirmed_at) authConfirmed++;
         const md: any = u.user_metadata ?? {};
         if (md.pending_referral_code) { if (u.email_confirmed_at) pendingUnapplied++; else pendingUnconfirmed++; }
@@ -38,7 +40,9 @@ export async function GET(req: NextRequest) {
   }
 
   // 2. 会員情報(user_profiles)
-  let profTotal = 0, profNoCode = 0, freeActive = 0;
+  let profTotal = 0, profNoCode = 0, freeActive = 0, profOddCode = 0;
+  const freeMap: Record<string, string | null> = {};
+  const codeMap: Record<string, string | null> = {};
   const prof = await admin.from("user_profiles").select("id, referral_code, free_until").limit(20000);
   if (prof.error) {
     problems.push("会員情報(user_profiles)を読み取れませんでした: " + prof.error.message);
@@ -47,6 +51,8 @@ export async function GET(req: NextRequest) {
     for (const r of prof.data ?? []) {
       profTotal++;
       if (!r.referral_code) profNoCode++;
+      else if (!/^[A-Z0-9]+$/.test(r.referral_code)) profOddCode++;
+      freeMap[r.id] = r.free_until ?? null; codeMap[r.id] = r.referral_code ?? null;
       if (r.free_until && Date.parse(r.free_until) > now) freeActive++;
     }
   }
@@ -68,6 +74,7 @@ export async function GET(req: NextRequest) {
   // 見立て(原因の候補)
   if (authTotal > 0 && profTotal < authTotal) problems.push(`会員 ${authTotal}人のうち、会員情報(user_profiles)の行があるのは ${profTotal}人です。行が無い会員は招待コードを持てません。(2026/11/13の修正で、マイページを開いた時に自動で作るようにしました)`);
   if (profNoCode > 0) problems.push(`紹介コードが空の会員が ${profNoCode}人います。(マイページを開くと自動で付きます)`);
+  if (profOddCode > 0) notes.push(`記号(-や_)を含む紹介コードの会員が ${profOddCode}人います。2026/11/14の修正で、こうしたコードも使えるようになりました。`);
   if (!officialOk) problems.push("運営の公式コードが、どの会員にも設定されていません。キャンペーンページ経由の登録は、特典が付きません。(SQLでご自身のアカウントに設定が必要です)");
   if (pendingUnapplied > 0) problems.push(`紹介コードで登録したのに、特典が未適用の会員(メール確認済み)が ${pendingUnapplied}人います。ログインし直すと再適用されます。内訳は下の「適用結果」をご覧ください。`);
   if (pendingUnconfirmed > 0) notes.push(`確認メールのリンクをまだ押していない会員が ${pendingUnconfirmed}人います(押すと特典が付きます)。`);
@@ -80,5 +87,18 @@ export async function GET(req: NextRequest) {
     officialCodeOk: officialOk,
     referral: { logsTotal: logTotal, completed: logCompleted, cap: REFERRAL_CAP, lastAt: lastLogAt, pendingUnapplied, pendingUnconfirmed, results },
     problems, notes,
+    // 直近の登録(新しい順に6件)。メールアドレスは一部を伏せて表示する
+    recent: recentUsers.sort((a, b) => (b.created_at > a.created_at ? 1 : -1)).slice(0, 6).map((u) => {
+      const [name, domain] = u.email.split("@");
+      return {
+        email: (name ?? "").slice(0, 3) + "***@" + (domain ?? ""),
+        createdAt: u.created_at,
+        confirmed: u.confirmed,
+        pendingCode: u.pending ? true : false,
+        result: u.result,
+        freeActive: !!(freeMap[u.id] && Date.parse(freeMap[u.id] as string) > Date.now()),
+        hasCode: !!codeMap[u.id],
+      };
+    }),
   });
 }

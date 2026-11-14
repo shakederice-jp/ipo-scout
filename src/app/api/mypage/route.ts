@@ -45,6 +45,10 @@ export async function GET() {
     }
   }
 
+  // 2026/11/14追加: この会員が「紹介された側」として特典を受けたか(マイページの表示用)
+  const { data: referredRows } = await serviceSupabase
+    .from("referral_logs").select("id").eq("referee_user_id", userId).eq("status", "completed").limit(1);
+
   const { data: referralLogs } = await serviceSupabase
     .from("referral_logs").select("*").eq("referrer_user_id", userId);
 
@@ -108,6 +112,7 @@ export async function GET() {
   return NextResponse.json({
     email, profile,
     referralLogs: referralLogs ?? [],
+    referredByFriend: (referredRows?.length ?? 0) > 0,
     purchases: purchases ?? [],
     notifySettings,
     calendarNotes: calendarNotes ?? [],

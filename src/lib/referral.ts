@@ -126,7 +126,8 @@ export type ReferralResult =
 export function normalizeReferralCode(code: unknown): string | null {
   if (typeof code !== "string") return null;
   const c = code.trim().toUpperCase();
-  return /^[A-Z0-9]{4,20}$/.test(c) ? c : null;
+  // 2026/11/14: ハイフン・アンダースコアを含むコード(例: -7532)も有効にする。以前は英数字だけを許可していたため、記号入りのコードの紹介が「無効なコード」になっていた。
+  return /^[A-Z0-9_-]{4,20}$/.test(c) ? c : null;
 }
 
 function addMonthsFrom(base: string | null | undefined, months: number): string {

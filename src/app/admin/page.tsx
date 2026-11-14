@@ -977,6 +977,9 @@ export default function AdminPage() {
                         特典成立 {refDiag.referral?.completed}件／先着の上限 {refDiag.referral?.cap}名／最後の成立 {refDiag.referral?.lastAt ? new Date(refDiag.referral.lastAt).toLocaleString("ja-JP") : "なし"}<br />
                         紹介コードで登録したが特典が未適用: {refDiag.referral?.pendingUnapplied}人（確認メール未クリック: {refDiag.referral?.pendingUnconfirmed}人）<br />
                         適用結果の内訳: {Object.keys(refDiag.referral?.results ?? {}).length ? Object.entries(refDiag.referral.results).map(([k, v]) => `${k} ${v}件`).join(" / ") : "なし"}
+                        {refDiag.recent?.length > 0 && (<><br /><strong>直近の登録（新しい順）</strong>{refDiag.recent.map((u: any, i: number) => (
+                          <div key={i}>・{u.email}（{new Date(u.createdAt).toLocaleString("ja-JP")}）／メール確認: {u.confirmed ? "済" : "未"}／紹介コード預かり: {u.pendingCode ? "あり" : "なし"}／適用結果: {u.result ?? "なし"}／読み放題: {u.freeActive ? "付与済み" : "なし"}</div>
+                        ))}</>)}
                       </div>
                     </>)}
                   </div>
