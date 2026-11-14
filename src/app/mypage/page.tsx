@@ -542,10 +542,18 @@ export default function MyPage() {
 
           <InfoRow label="招待コード" value={<span style={{ fontFamily: "monospace", letterSpacing: 2 }}>{profile.referral_code ?? "-"}</span>} />
           <InfoRow label="あなたが紹介した人数" value={`${completedReferrals}名`} />
-          <InfoRow label="紹介で延びた期間（紹介した分）" value={<span style={{ color: "#15803d", fontWeight: 900 }}>{freeMonthsEarned}ヶ月</span>} />
-          <InfoRow label="読み放題の終了日" value={profile.free_until && new Date(profile.free_until) > new Date()
+          {/* 2026/11/14改修: 「紹介で延びた期間（紹介した分）」だけでは、紹介された側の2ヶ月が表示されず分かりにくいため、特典の内訳(①紹介リンクから登録して付いた期間 ②友達を紹介して増えた期間)と、その結果の終了日を並べて表示する */}
+          <div style={{ margin: "14px 0 4px", fontSize: 12, fontWeight: 900, color: "#334155" }}>読み放題の特典（内訳）</div>
+          <InfoRow label="① 紹介リンクから登録して付いた期間" value={data.referredByFriend
+            ? <span style={{ color: "#15803d", fontWeight: 900 }}>2ヶ月</span>
+            : <span style={{ color: "#64748b" }}>なし</span>} />
+          <InfoRow label="② 友達を紹介して増えた期間" value={completedReferrals > 0
+            ? <span style={{ color: "#15803d", fontWeight: 900 }}>{completedReferrals}名 × 2ヶ月 ＝ {freeMonthsEarned}ヶ月</span>
+            : <span style={{ color: "#64748b" }}>まだありません（紹介 0名）</span>} />
+          <InfoRow label="読み放題の終了日（①と②の合計）" value={profile.free_until && new Date(profile.free_until) > new Date()
             ? <span style={{ color: "#15803d", fontWeight: 900 }}>{new Date(profile.free_until).toLocaleDateString("ja-JP")}</span>
             : <span style={{ color: "#64748b" }}>なし</span>} />
+          <div style={{ fontSize: 10.5, color: "#64748b", margin: "2px 0 0", lineHeight: 1.7 }}>※ 日本版・米国版のどちらで付いた特典も含みます。</div>
           <div style={{ marginTop: 12, padding: "10px 12px", backgroundColor: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 11, color: "#92400e" }}>
             🎁 <strong>しくみ（どちらも2ヶ月）</strong><br />
             ・<strong>紹介リンクから登録した人</strong>：登録（メール確認）のときに、有料分析と週刊スライドが2ヶ月間読み放題になります。<br />
