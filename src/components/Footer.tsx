@@ -60,6 +60,9 @@ export default function Footer() {
         <span style={{ color: "#e2e8f0" }}>|</span>
         <a href="/ipo-jp/contact" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>お問い合わせ</a>
       </div>
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 10 }}>
+        <a href="https://finance-tower.com/students" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>姉妹サイト：大学生向け 人生設計・マネープラン入門</a>
+      </div>
       <p style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>
         本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br />
         最終的な投資判断はご自身の責任のもとで行ってください。<br />
