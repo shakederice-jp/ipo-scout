@@ -12,6 +12,17 @@
 // 各リンクにwhiteSpace:"nowrap"を指定して文字単位の折り返しを防いだ。
 import FooterLevelSwitch from "@/components/FooterLevelSwitch";
 
+// 姉妹サイト(2026/11/19新設): 大手町調査室九課の全サイトへの相互リンク。
+const SISTER_SITES: [string, string][] = [
+  ["IPO分析アプリ(米国版)", "https://finance-tower.com/ipo-us"],
+  ["IPO投資の教科書", "https://finance-tower.com/learn"],
+  ["会員登録ガイド", "https://finance-tower.com/guide"],
+  ["中学生・高校生のためのお金の流れ入門", "https://finance-tower.com/money-flow"],
+  ["大学生向け 人生設計・マネープラン入門", "https://finance-tower.com/students"],
+  ["メモレバ(AIダイエット手帳)", "https://finance-tower.com/diet"],
+  ["大手町調査室九課", "https://finance-tower.com"],
+];
+
 export default function Footer() {
   return (
     <footer style={{ borderTop: "1px solid #b3e8ea", backgroundColor: "white", padding: "24px 16px", textAlign: "center" as const }}>
@@ -60,8 +71,11 @@ export default function Footer() {
         <span style={{ color: "#e2e8f0" }}>|</span>
         <a href="/ipo-jp/contact" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>お問い合わせ</a>
       </div>
-      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 16, marginBottom: 10 }}>
-        <a href="https://finance-tower.com/students" style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>姉妹サイト：大学生向け 人生設計・マネープラン入門</a>
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap" as const, gap: 12, marginBottom: 10 }}>
+        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" as const }}>姉妹サイト:</span>
+        {SISTER_SITES.map(([name, url]) => (
+          <a key={url} href={url} style={{ fontSize: 11, color: "#66c3c6", textDecoration: "none", whiteSpace: "nowrap" as const }}>{name}</a>
+        ))}
       </div>
       <p style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>
         本サービスの分析・スコアはAIによる試算値であり、投資勧誘ではありません。<br />
